@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   KnowledgePointNode,
   QuestionItem,
@@ -73,16 +73,22 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [difficultyFilter, setDifficultyFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Modals
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [isKpModalOpen, setIsKpModalOpen] = useState(false);
   const [isBatchImportModalOpen, setIsBatchImportOpen] = useState(false);
+  const [isKpBatchModalOpen, setIsKpBatchModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null);
 
   // Batch import preview mode inside modal
   const [importTab, setImportTab] = useState<'upload' | 'preview'>('upload');
   const [importNotice, setImportNotice] = useState<string | null>(null);
+
+  // Knowledge Point Batch Import state
+  const [kpImportTab, setKpImportTab] = useState<'upload' | 'preview'>('upload');
+  const [kpImportNotice, setKpImportNotice] = useState<string | null>(null);
 
   // Question Form
   const [qForm, setQForm] = useState({
@@ -131,6 +137,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     });
   };
 
+  const handleToggleExpandCollapse = () => {
+    const expandableNodes = knowledgePoints.filter((kp) => kp.level < 3);
+    if (expandedNodeIds.size >= expandableNodes.length && expandableNodes.length > 0) {
+      setExpandedNodeIds(new Set());
+    } else {
+      setExpandedNodeIds(new Set(expandableNodes.map((kp) => kp.id)));
+    }
+  };
+
   const handleExpandAllNodes = () => {
     setExpandedNodeIds(new Set(knowledgePoints.filter((kp) => kp.level < 3).map((kp) => kp.id)));
   };
@@ -167,6 +182,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       return matchesSubject && matchesDifficulty && matchesType && matchesSearch;
     });
   }, [questions, subjectFilter, difficultyFilter, typeFilter, searchTerm]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [subjectFilter, difficultyFilter, typeFilter, searchTerm]);
+
+  // Pagination calculations (10 items per page)
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedQuestions = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredQuestions.slice(start, start + pageSize);
+  }, [filteredQuestions, safeCurrentPage, pageSize]);
 
   const handleOpenAddQuestion = () => {
     setEditingQuestion(null);
@@ -276,6 +306,101 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     setIsKpModalOpen(false);
   };
 
+  // 模拟批量导入考点树示例结构
+  const sampleKpBatchRows = [
+    {
+      subject: '数学',
+      grade: '初一',
+      textbook: '人教版',
+      level1Code: 'KP-MATH-L1-03',
+      level1Name: '函数及其图像',
+      level2Code: 'KP-MATH-L2-05',
+      level2Name: '一次函数与二元一次方程组',
+      level3Code: 'KP-MATH-L3-12',
+      level3Name: '一次函数图像交点与方程组求解',
+    },
+    {
+      subject: '物理',
+      grade: '初二',
+      textbook: '人教版',
+      level1Code: 'KP-PHYS-L1-02',
+      level1Name: '能量与功',
+      level2Code: 'KP-PHYS-L2-03',
+      level2Name: '机械效率与动滑轮应用',
+      level3Code: 'KP-PHYS-L3-08',
+      level3Name: '滑轮组机械效率公式 η=W有/W总 计算',
+    },
+    {
+      subject: '化学',
+      grade: '初三',
+      textbook: '人教版',
+      level1Code: 'KP-CHEM-L1-02',
+      level1Name: '身边的化学物质',
+      level2Code: 'KP-CHEM-L2-04',
+      level2Name: '金属与金属材料',
+      level3Code: 'KP-CHEM-L3-10',
+      level3Name: '金属活动性顺序表探究与置换反应',
+    },
+  ];
+
+  const handleExecuteKpBatchImport = () => {
+    sampleKpBatchRows.forEach((row) => {
+      // 1. Level 1
+      let l1 = knowledgePoints.find(
+        (kp) => kp.level === 1 && kp.subject === row.subject && (kp.name === row.level1Name || kp.code === row.level1Code)
+      );
+      if (!l1) {
+        onAddKnowledgePoint({
+          code: row.level1Code,
+          name: row.level1Name,
+          level: 1,
+          subject: row.subject,
+          grade: row.grade,
+          textbook: row.textbook,
+          status: 'active',
+        });
+      }
+
+      // 2. Level 2
+      let l2 = knowledgePoints.find(
+        (kp) => kp.level === 2 && kp.subject === row.subject && (kp.name === row.level2Name || kp.code === row.level2Code)
+      );
+      if (!l2) {
+        onAddKnowledgePoint({
+          code: row.level2Code,
+          name: row.level2Name,
+          level: 2,
+          subject: row.subject,
+          grade: row.grade,
+          textbook: row.textbook,
+          parentId: l1?.id || 'KP-L1-01',
+          status: 'active',
+        });
+      }
+
+      // 3. Level 3
+      let l3 = knowledgePoints.find(
+        (kp) => kp.level === 3 && kp.subject === row.subject && (kp.name === row.level3Name || kp.code === row.level3Code)
+      );
+      if (!l3) {
+        onAddKnowledgePoint({
+          code: row.level3Code,
+          name: row.level3Name,
+          level: 3,
+          subject: row.subject,
+          grade: row.grade,
+          textbook: row.textbook,
+          parentId: l2?.id || 'KP-L2-01',
+          status: 'active',
+        });
+      }
+    });
+
+    setKpImportNotice(
+      `成功批量导入考点！从 Excel 解析并自动关联：新增/构建 3 个一级章节、3 个二级专题以及 3 个三级考点，层级完整度 100%！`
+    );
+  };
+
   // 执行单表拆分为两张表的批量导入逻辑
   const handleExecuteSingleTableImport = (customRows?: SingleTableRowInput[]) => {
     const rowsToProcess = customRows || sampleSingleTableRows;
@@ -318,49 +443,76 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 mb-1">
-          <button
-            onClick={() => {
-              setImportNotice(null);
-              setIsBatchImportOpen(true);
-            }}
-            className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">table_view</span>
-            <span>单表导入</span>
-          </button>
+          {activeSubTab === 'tree' ? (
+            <>
+              <button
+                type="button"
+                onClick={handleToggleExpandCollapse}
+                className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {expandedNodeIds.size >= knowledgePoints.filter((kp) => kp.level < 3).length && knowledgePoints.filter((kp) => kp.level < 3).length > 0
+                    ? 'unfold_less'
+                    : 'unfold_more'}
+                </span>
+                <span>
+                  {expandedNodeIds.size >= knowledgePoints.filter((kp) => kp.level < 3).length && knowledgePoints.filter((kp) => kp.level < 3).length > 0
+                    ? '全部折叠'
+                    : '全部展开'}
+                </span>
+              </button>
 
-          <button
-            onClick={handleOpenAddQuestion}
-            className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            <span>录入试题</span>
-          </button>
+              <button
+                onClick={() => {
+                  setKpImportNotice(null);
+                  setIsKpBatchModalOpen(true);
+                }}
+                className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">upload_file</span>
+                <span>批量导入</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddQuestion}
+                className="flex items-center gap-1 bg-[#F5B700] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-[#E0A700] transition-all cursor-pointer shadow-2xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>补充试题</span>
+              </button>
+
+              <button
+                onClick={() => setIsKpModalOpen(true)}
+                className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>新增考点节点</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setImportNotice(null);
+                  setIsBatchImportOpen(true);
+                }}
+                className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">table_view</span>
+                <span>批量导入</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddQuestion}
+                className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>录入试题</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
-
-      {/* Missing Questions Warning */}
-      {noQuestionPoints.length > 0 && (
-        <div className="bg-[#FFFBEB] border border-[#F5B700] rounded-xl p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#F5B700] text-[24px]">warning</span>
-            <div>
-              <p className="text-[13px] font-bold text-[#0F172A]">
-                三级考点缺题预警：发现 {noQuestionPoints.length} 个三级考点尚未绑定可用精选题！
-              </p>
-              <p className="text-[12px] text-[#64748B] mt-0.5">
-                受影响考点：{noQuestionPoints.map((kp) => kp.name).join('、 ')}。（为保证练题效果，建议优先补齐相关试题）
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleOpenAddQuestion}
-            className="px-3.5 py-1.5 bg-[#F5B700] text-[#0F172A] font-bold text-[12px] rounded-lg hover:bg-[#E0A700] whitespace-nowrap cursor-pointer shadow-2xs"
-          >
-            补充试题
-          </button>
-        </div>
-      )}
 
       {activeSubTab === 'questions' ? (
         <div className="space-y-4">
@@ -433,7 +585,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 <p className="text-[14px] font-medium">暂无符合条件的精选题记录</p>
               </div>
             ) : (
-              filteredQuestions.map((q) => (
+              paginatedQuestions.map((q) => (
                 <div
                   key={q.id}
                   className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs hover:border-[#16B45B] transition-all space-y-3"
@@ -528,50 +680,78 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               ))
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {filteredQuestions.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-[#475569]">
+              <div>
+                共 <strong className="text-[#0F172A]">{filteredQuestions.length}</strong> 道试题，
+                每页 <span className="font-bold text-[#16B45B]">10</span> 条，
+                当前显示第 <strong className="text-[#0F172A]">{safeCurrentPage}</strong> / <strong>{totalPages}</strong> 页
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl font-bold hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1 text-[12.5px]"
+                >
+                  <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                  上一页
+                </button>
+
+                {/* Page number buttons */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                    if (
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-8 h-8 rounded-xl font-bold text-[12.5px] cursor-pointer transition-colors ${
+                            pageNum === safeCurrentPage
+                              ? 'bg-[#16B45B] text-white shadow-2xs'
+                              : 'hover:bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0]'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    } else if (
+                      (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
+                      (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
+                    ) {
+                      return (
+                        <span key={pageNum} className="px-1 text-[#94A3B8]">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl font-bold hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1 text-[12.5px]"
+                >
+                  下一页
+                  <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* Knowledge Point Tree View */
         <div className="space-y-4">
-          {/* Header & Tree Controls */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-2xl border border-[#E2E8F0] gap-3 shadow-2xs">
-            <div>
-              <h3 className="font-bold text-[#0F172A] text-[15px] flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#16B45B]">account_tree</span>
-                知识考点分级架构树
-              </h3>
-              <p className="text-[12px] text-[#64748B] mt-0.5">
-                支持无限扩展伸缩的章节/主题/考点树状结构，三级考点直接作为试题绑定与错题诊断的归因锚点
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExpandAllNodes}
-                className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">unfold_more</span>
-                全部展开
-              </button>
-              <button
-                type="button"
-                onClick={handleCollapseAllNodes}
-                className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">unfold_less</span>
-                全部折叠
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsKpModalOpen(true)}
-                className="px-4 py-1.5 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] cursor-pointer shadow-2xs flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                新增考点节点
-              </button>
-            </div>
-          </div>
-
           {/* Tree Search & Subject Filter Bar */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3 flex-1 min-w-[280px]">
@@ -1233,26 +1413,32 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
                   示例：1 行 Excel 输入表格内容（知识点 + 试题在同 1 行）：
                 </div>
-                <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white">
+                <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white whitespace-nowrap">
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
                     <thead className="bg-[#F1F5F9]">
                       <tr>
                         <th className="p-2 border-r">一级章节</th>
                         <th className="p-2 border-r">二级专题</th>
                         <th className="p-2 border-r">三级考点</th>
-                        <th className="p-2 border-r">题目简题</th>
+                        <th className="p-2 border-r">题型</th>
+                        <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
-                        <th className="p-2">正确答案</th>
+                        <th className="p-2 border-r">正确答案</th>
+                        <th className="p-2 text-[#2563EB] font-bold">解题步骤 / 详尽解析</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-[#E2E8F0]">
                       <tr>
                         <td className="p-2 border-r">数与代数</td>
                         <td className="p-2 border-r">一元一次方程应用</td>
                         <td className="p-2 border-r text-[#16B45B] font-bold">行程问题与追及方程</td>
-                        <td className="p-2 border-r">行程追及一元一次方程典型题</td>
-                        <td className="p-2 border-r">甲乙两车相距180...</td>
-                        <td className="p-2 font-bold text-[#16B45B]">A. 9小时</td>
+                        <td className="p-2 border-r">选择题</td>
+                        <td className="p-2 border-r"><span className="px-1.5 py-0.5 bg-[#EFF6FF] text-[#2563EB] font-sans font-medium rounded text-[10px]">提升</span></td>
+                        <td className="p-2 border-r max-w-[150px] truncate" title="甲乙两车相距 180 千米，甲车速度 60km/h，乙车速度 40km/h...">甲乙两车相距 180 千米...</td>
+                        <td className="p-2 border-r font-bold text-[#16B45B]">A. 9 小时</td>
+                        <td className="p-2 text-[#2563EB] font-medium max-w-[220px] truncate" title="设所需时间为 x 小时。根据追及公式：(60-40)x = 180，解得 x = 9。选 A。">
+                          设所需时间为 x 小时。根据追及公式：(60-40)x = 180，解得 x = 9。
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -1301,6 +1487,166 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </span>
               <button
                 onClick={() => setIsBatchImportOpen(false)}
+                className="px-5 py-2 bg-[#0F172A] text-white font-bold rounded-xl text-[13px] hover:bg-[#1E293B] cursor-pointer"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Import Knowledge Points Modal */}
+      {isKpBatchModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-[#E2E8F0] max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
+              <div>
+                <h3 className="text-[18px] font-bold text-[#0F172A] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#16B45B]">account_tree</span>
+                  批量导入三级知识考点树
+                </h3>
+                <p className="text-[12px] text-[#64748B] mt-0.5">
+                  通过 Excel 表格按【学科 ➔ 一级章节 ➔ 二级专题 ➔ 三级考点】标准结构批量建立架构树
+                </p>
+              </div>
+              <button
+                onClick={() => setIsKpBatchModalOpen(false)}
+                className="text-[#64748B] hover:text-[#0F172A] cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex border-b border-[#E2E8F0] gap-6 mb-4">
+              <button
+                onClick={() => setKpImportTab('upload')}
+                className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
+                  kpImportTab === 'upload'
+                    ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                    : 'text-[#64748B] hover:text-[#0F172A]'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                上传 Excel 考点表格
+              </button>
+
+              <button
+                onClick={() => setKpImportTab('preview')}
+                className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
+                  kpImportTab === 'preview'
+                    ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                    : 'text-[#64748B] hover:text-[#0F172A]'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
+                三级考点表结构规范说明
+              </button>
+            </div>
+
+            {/* Notification */}
+            {kpImportNotice && (
+              <div className="bg-[#E8F7EE] border border-[#16B45B]/30 rounded-xl p-3.5 mb-4 text-[13px] text-[#0E7D3E] font-medium flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-[#16B45B]">check_circle</span>
+                <span>{kpImportNotice}</span>
+              </div>
+            )}
+
+            {kpImportTab === 'upload' ? (
+              <div className="space-y-5">
+                {/* Upload Area */}
+                <div className="border-2 border-dashed border-[#16B45B]/40 hover:border-[#16B45B] bg-[#F8FAFC] rounded-2xl p-8 text-center transition-all cursor-pointer group">
+                  <div className="w-14 h-14 bg-[#E8F7EE] rounded-2xl flex items-center justify-center mx-auto text-[#16B45B] mb-3 group-hover:scale-105 transition-transform">
+                    <span className="material-symbols-outlined text-[32px]">folder_zip</span>
+                  </div>
+                  <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识考点结构表至此处</p>
+                  <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
+                    规范包含：【学科、学段年级、教材版本、一级章节编码/名称、二级专题编码/名称、三级考点编码/名称】
+                  </p>
+
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleExecuteKpBatchImport();
+                      }
+                    }}
+                    className="hidden"
+                    id="kpBatchImportInput"
+                  />
+                  <label
+                    htmlFor="kpBatchImportInput"
+                    className="inline-block mt-4 px-5 py-2 bg-[#16B45B] text-white font-bold rounded-xl cursor-pointer hover:bg-[#139B4E] shadow-2xs text-[13px]"
+                  >
+                    选择考点 Excel 表格文件
+                  </label>
+                </div>
+
+                {/* Quick Test Import */}
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl flex items-center justify-between">
+                  <div>
+                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科三级考点树批量导入</h5>
+                    <p className="text-[12px] text-[#64748B] mt-0.5">
+                      模拟解析包含数学、物理、化学 3 组完整的“一级章节 ➔ 二级专题 ➔ 三级考点”数据
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleExecuteKpBatchImport()}
+                    className="px-4 py-2 bg-[#F5B700] text-[#0F172A] text-[13px] font-bold rounded-xl hover:bg-[#E0A700] cursor-pointer shadow-2xs whitespace-nowrap"
+                  >
+                    🚀 一键测试考点树批量导入
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Specification View */
+              <div className="space-y-4 text-[12.5px]">
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
+                  标准 3 级知识考点表列名要求（遵照需求文档 9.0 规范）：
+                </div>
+                <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white">
+                  <table className="w-full text-left divide-y divide-[#E2E8F0]">
+                    <thead className="bg-[#F1F5F9]">
+                      <tr>
+                        <th className="p-2 border-r">所属学科</th>
+                        <th className="p-2 border-r">一级编码及名称</th>
+                        <th className="p-2 border-r">二级编码及名称</th>
+                        <th className="p-2 border-r">三级考点编码及名称</th>
+                        <th className="p-2 border-r">适用年级</th>
+                        <th className="p-2">教材版本</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8F0]">
+                      <tr>
+                        <td className="p-2 border-r">数学</td>
+                        <td className="p-2 border-r">KP-MATH-L1-01 数与代数</td>
+                        <td className="p-2 border-r">KP-MATH-L2-02 二次方程</td>
+                        <td className="p-2 border-r text-[#16B45B] font-bold">KP-MATH-L3-05 因式分解求根</td>
+                        <td className="p-2 border-r">初一</td>
+                        <td className="p-2">人教版</td>
+                      </tr>
+                      <tr>
+                        <td className="p-2 border-r">物理</td>
+                        <td className="p-2 border-r">KP-PHYS-L1-01 力学基础</td>
+                        <td className="p-2 border-r">KP-PHYS-L2-01 压强与浮力</td>
+                        <td className="p-2 border-r text-[#16B45B] font-bold">KP-PHYS-L3-01 液体内部压强 p=ρgh</td>
+                        <td className="p-2 border-r">初二</td>
+                        <td className="p-2">人教版</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[11.5px] text-[#64748B]">
+                  三级考点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验上级节点父子关系。
+                </p>
+              </div>
+            )}
+
+            <div className="pt-4 mt-4 flex justify-end border-t border-[#E2E8F0]">
+              <button
+                onClick={() => setIsKpBatchModalOpen(false)}
                 className="px-5 py-2 bg-[#0F172A] text-white font-bold rounded-xl text-[13px] hover:bg-[#1E293B] cursor-pointer"
               >
                 关闭
