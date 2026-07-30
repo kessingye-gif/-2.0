@@ -245,23 +245,25 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] text-[#191c1d] overflow-x-hidden font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
       {/* Fixed Left Sidebar */}
       <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
-      {/* Fixed Top Header */}
-      <Header
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onOpenNotifications={() => alert('通知面板：全平台无待处理崩溃报错，目前 5 家机构额度告急已预警。')}
-        onOpenSettings={() => setIsHelpModalOpen(true)}
-      />
+      {/* Main Container Column */}
+      <div className="flex-1 flex flex-col h-screen min-w-0 pl-[240px]">
+        {/* Top Header */}
+        <Header
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenNotifications={() => alert('通知面板：全平台无待处理崩溃报错，目前 5 家机构额度告急已预警。')}
+          onOpenSettings={() => setIsHelpModalOpen(true)}
+        />
 
-      {/* Main Content Area */}
-      <main className="pt-24 ml-[260px] min-h-screen p-8 transition-all">
-        {currentTab === 'institutions' && (
+        {/* Scrollable Main Content Area */}
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+          {currentTab === 'institutions' && (
           <InstitutionView
             institutions={institutions}
             onAddInstitution={handleAddInstitution}
@@ -325,6 +327,7 @@ export default function App() {
 
         {currentTab === 'auditLogs' && <AuditLogView logs={auditLogs} />}
       </main>
+      </div>
 
       {/* Floating Help Button (Bottom Right) */}
       <div className="fixed bottom-8 right-8 z-50">

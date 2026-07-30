@@ -240,26 +240,116 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Filter Bar */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-3 flex flex-wrap items-center gap-3 shadow-2xs">
-        <div className="flex-1 min-w-[200px] relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="搜索机构名称、代码、负责人..."
-            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1.5 pl-9 pr-3 text-[13px] focus:border-[#16B45B] focus:bg-white outline-none"
-          />
+      {/* Top Overview Cards with Sparklines */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1 */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px]">domain</span>
+            </div>
+            <span className="text-[12.5px] font-semibold text-[#64748B]">运行中机构数</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+              {stats.activeCount}
+            </span>
+            <span className="text-[14px] text-[#16B45B] font-bold">↑</span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
+            <span>较上月 <strong className="text-[#16B45B] font-bold">+1</strong></span>
+            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#16B45B] fill-none stroke-2">
+              <path d="M0,25 Q25,20 50,22 T100,5" />
+            </svg>
+          </div>
         </div>
 
-        <div className="w-40">
+        {/* Card 2 */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px]">layers</span>
+            </div>
+            <span className="text-[12.5px] font-semibold text-[#64748B]">平台剩余额度</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+              {stats.totalRemaining}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
+            <span>较上月 <strong className="text-[#16B45B] font-bold">+12.6%</strong></span>
+            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#3B82F6] fill-none stroke-2">
+              <path d="M0,25 Q30,28 60,15 T100,8" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px]">group</span>
+            </div>
+            <span className="text-[12.5px] font-semibold text-[#64748B]">服务学生总数</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+              {stats.totalStudents.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
+            <span>较上月 <strong className="text-[#16B45B] font-bold">+8.3%</strong></span>
+            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#F59E0B] fill-none stroke-2">
+              <path d="M0,25 Q25,22 50,18 T100,5" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px]">warning</span>
+            </div>
+            <span className="text-[12.5px] font-semibold text-[#64748B]">低额度预警机构</span>
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+              {stats.alertCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
+            <span>较上月 <strong className="text-[#64748B] font-bold">+1</strong></span>
+            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#EF4444] fill-none stroke-2">
+              <path d="M0,15 Q30,5 60,25 T100,10" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-[18px]">
+              search
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="搜索机构名称、负责人或账号..."
+              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl py-1.5 pl-9 pr-3 text-[13px] text-[#0F172A] focus:border-[#16B45B] focus:bg-white outline-none"
+            />
+          </div>
+
+          {/* Region */}
           <select
             value={regionFilter}
             onChange={(e) => setRegionFilter(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1.5 px-2.5 text-[13px] focus:border-[#16B45B] focus:bg-white outline-none cursor-pointer"
+            className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl py-1.5 px-3 text-[13px] text-[#334155] focus:border-[#16B45B] outline-none cursor-pointer"
           >
             <option value="">全部区域</option>
             <option value="huadong">华东地区</option>
@@ -268,44 +358,46 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             <option value="central">华中地区</option>
             <option value="xinan">西南地区</option>
           </select>
+
+          {/* Status Tabs */}
+          <div className="flex bg-[#F1F5F9] rounded-xl p-0.5 border border-[#E2E8F0]/50">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'all'
+                  ? 'bg-[#16B45B] text-white shadow-2xs'
+                  : 'text-[#64748B] hover:text-[#0F172A]'
+              }`}
+            >
+              全部
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'active'
+                  ? 'bg-white shadow-2xs text-[#16B45B]'
+                  : 'text-[#64748B] hover:text-[#0F172A]'
+              }`}
+            >
+              正常
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('inactive')}
+              className={`px-3 py-1 text-[12px] font-semibold rounded-lg transition-all cursor-pointer ${
+                statusFilter === 'inactive'
+                  ? 'bg-white shadow-2xs text-[#EF4444]'
+                  : 'text-[#64748B] hover:text-[#0F172A]'
+              }`}
+            >
+              已停用
+            </button>
+          </div>
         </div>
 
-        <div className="w-48 flex bg-[#F8FAFC] rounded-lg p-0.5 border border-[#E2E8F0]">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all cursor-pointer ${
-              statusFilter === 'all'
-                ? 'bg-white shadow-xs text-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            全部
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('active')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all cursor-pointer ${
-              statusFilter === 'active'
-                ? 'bg-white shadow-xs text-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            正常
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('inactive')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all cursor-pointer ${
-              statusFilter === 'inactive'
-                ? 'bg-white shadow-xs text-[#EF4444]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            停用
-          </button>
-        </div>
-
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -313,15 +405,15 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               setRegionFilter('');
               setStatusFilter('all');
             }}
-            className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors cursor-pointer"
-            title="重置筛选项"
+            className="w-8 h-8 rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer"
+            title="重置"
           >
             <span className="material-symbols-outlined text-[18px]">refresh</span>
           </button>
 
           <button
             onClick={() => setIsBatchImportOpen(true)}
-            className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1.5 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E2E8F0] bg-white text-[#334155] font-medium text-[13px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">file_upload</span>
             <span>批量导入</span>
@@ -329,9 +421,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1.5 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#16B45B] text-white font-medium text-[13px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span className="material-symbols-outlined text-[18px]">add</span>
             <span>新增机构</span>
           </button>
         </div>
@@ -343,18 +435,16 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B]">机构名称 (ID)</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B]">负责人 (联系电话)</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B]">总额度 / 剩余可用</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] text-center">师生规模</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B]">状态</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] text-right">操作</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构名称</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">负责人</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度使用情况</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] text-right whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0]">
               {filteredInstitutions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-[#64748B]">
+                  <td colSpan={4} className="px-6 py-12 text-center text-[#64748B]">
                     <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2 block">
                       domain_disabled
                     </span>
@@ -370,157 +460,120 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   return (
                     <tr
                       key={inst.id}
-                      className={`hover:bg-[#F8FAFC] transition-colors group ${
+                      className={`hover:bg-[#F8FAFC]/80 transition-colors group ${
                         isInactive ? 'bg-[#F8FAFC]/50' : ''
                       }`}
                     >
-                      <td className="px-6 py-4">
+                      {/* 机构名称 */}
+                      <td className="px-5 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                               isInactive
                                 ? 'bg-gray-100 text-gray-400'
                                 : 'bg-[#E8F7EE] text-[#16B45B]'
                             }`}
                           >
-                            <span className="material-symbols-outlined text-[20px]">
+                            <span className="material-symbols-outlined text-[19px]">
                               {isInactive ? 'domain_disabled' : 'school'}
                             </span>
                           </div>
-                          <div>
-                            <div
+                          <div className="flex items-center gap-2">
+                            <span
                               onClick={() => {
                                 setSelectedInstitution(inst);
                                 setIsDetailDrawerOpen(true);
                               }}
-                              className={`text-[14px] font-bold cursor-pointer hover:underline ${
-                                isInactive
-                                  ? 'text-gray-400 line-through'
-                                  : 'text-[#0F172A]'
+                              className={`text-[13.5px] font-bold cursor-pointer hover:text-[#16B45B] transition-colors ${
+                                isInactive ? 'text-gray-400 line-through' : 'text-[#0F172A]'
                               }`}
                             >
                               {inst.name}
-                            </div>
-                            <div className="text-[11px] text-[#94A3B8] font-mono flex items-center gap-2">
-                              <span>ID: {inst.id}</span>
-                              <span className="text-[#16B45B] font-bold bg-[#E8F7EE] px-1.5 py-0.2 rounded text-[10px]">
-                                @{inst.adminAccount || '未设账号'}
+                            </span>
+
+                            {/* Status Tag */}
+                            {inst.status === 'active' ? (
+                              <span className="px-2 py-0.5 rounded-full bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-semibold">
+                                正常
                               </span>
-                            </div>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#64748B] text-[11px] font-medium">
+                                已停用
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
 
-                      <td className={`px-6 py-4 ${isInactive ? 'opacity-60' : ''}`}>
-                        <div className="text-[14px] font-medium text-[#0F172A]">
+                      {/* 负责人 */}
+                      <td className={`px-5 py-3.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
+                        <div className="text-[13px] font-semibold text-[#0F172A]">
                           {inst.contactPerson}
-                        </div>
-                        <div className="text-[12px] text-[#64748B] font-mono">
-                          {inst.phone}
                         </div>
                       </td>
 
-                      <td className={`px-6 py-4 ${isInactive ? 'opacity-60' : ''}`}>
-                        <div className="w-44">
-                          <div className="flex justify-between text-[11px] mb-1 font-mono">
+                      {/* 额度使用情况 */}
+                      <td className={`px-5 py-3.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
+                        <div>
+                          <div className="text-[12.5px] font-mono mb-1">
                             <span className="font-bold text-[#0F172A]">
+                              {inst.remainingQuota.toLocaleString()}
+                            </span>
+                            <span className="text-[#94A3B8] mx-1">/</span>
+                            <span className="text-[#64748B]">
                               {inst.totalQuota.toLocaleString()}
                             </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-28 bg-[#E2E8F0] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 rounded-full ${
+                                  isInactive
+                                    ? 'bg-gray-300'
+                                    : isWarning
+                                    ? 'bg-[#EF4444]'
+                                    : 'bg-[#16B45B]'
+                                }`}
+                                style={{ width: `${isInactive ? 0 : remainingPct}%` }}
+                              ></div>
+                            </div>
                             <span
-                              className={`font-bold ${
+                              className={`text-[11px] font-mono font-bold ${
                                 isInactive
                                   ? 'text-gray-400'
                                   : isWarning
-                                  ? 'text-[#D97706]'
+                                  ? 'text-[#EF4444]'
                                   : 'text-[#16B45B]'
                               }`}
                             >
-                              {isInactive ? '0%' : `${remainingPct}%`}
+                              {isWarning ? `剩余 ${remainingPct}%` : `剩余 ${remainingPct}%`}
                             </span>
                           </div>
-                          <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all duration-300 ${
-                                isInactive
-                                  ? 'bg-gray-300'
-                                  : isWarning
-                                  ? 'bg-[#F5B700]'
-                                  : 'bg-[#16B45B]'
-                              }`}
-                              style={{ width: `${isInactive ? 0 : remainingPct}%` }}
-                            ></div>
-                          </div>
-                          <div className="text-[10.5px] text-[#64748B] mt-1 text-right font-mono">
-                            {isInactive
-                              ? '已停用'
-                              : `余 ${inst.remainingQuota.toLocaleString()} 点`}
-                          </div>
                         </div>
                       </td>
 
-                      <td className={`px-6 py-4 text-center ${isInactive ? 'opacity-60' : ''}`}>
-                        <div className="inline-flex flex-col items-center">
-                          <span className="text-[14px] font-bold text-[#0F172A] font-mono">
-                            {inst.teacherCount} / {inst.studentCount.toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-[#64748B]">教师 / 学生</span>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        {inst.status === 'active' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E8F7EE] text-[#16B45B] text-[12px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#16B45B]"></span>
-                            已启用
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[12px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                            已停用
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1">
+                      {/* 操作 */}
+                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-3 text-[12.5px]">
                           <button
                             onClick={() => handleOpenAdjustQuota(inst)}
-                            className="p-1.5 text-[#16B45B] hover:bg-[#E8F7EE] rounded-lg transition-all cursor-pointer"
-                            title="划拨/调减额度"
+                            className="px-2.5 py-1 bg-[#E8F7EE] text-[#0E7D3E] hover:bg-[#16B45B] hover:text-white rounded-lg font-bold transition-all cursor-pointer shadow-2xs"
                           >
-                            <span className="material-symbols-outlined text-[20px]">
-                              account_balance_wallet
-                            </span>
-                          </button>
-
-                          <button
-                            onClick={() => handleOpenAccountModal(inst)}
-                            className="p-1.5 text-[#F5B700] hover:bg-[#FFFBEB] rounded-lg transition-all cursor-pointer"
-                            title="设置/重置账号与密码"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">key</span>
+                            划拨
                           </button>
 
                           <button
                             onClick={() => handleOpenEditModal(inst)}
-                            className="p-1.5 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-lg transition-all cursor-pointer"
-                            title="编辑资料"
+                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                            编辑
                           </button>
 
                           <button
-                            onClick={() => handleToggleStatus(inst)}
-                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                              inst.status === 'active'
-                                ? 'text-[#64748B] hover:text-[#DC2626] hover:bg-[#FEF2F2]'
-                                : 'text-[#16B45B] hover:bg-[#E8F7EE]'
-                            }`}
-                            title={inst.status === 'active' ? '停用机构' : '启用机构'}
+                            onClick={() => handleOpenAccountModal(inst)}
+                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-[20px]">
-                              {inst.status === 'active' ? 'block' : 'play_circle'}
-                            </span>
+                            账号
                           </button>
 
                           <button
@@ -528,10 +581,20 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                               setSelectedInstitution(inst);
                               setIsDetailDrawerOpen(true);
                             }}
-                            className="p-1.5 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-lg transition-all cursor-pointer"
-                            title="查看细节"
+                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                            详情
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleStatus(inst)}
+                            className={`font-semibold transition-colors cursor-pointer ${
+                              inst.status === 'active'
+                                ? 'text-[#94A3B8] hover:text-[#DC2626]'
+                                : 'text-[#16B45B] hover:underline'
+                            }`}
+                          >
+                            {inst.status === 'active' ? '停用' : '启用'}
                           </button>
                         </div>
                       </td>
@@ -542,56 +605,25 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Stats Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] flex items-center gap-4 shadow-2xs">
-          <div className="w-12 h-12 rounded-2xl bg-[#E8F7EE] flex items-center justify-center text-[#16B45B]">
-            <span className="material-symbols-outlined text-[26px]">corporate_fare</span>
-          </div>
-          <div>
-            <p className="text-[12px] text-[#64748B] font-bold mb-0.5">运行中机构数</p>
-            <p className="text-[20px] font-bold text-[#0F172A]">
-              {stats.activeCount}{' '}
-              <span className="text-[12px] text-[#16B45B] font-bold ml-1">个</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] flex items-center gap-4 shadow-2xs">
-          <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] flex items-center justify-center text-[#2563EB]">
-            <span className="material-symbols-outlined text-[26px]">token</span>
-          </div>
-          <div>
-            <p className="text-[12px] text-[#64748B] font-bold mb-0.5">平台剩余额度</p>
-            <p className="text-[20px] font-bold text-[#0F172A]">
-              {stats.totalRemaining}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] flex items-center gap-4 shadow-2xs">
-          <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] flex items-center justify-center text-[#D97706]">
-            <span className="material-symbols-outlined text-[26px]">group</span>
-          </div>
-          <div>
-            <p className="text-[12px] text-[#64748B] font-bold mb-0.5">服务学生总数</p>
-            <p className="text-[20px] font-bold text-[#0F172A]">
-              {stats.totalStudents.toLocaleString()}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] flex items-center gap-4 shadow-2xs">
-          <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] flex items-center justify-center text-[#DC2626]">
-            <span className="material-symbols-outlined text-[26px]">warning</span>
-          </div>
-          <div>
-            <p className="text-[12px] text-[#64748B] font-bold mb-0.5">额度预警机构 (≤15%)</p>
-            <p className="text-[20px] font-bold text-[#0F172A]">
-              {stats.alertCount} <span className="text-[12px] text-[#DC2626] font-normal">需划拨</span>
-            </p>
+        {/* Table Footer / Pagination */}
+        <div className="px-5 py-3 border-t border-[#E2E8F0] bg-white flex items-center justify-between text-[13px] text-[#64748B]">
+          <div>共 {filteredInstitutions.length} 条</div>
+          <div className="flex items-center gap-2">
+            <button className="w-7 h-7 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer text-[#94A3B8]">
+              <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+            </button>
+            <span className="w-7 h-7 rounded-lg bg-[#E8F7EE] text-[#16B45B] font-bold flex items-center justify-center border border-[#16B45B]/20">
+              1
+            </span>
+            <button className="w-7 h-7 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer text-[#94A3B8]">
+              <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+            </button>
+            <select className="ml-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1 px-2 text-[12px] outline-none text-[#334155]">
+              <option>10 条/页</option>
+              <option>20 条/页</option>
+              <option>50 条/页</option>
+            </select>
           </div>
         </div>
       </div>
@@ -946,16 +978,40 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   </div>
                 </div>
 
-                {/* Contact info */}
-                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-2 text-[13px]">
-                  <h4 className="font-bold text-[#0F172A] mb-2 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">badge</span>
-                    机构负责人与联系信息
+                {/* Scale info */}
+                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3 text-[13px]">
+                  <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">groups</span>
+                    师生规模统计
                   </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[#64748B]">
-                    <p>负责人: <span className="text-[#0F172A] font-medium">{selectedInstitution.contactPerson}</span></p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+                      <p className="text-[11px] text-[#64748B]">教师人数</p>
+                      <p className="text-[18px] font-bold text-[#0F172A] font-mono">
+                        {selectedInstitution.teacherCount} <span className="text-[11px] font-normal text-[#64748B]">人</span>
+                      </p>
+                    </div>
+                    <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+                      <p className="text-[11px] text-[#64748B]">学生人数</p>
+                      <p className="text-[18px] font-bold text-[#0F172A] font-mono">
+                        {selectedInstitution.studentCount.toLocaleString()} <span className="text-[11px] font-normal text-[#64748B]">人</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact info */}
+                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3 text-[13px]">
+                  <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">badge</span>
+                    机构基本信息与联系人
+                  </h4>
+                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-[#64748B]">
+                    <p>机构编码: <span className="text-[#0F172A] font-mono">{selectedInstitution.id}</span></p>
+                    <p>管理员账号: <span className="text-[#0F172A] font-mono">@{selectedInstitution.adminAccount || '未设置'}</span></p>
+                    <p>负责人姓名: <span className="text-[#0F172A] font-medium">{selectedInstitution.contactPerson}</span></p>
                     <p>联系电话: <span className="text-[#0F172A] font-mono">{selectedInstitution.phone}</span></p>
-                    <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email}</span></p>
+                    <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email || '暂无'}</span></p>
                     <p>所属区域: <span className="text-[#0F172A] font-medium">{selectedInstitution.regionName}</span></p>
                   </div>
                 </div>
@@ -1000,11 +1056,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveAccountCredentials} className="space-y-4">
-              <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-[12px] text-[#64748B] space-y-1">
-                <p className="font-bold text-[#0F172A]">提示：</p>
-                <p>设置后的机构登录账号与密码可直接用于【机构管理员登录】门户入口，登录后即可进入专属机构后台。</p>
-              </div>
-
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">
                   机构管理员登录账号

@@ -32,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="fixed top-0 right-0 h-14 z-40 flex justify-between items-center px-6 w-[calc(100%-240px)] bg-white border-b border-[#E2E8F0] shadow-2xs">
+    <header className="h-16 shrink-0 z-30 flex justify-between items-center px-6 w-full bg-white border-b border-[#E2E8F0] shadow-2xs">
       {/* Search Bar */}
       <div className="flex items-center flex-1 max-w-md">
         <div className="relative w-full">
