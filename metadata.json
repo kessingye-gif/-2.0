@@ -1,0 +1,6 @@
+{
+  "name": "开窍 AI 学伴 - 超级管理员后台",
+  "description": "开窍 AI 学伴 Super Admin 后台管理系统，涵盖机构管理、服务包配置、额度与授权码履约、三级知识点与题库管理、全平台诊断及审计日志。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
