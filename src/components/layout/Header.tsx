@@ -51,12 +51,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
-        {/* Status indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-[12px] text-[#64748B] font-medium">
-          <span className="w-2 h-2 rounded-full bg-[#16B45B]"></span>
-          <span>{currentUser.role === 'super_admin' ? '超级管理员模式' : '机构工作台'}</span>
-        </div>
-
         {/* Notifications */}
         <button
           type="button"
