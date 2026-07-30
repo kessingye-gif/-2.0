@@ -120,22 +120,6 @@ export const Header: React.FC<HeaderProps> = ({
                   type="button"
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    if (onOpenSettings) onOpenSettings();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-medium text-[#334155] hover:bg-[#F8FAFC] hover:text-[#16B45B] transition-colors cursor-pointer text-left"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-[#64748B]">
-                    help_outline
-                  </span>
-                  <span>系统 PRD 架构说明</span>
-                </button>
-
-                <div className="h-[1px] bg-[#E2E8F0] my-1"></div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
                     onLogout();
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-bold text-[#DC2626] hover:bg-[#FEF2F2] transition-colors cursor-pointer text-left"
