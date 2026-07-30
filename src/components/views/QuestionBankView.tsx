@@ -74,6 +74,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   // Modals
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
@@ -186,10 +187,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [subjectFilter, difficultyFilter, typeFilter, searchTerm]);
+  }, [subjectFilter, difficultyFilter, typeFilter, searchTerm, pageSize]);
 
-  // Pagination calculations (10 items per page)
-  const pageSize = 10;
+  // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
@@ -683,68 +683,70 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
           {/* Pagination Controls */}
           {filteredQuestions.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-[#475569]">
-              <div>
-                共 <strong className="text-[#0F172A]">{filteredQuestions.length}</strong> 道试题，
-                每页 <span className="font-bold text-[#16B45B]">10</span> 条，
-                当前显示第 <strong className="text-[#0F172A]">{safeCurrentPage}</strong> / <strong>{totalPages}</strong> 页
-              </div>
-              <div className="flex items-center gap-1.5">
+            <div className="px-5 py-3 bg-white rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between text-[13px] text-[#64748B]">
+              <div>共 {filteredQuestions.length} 条</div>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl font-bold hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1 text-[12.5px]"
+                  className="w-7 h-7 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer text-[#94A3B8]"
                 >
                   <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  上一页
                 </button>
 
-                {/* Page number buttons */}
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                    if (
-                      pageNum === 1 ||
-                      pageNum === totalPages ||
-                      (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`w-8 h-8 rounded-xl font-bold text-[12.5px] cursor-pointer transition-colors ${
-                            pageNum === safeCurrentPage
-                              ? 'bg-[#16B45B] text-white shadow-2xs'
-                              : 'hover:bg-[#F8FAFC] text-[#475569] border border-[#E2E8F0]'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    } else if (
-                      (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
-                      (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
-                    ) {
-                      return (
-                        <span key={pageNum} className="px-1 text-[#94A3B8]">
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                  if (
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                  ) {
+                    const isActive = pageNum === safeCurrentPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-[12.5px] font-bold flex items-center justify-center border transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-[#E8F7EE] text-[#16B45B] border-[#16B45B]/20'
+                            : 'border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  } else if (
+                    (pageNum === safeCurrentPage - 2 && pageNum > 1) ||
+                    (pageNum === safeCurrentPage + 2 && pageNum < totalPages)
+                  ) {
+                    return (
+                      <span key={pageNum} className="w-7 h-7 flex items-center justify-center text-[#94A3B8] text-[12px]">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
 
                 <button
                   type="button"
                   disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl font-bold hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors cursor-pointer flex items-center gap-1 text-[12.5px]"
+                  className="w-7 h-7 rounded-lg border border-[#E2E8F0] flex items-center justify-center hover:bg-[#F8FAFC] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed cursor-pointer text-[#94A3B8]"
                 >
-                  下一页
                   <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                 </button>
+
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="ml-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1 px-2 text-[12px] outline-none text-[#334155] cursor-pointer"
+                >
+                  <option value={10}>10 条/页</option>
+                  <option value={20}>20 条/页</option>
+                  <option value={50}>50 条/页</option>
+                </select>
               </div>
             </div>
           )}
