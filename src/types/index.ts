@@ -76,7 +76,7 @@ export interface AuthCode {
 export type QuestionDifficulty = '基础' | '提升' | '压轴';
 
 // 题型
-export type QuestionType = '选择题' | '填空题' | '解答题' | '判断题' | '综合题';
+export type QuestionType = '单选题' | '多选题' | '选择题' | '填空题' | '解答题' | '判断题' | '综合题';
 
 // 三级知识点结构
 export interface KnowledgePointNode {

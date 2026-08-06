@@ -253,19 +253,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs">
-        <div>
-          <h2 className="text-[20px] font-extrabold text-[#0F172A] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#16B45B] text-[26px]">package_2</span>
-            商品与权益管理
-          </h2>
-          <p className="text-[13px] text-[#64748B] mt-1">
-            统一管理服务包、Token 加油包、机构点数线下入账、授权码兑换与不可覆盖交易流水
-          </p>
-        </div>
-      </div>
-
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
         <button
@@ -274,7 +261,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
             activeTab === 'packages' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">card_membership</span>
           服务包配置 ({packages.length})
         </button>
 
@@ -284,38 +270,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
             activeTab === 'tokenPacks' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">bolt</span>
           Token 加油包 ({tokenPacks.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('creditEntry')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'creditEntry' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
-          机构点数入账 ({creditEntries.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('authCodes')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'authCodes' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">confirmation_number</span>
-          授权码管理 ({authCodes.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ledger')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'ledger' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-          订单与流水追溯 ({ledgers.length})
         </button>
       </div>
 

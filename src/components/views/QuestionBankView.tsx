@@ -66,8 +66,8 @@ interface QuestionBankViewProps {
 // 模拟单表同行的 Excel 数据结构样本 (1行包含考点+试题)
 const sampleSingleTableRows: SingleTableRowInput[] = [
   {
-    subject: '数学',
     stage: '初中',
+    subject: '数学',
     grade: '初一',
     textbook: '人教版',
     level1Name: '数与代数',
@@ -80,24 +80,41 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     answer: 'A. 9 小时',
     analysis: '设所需时间为 x 小时。根据追及问题公式：(60 - 40)x = 180，20x = 180，解得 x = 9。选 A。',
     difficulty: '提升',
-    type: '选择题',
+    type: '单选题',
   },
   {
-    subject: '数学',
     stage: '初中',
+    subject: '数学',
+    grade: '初二',
+    textbook: '人教版',
+    level1Name: '数与代数',
+    level2Name: '实数与二次根式',
+    level3Name: '无理数的判定与识别',
+    level3Code: 'KP-MATH-303',
+    title: '无理数概念与常见类型判断',
+    content: '下列各数中属于无理数的是（ ）',
+    options: ['A. π', 'B. √2', 'C. 1/3', 'D. 0.101001...'],
+    answer: 'A, B, D',
+    analysis: '无理数即无限不循环小数。π、√2 及 0.101001... 均为无理数；1/3 为有理数。故正确答案为 A, B, D。',
+    difficulty: '提升',
+    type: '多选题',
+  },
+  {
+    stage: '初中',
+    subject: '数学',
     grade: '初二',
     textbook: '人教版',
     level1Name: '图形与几何',
-    level2Name: '全等三角形判定',
-    level3Name: '角角边(AAS)全等证明',
-    level3Code: 'KP-MATH-302',
-    title: 'AAS 判定三角形全等推导',
-    content: '已知 ∠A = ∠D，∠B = ∠E，BC = EF，求证 ΔABC ≌ ΔDEF。',
-    options: ['A. SAS', 'B. AAS', 'C. SSS', 'D. HL'],
-    answer: 'B. AAS',
-    analysis: '已知两组对应角相等及一组非夹边相等，根据“角角边”定理可直接证明全等。',
+    level2Name: '勾股定理',
+    level3Name: '直角三角形求边长',
+    level3Code: 'KP-MATH-304',
+    title: '勾股定理已知两直角边求斜边',
+    content: '直角三角形两直角边长分别为 3 和 4，则该直角三角形斜边长为 ___。',
+    options: [],
+    answer: '5',
+    analysis: '根据勾股定理斜边 c = √(a² + b²) = √(3² + 4²) = √25 = 5。',
     difficulty: '基础',
-    type: '选择题',
+    type: '填空题',
   },
 ];
 
@@ -109,7 +126,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   onBatchImportQuestions,
   onAddKnowledgePoint,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'contentPackages' | 'questions' | 'tree' | 'subjects'>('contentPackages');
+  const [activeSubTab, setActiveSubTab] = useState<'subjects' | 'contentPackages' | 'questions' | 'tree'>('subjects');
 
   // Content Packages Management State
   const [contentPackages, setContentPackages] = useState<ContentPackageItem[]>(initialContentPackages);
@@ -178,7 +195,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     grade: '初一',
     textbook: '人教版',
     difficulty: '基础' as QuestionDifficulty,
-    type: '选择题' as QuestionType,
+    type: '单选题' as QuestionType,
     knowledgePointLevel3Id: 'KP-L3-01',
     status: 'active' as 'active' | 'inactive',
   });
@@ -200,6 +217,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   });
   const [treeSearchTerm, setTreeSearchTerm] = useState<string>('');
   const [treeSubjectFilter, setTreeSubjectFilter] = useState<string>('');
+  const [treeViewMode, setTreeViewMode] = useState<'table' | 'tree'>('table');
 
   const toggleNodeExpand = (nodeId: string) => {
     setExpandedNodeIds((prev) => {
@@ -232,6 +250,122 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const level3Points = useMemo(() => {
     return knowledgePoints.filter((kp) => kp.level === 3 && kp.status === 'active');
   }, [knowledgePoints]);
+
+  // Flattened Knowledge Points for Web Table View
+  const flatKnowledgeRows = useMemo(() => {
+    const rows: {
+      id: string;
+      l1Code: string;
+      l1Name: string;
+      l2Code: string;
+      l2Name: string;
+      l3Code: string;
+      l3Name: string;
+      l3Item?: KnowledgePointNode;
+      l2Item?: KnowledgePointNode;
+      l1Item?: KnowledgePointNode;
+      subject: string;
+      grade: string;
+      textbook: string;
+      boundCount: number;
+    }[] = [];
+
+    const l1Map = new Map<string, KnowledgePointNode>();
+    const l2Map = new Map<string, KnowledgePointNode>();
+
+    knowledgePoints.forEach((kp) => {
+      if (kp.level === 1) l1Map.set(kp.id, kp);
+      if (kp.level === 2) l2Map.set(kp.id, kp);
+    });
+
+    const handledL2Ids = new Set<string>();
+    const handledL1Ids = new Set<string>();
+
+    knowledgePoints.filter((kp) => kp.level === 3).forEach((l3) => {
+      const l2 = l3.parentId ? l2Map.get(l3.parentId) : undefined;
+      const l1 = l2 && l2.parentId ? l1Map.get(l2.parentId) : (l3.parentId ? l1Map.get(l3.parentId) : undefined);
+
+      if (l2) handledL2Ids.add(l2.id);
+      if (l1) handledL1Ids.add(l1.id);
+
+      const boundQuestions = questions.filter(
+        (q) => q.knowledgePointLevel3Id === l3.id && q.status === 'active'
+      );
+
+      rows.push({
+        id: l3.id,
+        l1Code: l1?.code || '-',
+        l1Name: l1?.name || '一级模块',
+        l2Code: l2?.code || '-',
+        l2Name: l2?.name || '二级主题',
+        l3Code: l3.code,
+        l3Name: l3.name,
+        l3Item: l3,
+        l2Item: l2,
+        l1Item: l1,
+        subject: l3.subject,
+        grade: l3.grade,
+        textbook: l3.textbook,
+        boundCount: boundQuestions.length,
+      });
+    });
+
+    // L2 without L3
+    knowledgePoints.filter((kp) => kp.level === 2 && !handledL2Ids.has(kp.id)).forEach((l2) => {
+      const l1 = l2.parentId ? l1Map.get(l2.parentId) : undefined;
+      if (l1) handledL1Ids.add(l1.id);
+
+      rows.push({
+        id: l2.id,
+        l1Code: l1?.code || '-',
+        l1Name: l1?.name || '一级模块',
+        l2Code: l2.code,
+        l2Name: l2.name,
+        l3Code: '-',
+        l3Name: '暂无关联三级考点',
+        l2Item: l2,
+        l1Item: l1,
+        subject: l2.subject,
+        grade: l2.grade,
+        textbook: l2.textbook,
+        boundCount: 0,
+      });
+    });
+
+    // L1 without L2
+    knowledgePoints.filter((kp) => kp.level === 1 && !handledL1Ids.has(kp.id)).forEach((l1) => {
+      rows.push({
+        id: l1.id,
+        l1Code: l1.code,
+        l1Name: l1.name,
+        l2Code: '-',
+        l2Name: '暂无关联二级主题',
+        l3Code: '-',
+        l3Name: '暂无关联三级考点',
+        l1Item: l1,
+        subject: l1.subject,
+        grade: l1.grade,
+        textbook: l1.textbook,
+        boundCount: 0,
+      });
+    });
+
+    return rows;
+  }, [knowledgePoints, questions]);
+
+  const filteredFlatRows = useMemo(() => {
+    return flatKnowledgeRows.filter((r) => {
+      const matchesSubject = !treeSubjectFilter || r.subject === treeSubjectFilter;
+      const term = treeSearchTerm.toLowerCase().trim();
+      if (!term) return matchesSubject;
+
+      const matchesL1 = r.l1Name.toLowerCase().includes(term) || r.l1Code.toLowerCase().includes(term);
+      const matchesL2 = r.l2Name.toLowerCase().includes(term) || r.l2Code.toLowerCase().includes(term);
+      const matchesL3 = r.l3Name.toLowerCase().includes(term) || r.l3Code.toLowerCase().includes(term);
+
+      return matchesSubject && (matchesL1 || matchesL2 || matchesL3);
+    });
+  }, [flatKnowledgeRows, treeSubjectFilter, treeSearchTerm]);
 
   // Filtered Subjects
   const filteredSubjects = useMemo(() => {
@@ -417,12 +551,18 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     });
   }, [level3Points, questions]);
 
+  const isChoiceType = (type: string) => type === '单选题' || type === '多选题' || type === '选择题';
+
   // Filtered Questions
   const filteredQuestions = useMemo(() => {
     return questions.filter((q) => {
       const matchesSubject = !subjectFilter || q.subject === subjectFilter;
       const matchesDifficulty = !difficultyFilter || q.difficulty === difficultyFilter;
-      const matchesType = !typeFilter || q.type === typeFilter;
+      const matchesType =
+        !typeFilter ||
+        q.type === typeFilter ||
+        (typeFilter === '选择题' && isChoiceType(q.type)) ||
+        (typeFilter === '单选题' && (q.type === '单选题' || q.type === '选择题'));
       const matchesSearch =
         !searchTerm ||
         q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -460,7 +600,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       grade: '初一',
       textbook: '人教版',
       difficulty: '基础',
-      type: '选择题',
+      type: '单选题',
       knowledgePointLevel3Id: level3Points[0]?.id || 'KP-L3-01',
       status: 'active',
     });
@@ -480,7 +620,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       grade: q.grade,
       textbook: q.textbook,
       difficulty: q.difficulty,
-      type: q.type,
+      type: q.type || '单选题',
       knowledgePointLevel3Id: q.knowledgePointLevel3Id,
       status: q.status,
     });
@@ -497,11 +637,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       ? `${qForm.subject} > ${kp2?.name || '考点'} > ${kp3.name}`
       : `${qForm.subject} > 知识考点`;
 
+    const finalTitle = qForm.title.trim() || qForm.content.slice(0, 30).trim() || '精选试题';
+
     if (editingQuestion) {
       onUpdateQuestion(editingQuestion.id, {
-        title: qForm.title,
+        title: finalTitle,
         content: qForm.content,
-        options: qForm.type === '选择题' ? qForm.options : undefined,
+        options: isChoiceType(qForm.type) ? qForm.options : undefined,
         answer: qForm.answer,
         analysis: qForm.analysis,
         subject: qForm.subject,
@@ -518,9 +660,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       });
     } else {
       onAddQuestion({
-        title: qForm.title,
+        title: finalTitle,
         content: qForm.content,
-        options: qForm.type === '选择题' ? qForm.options : undefined,
+        options: isChoiceType(qForm.type) ? qForm.options : undefined,
         answer: qForm.answer,
         analysis: qForm.analysis,
         subject: qForm.subject,
@@ -667,18 +809,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
         <div className="flex gap-6">
           <button
-            onClick={() => setActiveSubTab('contentPackages')}
-            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSubTab === 'contentPackages'
-                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">inventory_2</span>
-            内容包管理 ({contentPackages.length})
-          </button>
-
-          <button
             onClick={() => setActiveSubTab('questions')}
             className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeSubTab === 'questions'
@@ -686,7 +816,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">quiz</span>
             精选题库 ({questions.length})
           </button>
 
@@ -698,7 +827,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">account_tree</span>
             知识点 ({knowledgePoints.length})
           </button>
 
@@ -710,8 +838,18 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">menu_book</span>
             学科管理 ({subjects.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('contentPackages')}
+            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'contentPackages'
+                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            内容包管理 ({contentPackages.length})
           </button>
         </div>
 
@@ -1077,7 +1215,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 className="w-full border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-[13px] outline-none cursor-pointer focus:border-[#16B45B]"
               >
                 <option value="">全部题型</option>
-                <option value="选择题">选择题</option>
+                <option value="单选题">单选题</option>
+                <option value="多选题">多选题</option>
+                <option value="选择题">全部选择题</option>
                 <option value="填空题">填空题</option>
                 <option value="解答题">解答题</option>
                 <option value="判断题">判断题</option>
@@ -1305,25 +1445,158 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </div>
             </div>
 
-            {/* Tree Summary Metrics */}
-            <div className="flex items-center gap-3 text-[12px] font-mono">
-              <span className="bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1 rounded-lg">
-                一级模块: <strong className="text-[#0F172A]">{knowledgePoints.filter(kp => kp.level === 1).length}</strong> 个
-              </span>
-              <span className="bg-[#F8FAFC] border border-[#E2E8F0] px-2.5 py-1 rounded-lg">
-                二级主题: <strong className="text-[#0F172A]">{knowledgePoints.filter(kp => kp.level === 2).length}</strong> 个
-              </span>
-              <span className="bg-[#E8F7EE] text-[#0E7D3E] border border-[#16B45B]/20 px-2.5 py-1 rounded-lg font-bold">
-                三级考点: {knowledgePoints.filter(kp => kp.level === 3).length} 个
-              </span>
-              <span className="bg-[#FFFBEB] text-[#D97706] border border-[#F5B700]/30 px-2.5 py-1 rounded-lg font-bold">
-                待补充试题: {noQuestionPoints.length} 个
-              </span>
+            {/* Tree Summary Metrics & View Mode Switcher */}
+            <div className="flex flex-wrap items-center gap-3 text-[12px]">
+              <div className="flex items-center gap-2 font-mono">
+                <span className="bg-[#E8F7EE] text-[#0E7D3E] border border-[#16B45B]/20 px-2.5 py-1 rounded-lg font-bold">
+                  三级考点: {knowledgePoints.filter(kp => kp.level === 3).length} 个
+                </span>
+                <span className="bg-[#FFFBEB] text-[#D97706] border border-[#F5B700]/30 px-2.5 py-1 rounded-lg font-bold">
+                  待补充试题: {noQuestionPoints.length} 个
+                </span>
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-[#F8FAFC] border border-[#E2E8F0] p-0.5 rounded-xl font-bold ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setTreeViewMode('table')}
+                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer text-[12px] ${
+                    treeViewMode === 'table'
+                      ? 'bg-white text-[#16B45B] shadow-2xs'
+                      : 'text-[#64748B] hover:text-[#0F172A]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">table_chart</span>
+                  平铺表格 (Web端推荐)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTreeViewMode('tree')}
+                  className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer text-[12px] ${
+                    treeViewMode === 'tree'
+                      ? 'bg-white text-[#16B45B] shadow-2xs'
+                      : 'text-[#64748B] hover:text-[#0F172A]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">account_tree</span>
+                  树状层级
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Hierarchical Expandable Tree Structure */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs space-y-3">
+          {/* Web Data Table View or Tree Card View */}
+          {treeViewMode === 'table' ? (
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse text-[13px]">
+                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B]">
+                    <tr>
+                      <th className="px-5 py-3.5 font-bold">一级模块 (Level 1)</th>
+                      <th className="px-5 py-3.5 font-bold">二级主题 (Level 2)</th>
+                      <th className="px-5 py-3.5 font-bold">三级考点 (Level 3)</th>
+                      <th className="px-5 py-3.5 font-bold">关联学科 / 年级</th>
+                      <th className="px-5 py-3.5 font-bold">关联精选题</th>
+                      <th className="px-5 py-3.5 font-bold text-right">快捷操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {filteredFlatRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-12 text-center text-[#64748B]">
+                          <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2 block">
+                            search_off
+                          </span>
+                          <p>没有匹配的知识考点节点</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredFlatRows.map((row) => (
+                        <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
+                          <td className="px-5 py-3.5">
+                            <div className="font-bold text-[#0F172A]">{row.l1Name}</div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="font-bold text-[#0F172A]">{row.l2Name}</div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <div className="font-bold text-[#0F172A]">{row.l3Name}</div>
+                          </td>
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            <span className="px-2.5 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[11px]">
+                              {row.subject} · {row.grade} ({row.textbook})
+                            </span>
+                          </td>
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            {row.l3Item ? (
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono ${
+                                  row.boundCount > 0
+                                    ? 'bg-[#E8F7EE] text-[#16B45B]'
+                                    : 'bg-[#FFFBEB] text-[#D97706]'
+                                }`}
+                              >
+                                {row.boundCount > 0 ? `已绑定 ${row.boundCount} 道` : '0 道 (待补充)'}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-[#94A3B8] font-mono">-</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-3 text-[12px] font-bold">
+                              {row.l3Item && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQForm({
+                                      title: `${row.l3Name}典型练习题`,
+                                      content: '',
+                                      options: ['A. ', 'B. ', 'C. ', 'D. '],
+                                      answer: 'A',
+                                      analysis: '',
+                                      subject: row.l3Item!.subject,
+                                      stage: '初中',
+                                      grade: row.l3Item!.grade,
+                                      textbook: row.l3Item!.textbook,
+                                      difficulty: '基础',
+                                      type: '单选题',
+                                      knowledgePointLevel3Id: row.l3Item!.id,
+                                      status: 'active',
+                                    });
+                                    setEditingQuestion(null);
+                                    setIsQuestionModalOpen(true);
+                                  }}
+                                  className="text-[#16B45B] hover:underline cursor-pointer flex items-center gap-0.5"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">add</span>
+                                  录入试题
+                                </button>
+                              )}
+                              {row.boundCount > 0 && row.l3Item && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSubTab('questions');
+                                    setSearchTerm(row.l3Name);
+                                  }}
+                                  className="text-[#2563EB] hover:underline cursor-pointer"
+                                >
+                                  查看题目
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Hierarchical Expandable Tree Structure */
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs space-y-3">
             {/* Filter and group by Level 1 */}
             {(() => {
               const l1Nodes = knowledgePoints.filter(
@@ -1550,7 +1823,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                                     grade: l3.grade,
                                                     textbook: l3.textbook,
                                                     difficulty: '基础',
-                                                    type: '选择题',
+                                                    type: '单选题',
                                                     knowledgePointLevel3Id: l3.id,
                                                     status: 'active',
                                                   });
@@ -1592,8 +1865,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               });
             })()}
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    )}
 
       {/* Add / Edit Question Modal */}
       {isQuestionModalOpen && (
@@ -1612,20 +1886,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             </div>
 
             <form onSubmit={handleSaveQuestion} className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                  题目简题标题 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="如：一元一次方程行程追及问题"
-                  value={qForm.title}
-                  onChange={(e) => setQForm({ ...qForm, title: e.target.value })}
-                  className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none focus:border-[#16B45B]"
-                />
-              </div>
-
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">
                   题目完整题干内容 <span className="text-red-500">*</span>
@@ -1677,7 +1937,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     onChange={(e) => setQForm({ ...qForm, type: e.target.value as QuestionType })}
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px] outline-none cursor-pointer"
                   >
-                    <option value="选择题">选择题</option>
+                    <option value="单选题">单选题 (默认)</option>
+                    <option value="多选题">多选题</option>
                     <option value="填空题">填空题</option>
                     <option value="解答题">解答题</option>
                     <option value="判断题">判断题</option>
@@ -1703,17 +1964,132 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 </select>
               </div>
 
+              {/* Dynamic Choice Options Editor */}
+              {isChoiceType(qForm.type) && (
+                <div className="space-y-3 bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E2E8F0]">
+                  {/* Choice Mode Switcher: Single vs Multi */}
+                  <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-[#E2E8F0] shadow-2xs">
+                    <span className="text-[12px] font-bold text-[#475569] flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-[#16B45B]">tune</span>
+                      选择题类型模式
+                    </span>
+                    <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setQForm({ ...qForm, type: '单选题' })}
+                        className={`px-3 py-1 rounded-md text-[12px] font-bold transition-all cursor-pointer ${
+                          qForm.type === '单选题' || qForm.type === '选择题'
+                            ? 'bg-[#16B45B] text-white shadow-2xs'
+                            : 'text-[#64748B] hover:text-[#0F172A]'
+                        }`}
+                      >
+                        单选题 (默认)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQForm({ ...qForm, type: '多选题' })}
+                        className={`px-3 py-1 rounded-md text-[12px] font-bold transition-all cursor-pointer ${
+                          qForm.type === '多选题'
+                            ? 'bg-[#2563EB] text-white shadow-2xs'
+                            : 'text-[#64748B] hover:text-[#0F172A]'
+                        }`}
+                      >
+                        多选题
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[12px] font-bold text-[#475569] flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[16px] text-[#16B45B]">format_list_bulleted</span>
+                      {qForm.type === '多选题' ? '多选题选项列表' : '单选题选项列表'} <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextLetter = String.fromCharCode(65 + qForm.options.length);
+                        setQForm({
+                          ...qForm,
+                          options: [...qForm.options, `${nextLetter}. `],
+                        });
+                      }}
+                      className="text-[12px] font-bold text-[#16B45B] hover:text-[#0E7D3E] bg-[#E8F7EE] hover:bg-[#D3F2DF] px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">add_circle</span>
+                      增加选项
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {qForm.options.map((opt, idx) => {
+                      const letter = String.fromCharCode(65 + idx);
+                      const rawContent = opt.replace(new RegExp(`^${letter}[.\\s:]*`), '');
+
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="w-6 text-[13px] font-bold text-[#0F172A] text-center shrink-0">
+                            {letter}.
+                          </span>
+                          <input
+                            type="text"
+                            required
+                            placeholder={`请输入选项 ${letter} 内容`}
+                            value={rawContent}
+                            onChange={(e) => {
+                              const newOpts = [...qForm.options];
+                              newOpts[idx] = `${letter}. ${e.target.value}`;
+                              setQForm({ ...qForm, options: newOpts });
+                            }}
+                            className="flex-1 bg-white border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
+                          />
+                          {qForm.options.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newOpts = qForm.options
+                                  .filter((_, i) => i !== idx)
+                                  .map((o, i) => {
+                                    const l = String.fromCharCode(65 + i);
+                                    const clean = o.replace(/^[A-Z][.\s:]*/, '');
+                                    return `${l}. ${clean}`;
+                                  });
+                                setQForm({ ...qForm, options: newOpts });
+                              }}
+                              className="text-[#94A3B8] hover:text-[#EF4444] cursor-pointer p-1 rounded hover:bg-[#F1F5F9]"
+                              title="删除此选项"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                  正确答案 <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[12px] font-bold text-[#475569]">
+                    正确答案 <span className="text-red-500">*</span>
+                  </label>
+                  {qForm.type === '多选题' && (
+                    <span className="text-[11px] text-[#2563EB] font-bold bg-[#EFF6FF] px-2 py-0.5 rounded-full border border-[#BFDBFE]">
+                      多选题提示：可输入多个正确选项 (如：A, B, C)
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   required
-                  placeholder="如: A. 9 小时"
+                  placeholder={
+                    qForm.type === '多选题'
+                      ? '如: A, B 或 A, B, D'
+                      : '如: A 或 A. x = -14'
+                  }
                   value={qForm.answer}
                   onChange={(e) => setQForm({ ...qForm, answer: e.target.value })}
-                  className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] font-bold text-[#16B45B] outline-none"
+                  className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] font-bold text-[#16B45B] outline-none focus:border-[#16B45B]"
                 />
               </div>
 
@@ -1893,7 +2269,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行包含【一级章节 / 二级专题 / 三级考点名称及编码】以及【题目简题、题干、选项、正确答案、解题步骤与解析】
+                    单表模式要求：每一行包含【学段/学科、知识考点】以及【题型（单选/多选/填空等）、难度、完整题干、选项列表、正确答案、解题解析】
                   </p>
 
                   <input
@@ -1935,35 +2311,67 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               /* Split demonstration view */
               <div className="space-y-4 text-[12.5px]">
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
-                  示例：1 行 Excel 输入表格内容（知识点 + 试题在同 1 行）：
+                  示例：Excel 输入表格内容（包含考点 + 单选/多选/填空等多题型及选项）：
                 </div>
                 <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white whitespace-nowrap">
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
                     <thead className="bg-[#F1F5F9]">
                       <tr>
-                        <th className="p-2 border-r">一级章节</th>
-                        <th className="p-2 border-r">二级专题</th>
-                        <th className="p-2 border-r">三级考点</th>
+                        <th className="p-2 border-r">学段/学科</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">知识考点 (归属层级)</th>
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">选项列表 (选择题)</th>
                         <th className="p-2 border-r">正确答案</th>
                         <th className="p-2 text-[#2563EB] font-bold">解题步骤 / 详尽解析</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E2E8F0]">
-                      <tr>
-                        <td className="p-2 border-r">数与代数</td>
-                        <td className="p-2 border-r">一元一次方程应用</td>
-                        <td className="p-2 border-r text-[#16B45B] font-bold">行程问题与追及方程</td>
-                        <td className="p-2 border-r">选择题</td>
-                        <td className="p-2 border-r"><span className="px-1.5 py-0.5 bg-[#EFF6FF] text-[#2563EB] font-sans font-medium rounded text-[10px]">提升</span></td>
-                        <td className="p-2 border-r max-w-[150px] truncate" title="甲乙两车相距 180 千米，甲车速度 60km/h，乙车速度 40km/h...">甲乙两车相距 180 千米...</td>
-                        <td className="p-2 border-r font-bold text-[#16B45B]">A. 9 小时</td>
-                        <td className="p-2 text-[#2563EB] font-medium max-w-[220px] truncate" title="设所需时间为 x 小时。根据追及公式：(60-40)x = 180，解得 x = 9。选 A。">
-                          设所需时间为 x 小时。根据追及公式：(60-40)x = 180，解得 x = 9。
-                        </td>
-                      </tr>
+                      {sampleSingleTableRows.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-[#F8FAFC]">
+                          <td className="p-2 border-r whitespace-nowrap">
+                            <span className="font-bold text-[#0F172A]">{row.subject}</span>
+                            <span className="text-[#64748B] text-[10px] ml-1">({row.stage})</span>
+                          </td>
+                          <td className="p-2 border-r max-w-[200px] truncate" title={`${row.level1Name} > ${row.level2Name} > ${row.level3Name}`}>
+                            <div className="font-bold text-[#16B45B]">{row.level3Name}</div>
+                            <div className="text-[10px] text-[#94A3B8] truncate">{row.level1Name} &gt; {row.level2Name}</div>
+                          </td>
+                          <td className="p-2 border-r font-medium text-[#0F172A]">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              row.type === '多选题'
+                                ? 'bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]'
+                                : row.type === '单选题' || row.type === '选择题'
+                                ? 'bg-[#E8F7EE] text-[#16B45B] border border-[#A7F3D0]'
+                                : 'bg-[#F1F5F9] text-[#475569]'
+                            }`}>
+                              {row.type}
+                            </span>
+                          </td>
+                          <td className="p-2 border-r">
+                            <span className="px-1.5 py-0.5 bg-[#EFF6FF] text-[#2563EB] font-sans font-medium rounded text-[10px]">
+                              {row.difficulty}
+                            </span>
+                          </td>
+                          <td className="p-2 border-r max-w-[140px] truncate" title={row.content}>
+                            {row.content}
+                          </td>
+                          <td className="p-2 border-r max-w-[160px] truncate text-[#0F172A]" title={row.options?.join(' | ') || '无选项'}>
+                            {row.options && row.options.length > 0 ? (
+                              <span className="font-sans text-[10.5px] text-[#16B45B] font-medium">
+                                {row.options.join(' | ')}
+                              </span>
+                            ) : (
+                              <span className="text-[#94A3B8]">-</span>
+                            )}
+                          </td>
+                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.answer}</td>
+                          <td className="p-2 text-[#2563EB] font-medium max-w-[200px] truncate" title={row.analysis}>
+                            {row.analysis}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1981,10 +2389,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <span className="text-[10px] bg-[#16B45B] text-white px-2 py-0.5 rounded">考点结构</span>
                     </div>
                     <ul className="space-y-1 text-[11.5px] text-[#334155]">
-                      <li>• <strong>ID:</strong> <code className="text-[#16B45B]">KP-MATH-301</code></li>
-                      <li>• <strong>考点名称:</strong> 行程问题与追及方程</li>
+                      <li>• <strong>ID:</strong> <code className="text-[#16B45B]">KP-MATH-301 ~ 304</code></li>
+                      <li>• <strong>考点名称:</strong> 行程问题与追及方程 / 无理数判定 / 直角三角形...</li>
                       <li>• <strong>所属层级:</strong> 三级考点 (Level 3)</li>
-                      <li>• <strong>绑定路径:</strong> 数学 &gt; 一元一次方程应用 &gt; 行程问题...</li>
+                      <li>• <strong>绑定路径:</strong> 初中 &gt; 数学 &gt; 数与代数 / 图形与几何...</li>
                     </ul>
                   </div>
 
@@ -1992,13 +2400,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <div className="border border-[#2563EB]/40 bg-[#EFF6FF]/30 p-3 rounded-xl space-y-2">
                     <div className="font-bold text-[#1E40AF] flex items-center justify-between">
                       <span>2. 精选题库表 (questions)</span>
-                      <span className="text-[10px] bg-[#2563EB] text-white px-2 py-0.5 rounded">题目明细</span>
+                      <span className="text-[10px] bg-[#2563EB] text-white px-2 py-0.5 rounded">试题与选项明细</span>
                     </div>
                     <ul className="space-y-1 text-[11.5px] text-[#334155]">
-                      <li>• <strong>ID:</strong> <code className="text-[#2563EB]">Q-2026101</code></li>
-                      <li>• <strong>题目内容:</strong> 甲乙两车相距 180 千米...</li>
-                      <li>• <strong>解题解析:</strong> 设所需时间为 x 小时...</li>
-                      <li>• <strong>外键ID:</strong> <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id: "KP-MATH-301"</code></li>
+                      <li>• <strong>支持题型:</strong> 单选题、多选题、填空题、解答题等</li>
+                      <li>• <strong>选项列表:</strong> 选择题自动解析提取 A/B/C/D 动态选项数组</li>
+                      <li>• <strong>解题解析:</strong> 完整解析与正确答案映射保存</li>
+                      <li>• <strong>外键ID:</strong> <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id: "KP-MATH-3xx"</code></li>
                     </ul>
                   </div>
                 </div>

@@ -126,11 +126,12 @@ export function splitSingleTableData(
     }
 
     // 4. 创建【精选题库表】记录，关联外键 l3.id
-    const pathName = `${row.subject} > ${row.level2Name} > ${row.level3Name}`;
+    const stagePrefix = row.stage ? `${row.stage} > ` : '';
+    const pathName = `${stagePrefix}${row.subject} > ${row.level1Name} > ${row.level2Name} > ${row.level3Name}`;
     const questionId = `Q-AUTO-${Date.now().toString().slice(-5)}-${index + 1}`;
     const newQuestion: QuestionItem = {
       id: questionId,
-      title: row.title,
+      title: row.title || row.content.slice(0, 30) || '精选试题',
       content: row.content,
       options: row.options,
       answer: row.answer,
@@ -140,7 +141,7 @@ export function splitSingleTableData(
       grade: row.grade,
       textbook: row.textbook,
       difficulty: row.difficulty,
-      type: row.type,
+      type: row.type || '单选题',
       knowledgePointLevel1Id: l1.id,
       knowledgePointLevel2Id: l2.id,
       knowledgePointLevel3Id: l3.id,

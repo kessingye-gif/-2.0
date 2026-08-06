@@ -77,19 +77,6 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs">
-        <div>
-          <h2 className="text-[20px] font-extrabold text-[#0F172A] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#16B45B] text-[26px]">settings</span>
-            系统管理与规则中心
-          </h2>
-          <p className="text-[13px] text-[#64748B] mt-1">
-            AI 模型与 Token 换算系数、非付费算力补发、基础主数据规范、全平台审计日志与冲正纠错
-          </p>
-        </div>
-      </div>
-
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
         <button
@@ -98,7 +85,6 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
             activeTab === 'aiRules' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">psychology</span>
           AI 模型与 Token 换算规则
         </button>
 
@@ -108,38 +94,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
             activeTab === 'compensation' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">card_giftcard</span>
           非付费 Token 补偿发放 ({compensations.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('masterData')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'masterData' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">database</span>
-          基础主数据规范
-        </button>
-
-        <button
-          onClick={() => setActiveTab('auditLogs')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'auditLogs' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-          全平台审计日志 ({auditLogs.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('exceptionReversal')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'exceptionReversal' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[18px]">history</span>
-          异常处理与订单冲正
         </button>
       </div>
 

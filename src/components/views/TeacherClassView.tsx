@@ -177,19 +177,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs">
-        <div>
-          <h2 className="text-[20px] font-extrabold text-[#0F172A] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#16B45B] text-[26px]">groups</span>
-            教师与班级管理
-          </h2>
-          <p className="text-[13px] text-[#64748B] mt-1">
-            统一维护教师账号、固定 RBAC 权限配置、点数分配划拨与班级学员负责关系
-          </p>
-        </div>
-      </div>
-
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
         <button
@@ -198,7 +185,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             activeTab === 'teachers' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">person</span>
           教师账号与权限 ({teachers.length})
         </button>
 
@@ -208,7 +194,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             activeTab === 'classes' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">class</span>
           班级管理与花名册 ({classes.length})
         </button>
       </div>

@@ -67,19 +67,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs">
-        <div>
-          <h2 className="text-[20px] font-extrabold text-[#0F172A] flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#16B45B] text-[26px]">face</span>
-            学生与诊断管理
-          </h2>
-          <p className="text-[13px] text-[#64748B] mt-1">
-            学生账号名单、服务包状态、微信重新绑定审核、家校监护绑定与学情诊断报告
-          </p>
-        </div>
-      </div>
-
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
         <button
@@ -88,7 +75,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">badge</span>
           学生花名册与服务状态 ({students.length})
         </button>
 
@@ -98,7 +84,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'rebind' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">phonelink_setup</span>
           微信重新绑定审核 ({rebindRequests.filter((r) => r.status === 'pending').length})
         </button>
 
@@ -108,7 +93,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'guardianship' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">supervisor_account</span>
           家长监护关系 ({guardianships.length})
         </button>
 
@@ -118,7 +102,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">analytics</span>
           学情概览与诊断报告
         </button>
       </div>
