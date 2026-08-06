@@ -406,7 +406,15 @@ export const initialTeachers: TeacherItem[] = [
     studentCount: 45,
     allocatedQuota: 10000,
     remainingQuota: 6200,
+    permissions: {
+      canEditContent: true,
+      canImportStudents: true,
+      canManageClass: true,
+      canRedeemPackage: true,
+      canViewReport: true,
+    },
     status: 'active',
+    createdAt: '2025-09-01',
   },
   {
     id: 'TCH-002',
@@ -418,7 +426,15 @@ export const initialTeachers: TeacherItem[] = [
     studentCount: 30,
     allocatedQuota: 5000,
     remainingQuota: 800,
+    permissions: {
+      canEditContent: true,
+      canImportStudents: true,
+      canManageClass: true,
+      canRedeemPackage: true,
+      canViewReport: true,
+    },
     status: 'active',
+    createdAt: '2026-02-15',
   },
 ];
 

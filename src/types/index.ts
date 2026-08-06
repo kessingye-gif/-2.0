@@ -114,6 +114,54 @@ export interface QuestionItem {
   createdAt: string;
 }
 
+export interface TokenTopUpPack {
+  id: string;
+  name: string;
+  code: string;
+  tokenAmount: number; // e.g. 1000000 Token
+  price: number; // e.g. 500 元
+  status: 'active' | 'inactive';
+  description: string;
+  createdAt: string;
+}
+
+export interface CreditEntryRecord {
+  id: string;
+  institutionId: string;
+  institutionName: string;
+  paymentAmount: number; // 实际收款金额（元）
+  allocatedCredits: number; // 实际分配点数
+  entryDate: string; // 入账日期
+  voucherNo: string; // 凭证/流水号
+  operatorName: string; // 经办人
+  notes: string;
+  createdAt: string;
+}
+
+export interface OrderLedgerRecord {
+  id: string;
+  orderNo: string;
+  institutionId: string;
+  institutionName: string;
+  type: 'credit_inflow' | 'package_redeem' | 'token_pack_buy' | 'refund' | 'reversal';
+  typeName: string;
+  paymentAmount: number;
+  creditChange: number;
+  status: 'completed' | 'reversed' | 'refunded';
+  operatorName: string;
+  timestamp: string;
+  originalOrderNo?: string;
+  reason?: string;
+}
+
+export interface TeacherPermission {
+  canEditContent: boolean; // 编辑题库/知识点
+  canImportStudents: boolean; // 批量导入学生
+  canManageClass: boolean; // 班级管理
+  canRedeemPackage: boolean; // 使用点数兑换授权码
+  canViewReport: boolean; // 查看学情报告
+}
+
 export interface TeacherItem {
   id: string;
   name: string;
@@ -124,7 +172,60 @@ export interface TeacherItem {
   studentCount: number;
   allocatedQuota: number;
   remainingQuota: number;
+  permissions: TeacherPermission;
   status: 'active' | 'inactive';
+  createdAt: string;
+}
+
+export interface TeacherClassItem {
+  id: string;
+  name: string;
+  code: string;
+  grade: string;
+  subject: string;
+  institutionId: string;
+  institutionName: string;
+  headTeacherId: string;
+  headTeacherName: string;
+  studentCount: number;
+  createdAt: string;
+}
+
+export interface WeChatRebindRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  institutionName: string;
+  phone: string;
+  applyReason: string;
+  proofDocument: string;
+  status: 'pending' | 'approved' | 'rejected';
+  applicant: string;
+  applyTime: string;
+  reviewTime?: string;
+  reviewer?: string;
+}
+
+export interface AiModelConfig {
+  id: string;
+  name: string; // e.g. Gemini 1.5 Pro
+  provider: string; // e.g. Google AI
+  capability: '文本解析' | '多模态识图' | '语音合成';
+  tokenMultiplier: number; // e.g. 1.0, 1.5, 2.0
+  isDefault: boolean;
+  status: 'active' | 'inactive';
+  updatedAt: string;
+}
+
+export interface TokenCompensation {
+  id: string;
+  studentId: string;
+  studentName: string;
+  institutionName: string;
+  tokenAmount: number;
+  reason: string;
+  operatorName: string;
+  timestamp: string;
 }
 
 export interface StudentItem {

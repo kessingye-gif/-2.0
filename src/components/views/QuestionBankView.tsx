@@ -7,6 +7,49 @@ import {
 } from '../../types';
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
 
+export interface SubjectItem {
+  id: string;
+  code: string;
+  name: string;
+  stage: string;
+  textbook: string;
+  kpCount: number;
+  questionCount: number;
+  status: 'active' | 'inactive';
+  sortOrder: number;
+}
+
+const initialSubjects: SubjectItem[] = [
+  { id: 'SUB-01', code: 'MATH-CZ', name: '初中数学', stage: '初中', textbook: '人教版', kpCount: 156, questionCount: 1280, status: 'active', sortOrder: 1 },
+  { id: 'SUB-02', code: 'PHYS-CZ', name: '初中物理', stage: '初中', textbook: '人教版', kpCount: 98, questionCount: 840, status: 'active', sortOrder: 2 },
+  { id: 'SUB-03', code: 'CHEM-CZ', name: '初中化学', stage: '初中', textbook: '人教版', kpCount: 75, questionCount: 620, status: 'active', sortOrder: 3 },
+  { id: 'SUB-04', code: 'ENG-CZ', name: '初中英语', stage: '初中', textbook: '人教版', kpCount: 110, questionCount: 950, status: 'active', sortOrder: 4 },
+  { id: 'SUB-05', code: 'CHN-CZ', name: '初中语文', stage: '初中', textbook: '人教版', kpCount: 85, questionCount: 710, status: 'active', sortOrder: 5 },
+  { id: 'SUB-06', code: 'MATH-GZ', name: '高中数学', stage: '高中', textbook: '人教版A版', kpCount: 210, questionCount: 1850, status: 'active', sortOrder: 6 },
+  { id: 'SUB-07', code: 'PHYS-GZ', name: '高中物理', stage: '高中', textbook: '人教版', kpCount: 140, questionCount: 1120, status: 'active', sortOrder: 7 },
+  { id: 'SUB-08', code: 'CHEM-GZ', name: '高中化学', stage: '高中', textbook: '人教版', kpCount: 120, questionCount: 980, status: 'active', sortOrder: 8 },
+];
+
+export interface ContentPackageItem {
+  id: string;
+  code: string;
+  name: string;
+  subject: string;
+  stage: string;
+  kpCount: number;
+  questionCount: number;
+  status: 'active' | 'inactive';
+  description: string;
+}
+
+const initialContentPackages: ContentPackageItem[] = [
+  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subject: '初中数学', stage: '初中', kpCount: 156, questionCount: 1280, status: 'active', description: '涵盖初一至初三全部核心章节与中考压轴题库' },
+  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '力学、电学与声光热全模块精选及实验探究' },
+  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '身边的化学物质、化学方程式与推断计算' },
+  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '函数、导数、解析几何与数列专题全覆盖' },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '语法考点、阅读理解与完形填空核心题库' },
+];
+
 interface QuestionBankViewProps {
   knowledgePoints: KnowledgePointNode[];
   questions: QuestionItem[];
@@ -66,7 +109,39 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   onBatchImportQuestions,
   onAddKnowledgePoint,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'questions' | 'tree'>('questions');
+  const [activeSubTab, setActiveSubTab] = useState<'contentPackages' | 'questions' | 'tree' | 'subjects'>('contentPackages');
+
+  // Content Packages Management State
+  const [contentPackages, setContentPackages] = useState<ContentPackageItem[]>(initialContentPackages);
+  const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<ContentPackageItem | null>(null);
+  const [packageSearchTerm, setPackageSearchTerm] = useState('');
+  const [packageStageFilter, setPackageStageFilter] = useState('');
+
+  const [packageForm, setPackageForm] = useState({
+    name: '',
+    code: '',
+    subject: '初中数学',
+    stage: '初中',
+    description: '',
+    status: 'active' as 'active' | 'inactive',
+  });
+
+  // Subjects Management State
+  const [subjects, setSubjects] = useState<SubjectItem[]>(initialSubjects);
+  const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
+  const [editingSubject, setEditingSubject] = useState<SubjectItem | null>(null);
+  const [subjectSearchTerm, setSubjectSearchTerm] = useState('');
+  const [subjectStageFilter, setSubjectStageFilter] = useState('');
+
+  const [subjectForm, setSubjectForm] = useState({
+    name: '',
+    code: '',
+    stage: '初中',
+    textbook: '人教版',
+    sortOrder: 1,
+    status: 'active' as 'active' | 'inactive',
+  });
 
   // Filters
   const [subjectFilter, setSubjectFilter] = useState<string>('数学');
@@ -157,6 +232,180 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const level3Points = useMemo(() => {
     return knowledgePoints.filter((kp) => kp.level === 3 && kp.status === 'active');
   }, [knowledgePoints]);
+
+  // Filtered Subjects
+  const filteredSubjects = useMemo(() => {
+    return subjects.filter((s) => {
+      const matchesSearch =
+        !subjectSearchTerm ||
+        s.name.includes(subjectSearchTerm) ||
+        s.code.toLowerCase().includes(subjectSearchTerm.toLowerCase());
+      const matchesStage = !subjectStageFilter || s.stage === subjectStageFilter;
+      return matchesSearch && matchesStage;
+    });
+  }, [subjects, subjectSearchTerm, subjectStageFilter]);
+
+  const handleOpenAddSubject = () => {
+    setEditingSubject(null);
+    setSubjectForm({
+      name: '',
+      code: `SUB-${Date.now().toString().slice(-4)}`,
+      stage: '初中',
+      textbook: '人教版',
+      sortOrder: subjects.length + 1,
+      status: 'active',
+    });
+    setIsSubjectModalOpen(true);
+  };
+
+  const handleOpenEditSubject = (sub: SubjectItem) => {
+    setEditingSubject(sub);
+    setSubjectForm({
+      name: sub.name,
+      code: sub.code,
+      stage: sub.stage,
+      textbook: sub.textbook,
+      sortOrder: sub.sortOrder,
+      status: sub.status,
+    });
+    setIsSubjectModalOpen(true);
+  };
+
+  const handleSaveSubject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subjectForm.name.trim()) return;
+
+    if (editingSubject) {
+      setSubjects((prev) =>
+        prev.map((s) =>
+          s.id === editingSubject.id
+            ? {
+                ...s,
+                name: subjectForm.name,
+                code: subjectForm.code,
+                stage: subjectForm.stage,
+                textbook: subjectForm.textbook,
+                sortOrder: subjectForm.sortOrder,
+                status: subjectForm.status,
+              }
+            : s
+        )
+      );
+    } else {
+      const newSub: SubjectItem = {
+        id: `SUB-${Date.now().toString().slice(-5)}`,
+        name: subjectForm.name,
+        code: subjectForm.code || `SUB-${Date.now().toString().slice(-4)}`,
+        stage: subjectForm.stage,
+        textbook: subjectForm.textbook,
+        kpCount: 0,
+        questionCount: 0,
+        status: subjectForm.status,
+        sortOrder: subjectForm.sortOrder,
+      };
+      setSubjects((prev) => [...prev, newSub]);
+    }
+    setIsSubjectModalOpen(false);
+  };
+
+  const handleToggleSubjectStatus = (id: string) => {
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, status: s.status === 'active' ? 'inactive' : 'active' } : s
+      )
+    );
+  };
+
+  const handleDeleteSubject = (id: string) => {
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // Filtered Content Packages
+  const filteredContentPackages = useMemo(() => {
+    return contentPackages.filter((pkg) => {
+      const matchesSearch =
+        !packageSearchTerm ||
+        pkg.name.includes(packageSearchTerm) ||
+        pkg.code.toLowerCase().includes(packageSearchTerm.toLowerCase());
+      const matchesStage = !packageStageFilter || pkg.stage === packageStageFilter;
+      return matchesSearch && matchesStage;
+    });
+  }, [contentPackages, packageSearchTerm, packageStageFilter]);
+
+  const handleOpenAddPackage = () => {
+    setEditingPackage(null);
+    setPackageForm({
+      name: '',
+      code: `CP-${Date.now().toString().slice(-4)}`,
+      subject: '初中数学',
+      stage: '初中',
+      description: '',
+      status: 'active',
+    });
+    setIsPackageModalOpen(true);
+  };
+
+  const handleOpenEditPackage = (pkg: ContentPackageItem) => {
+    setEditingPackage(pkg);
+    setPackageForm({
+      name: pkg.name,
+      code: pkg.code,
+      subject: pkg.subject,
+      stage: pkg.stage,
+      description: pkg.description,
+      status: pkg.status,
+    });
+    setIsPackageModalOpen(true);
+  };
+
+  const handleSavePackage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!packageForm.name.trim()) return;
+
+    if (editingPackage) {
+      setContentPackages((prev) =>
+        prev.map((p) =>
+          p.id === editingPackage.id
+            ? {
+                ...p,
+                name: packageForm.name,
+                code: packageForm.code,
+                subject: packageForm.subject,
+                stage: packageForm.stage,
+                description: packageForm.description,
+                status: packageForm.status,
+              }
+            : p
+        )
+      );
+    } else {
+      const newPkg: ContentPackageItem = {
+        id: `CP-${Date.now().toString().slice(-5)}`,
+        name: packageForm.name,
+        code: packageForm.code || `CP-${Date.now().toString().slice(-4)}`,
+        subject: packageForm.subject,
+        stage: packageForm.stage,
+        description: packageForm.description,
+        kpCount: 0,
+        questionCount: 0,
+        status: packageForm.status,
+      };
+      setContentPackages((prev) => [...prev, newPkg]);
+    }
+    setIsPackageModalOpen(false);
+  };
+
+  const handleTogglePackageStatus = (id: string) => {
+    setContentPackages((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, status: p.status === 'active' ? 'inactive' : 'active' } : p
+      )
+    );
+  };
+
+  const handleDeletePackage = (id: string) => {
+    setContentPackages((prev) => prev.filter((p) => p.id !== id));
+  };
 
   // Points without bound questions
   const noQuestionPoints = useMemo(() => {
@@ -418,6 +667,18 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
         <div className="flex gap-6">
           <button
+            onClick={() => setActiveSubTab('contentPackages')}
+            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'contentPackages'
+                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+            内容包管理 ({contentPackages.length})
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('questions')}
             className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeSubTab === 'questions'
@@ -426,7 +687,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">quiz</span>
-            试题列表 ({questions.length})
+            精选题库 ({questions.length})
           </button>
 
           <button
@@ -438,12 +699,40 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">account_tree</span>
-            三级知识考点树 ({knowledgePoints.length} 个考点)
+            知识点 ({knowledgePoints.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('subjects')}
+            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'subjects'
+                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">menu_book</span>
+            学科管理 ({subjects.length})
           </button>
         </div>
 
         <div className="flex items-center gap-2 mb-1">
-          {activeSubTab === 'tree' ? (
+          {activeSubTab === 'contentPackages' ? (
+            <button
+              onClick={handleOpenAddPackage}
+              className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              <span>新增内容包</span>
+            </button>
+          ) : activeSubTab === 'subjects' ? (
+            <button
+              onClick={handleOpenAddSubject}
+              className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              <span>新增学科</span>
+            </button>
+          ) : activeSubTab === 'tree' ? (
             <>
               <button
                 type="button"
@@ -514,7 +803,240 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         </div>
       </div>
 
-      {activeSubTab === 'questions' ? (
+      {activeSubTab === 'contentPackages' ? (
+        <div className="space-y-4">
+          {/* Package Filters Bar */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-2 text-[#94A3B8] text-[18px]">search</span>
+                <input
+                  type="text"
+                  value={packageSearchTerm}
+                  onChange={(e) => setPackageSearchTerm(e.target.value)}
+                  placeholder="搜索内容包名称或代码..."
+                  className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div className="w-36">
+                <select
+                  value={packageStageFilter}
+                  onChange={(e) => setPackageStageFilter(e.target.value)}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none cursor-pointer font-bold focus:border-[#16B45B]"
+                >
+                  <option value="">全部学段</option>
+                  <option value="小学">小学</option>
+                  <option value="初中">初中</option>
+                  <option value="高中">高中</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="text-[12px] text-[#64748B]">
+              共 <strong className="text-[#0F172A]">{filteredContentPackages.length}</strong> 个内容包
+            </div>
+          </div>
+
+          {/* Package Table */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
+                  <tr>
+                    <th className="py-3 px-4">内容包名称</th>
+                    <th className="py-3 px-4">内容包代码</th>
+                    <th className="py-3 px-4">所属学科</th>
+                    <th className="py-3 px-4">学段</th>
+                    <th className="py-3 px-4 text-center">包含知识点</th>
+                    <th className="py-3 px-4 text-center">包含试题</th>
+                    <th className="py-3 px-4 text-center">状态</th>
+                    <th className="py-3 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0] text-[#334155]">
+                  {filteredContentPackages.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
+                        <span className="material-symbols-outlined text-[36px] block mb-1">find_in_page</span>
+                        暂无相关内容包数据
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredContentPackages.map((pkg) => (
+                      <tr key={pkg.id} className="hover:bg-[#F8FAFC] transition-colors">
+                        <td className="py-3 px-4 font-bold text-[#0F172A]">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                            </div>
+                            <div>
+                              <div>{pkg.name}</div>
+                              <div className="text-[11px] text-[#94A3B8] font-normal">{pkg.description}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[12px] text-[#64748B]">{pkg.code}</td>
+                        <td className="py-3 px-4 font-bold">{pkg.subject}</td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[12px]">
+                            {pkg.stage}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{pkg.kpCount}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B]">{pkg.questionCount}</td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePackageStatus(pkg.id)}
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                              pkg.status === 'active'
+                                ? 'bg-[#E8F7EE] text-[#16B45B]'
+                                : 'bg-[#F1F5F9] text-[#94A3B8]'
+                            }`}
+                          >
+                            {pkg.status === 'active' ? '已上架' : '已停用'}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditPackage(pkg)}
+                            className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePackage(pkg.id)}
+                            className="text-[#EF4444] hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            删除
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : activeSubTab === 'subjects' ? (
+        <div className="space-y-4">
+          {/* Subject Filters Bar */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-2 text-[#94A3B8] text-[18px]">search</span>
+                <input
+                  type="text"
+                  value={subjectSearchTerm}
+                  onChange={(e) => setSubjectSearchTerm(e.target.value)}
+                  placeholder="搜索学科名称或代码..."
+                  className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div className="w-36">
+                <select
+                  value={subjectStageFilter}
+                  onChange={(e) => setSubjectStageFilter(e.target.value)}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none cursor-pointer font-bold focus:border-[#16B45B]"
+                >
+                  <option value="">全部学段</option>
+                  <option value="小学">小学</option>
+                  <option value="初中">初中</option>
+                  <option value="高中">高中</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="text-[12px] text-[#64748B]">
+              共 <strong className="text-[#0F172A]">{filteredSubjects.length}</strong> 个学科
+            </div>
+          </div>
+
+          {/* Subject Table */}
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13px]">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
+                  <tr>
+                    <th className="py-3 px-4">学科名称</th>
+                    <th className="py-3 px-4">学科代码</th>
+                    <th className="py-3 px-4">适用学段</th>
+                    <th className="py-3 px-4">默认教材</th>
+                    <th className="py-3 px-4 text-center">包含知识点</th>
+                    <th className="py-3 px-4 text-center">包含试题</th>
+                    <th className="py-3 px-4 text-center">状态</th>
+                    <th className="py-3 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0] text-[#334155]">
+                  {filteredSubjects.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
+                        <span className="material-symbols-outlined text-[36px] block mb-1">find_in_page</span>
+                        暂无相关学科数据
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSubjects.map((sub) => (
+                      <tr key={sub.id} className="hover:bg-[#F8FAFC] transition-colors">
+                        <td className="py-3 px-4 font-bold text-[#0F172A] flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[16px]">menu_book</span>
+                          </div>
+                          <span>{sub.name}</span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[12px] text-[#64748B]">{sub.code}</td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[12px]">
+                            {sub.stage}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">{sub.textbook}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{sub.kpCount}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B]">{sub.questionCount}</td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleSubjectStatus(sub.id)}
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                              sub.status === 'active'
+                                ? 'bg-[#E8F7EE] text-[#16B45B]'
+                                : 'bg-[#F1F5F9] text-[#94A3B8]'
+                            }`}
+                          >
+                            {sub.status === 'active' ? '已启用' : '已停用'}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditSubject(sub)}
+                            className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            编辑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSubject(sub.id)}
+                            className="text-[#EF4444] hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            删除
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : activeSubTab === 'questions' ? (
         <div className="space-y-4">
           {/* Question Filters */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center gap-4 shadow-2xs">
@@ -605,7 +1127,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                             : 'bg-[#FEF2F2] text-[#DC2626]'
                         }`}
                       >
-                        {q.difficulty}题
+                        {q.difficulty}
                       </span>
 
                       <span className="text-[12px] bg-[#E8F7EE] text-[#0E7D3E] px-2.5 py-0.5 rounded font-bold">
@@ -660,20 +1182,20 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                   {/* Answer & Analysis */}
                   <div className="bg-[#E8F7EE]/60 border border-[#16B45B]/20 rounded-xl p-3 text-[13px] space-y-1">
-                    <p className="font-bold text-[#0E7D3E]">【正确答案】: {q.answer}</p>
+                    <p className="font-bold text-[#0E7D3E]">正确答案：{q.answer}</p>
                     <p className="text-[#334155]">
-                      <strong className="text-[#0F172A]">【解题步骤与解析】:</strong> {q.analysis}
+                      <strong className="text-[#0F172A]">解析：</strong> {q.analysis}
                     </p>
                   </div>
 
-                  {/* Knowledge Point Path & Foreign Key */}
+                  {/* Knowledge Point Path & ID */}
                   <div className="text-[11.5px] text-[#64748B] flex items-center justify-between font-mono pt-1">
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px] text-[#16B45B]">link</span>
-                      关联考点路径：<strong className="text-[#0F172A]">{q.knowledgePointPathName}</strong>
+                      关联考点：<strong className="text-[#0F172A]">{q.knowledgePointPathName}</strong>
                     </div>
                     <div className="text-[10.5px] text-[#94A3B8]">
-                      绑定的三级考点外键 ID: <span className="font-bold text-[#16B45B]">{q.knowledgePointLevel3Id}</span>
+                      考点 ID: <span className="font-bold text-[#16B45B]">{q.knowledgePointLevel3Id}</span>
                     </div>
                   </div>
                 </div>
@@ -1654,6 +2176,229 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 关闭
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Subject Modal */}
+      {isSubjectModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
+            <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
+              <h3 className="text-[16px] font-bold text-[#0F172A]">
+                {editingSubject ? '编辑学科' : '新增学科'}
+              </h3>
+              <button
+                onClick={() => setIsSubjectModalOpen(false)}
+                className="text-[#64748B] hover:text-[#0F172A] cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSubject} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">
+                  学科名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={subjectForm.name}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
+                  placeholder="如：初中数学"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">学科代码</label>
+                <input
+                  type="text"
+                  value={subjectForm.code}
+                  onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })}
+                  placeholder="如：MATH-CZ"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] font-mono outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">适用学段</label>
+                  <select
+                    value={subjectForm.stage}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, stage: e.target.value })}
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
+                  >
+                    <option value="小学">小学</option>
+                    <option value="初中">初中</option>
+                    <option value="高中">高中</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">默认教材</label>
+                  <input
+                    type="text"
+                    value={subjectForm.textbook}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, textbook: e.target.value })}
+                    placeholder="如：人教版"
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">排序号</label>
+                  <input
+                    type="number"
+                    value={subjectForm.sortOrder}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, sortOrder: Number(e.target.value) })}
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">状态</label>
+                  <select
+                    value={subjectForm.status}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, status: e.target.value as 'active' | 'inactive' })}
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
+                  >
+                    <option value="active">启用</option>
+                    <option value="inactive">停用</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+                <button
+                  type="button"
+                  onClick={() => setIsSubjectModalOpen(false)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] cursor-pointer shadow-xs"
+                >
+                  保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Package Modal */}
+      {isPackageModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
+            <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
+              <h3 className="text-[16px] font-bold text-[#0F172A]">
+                {editingPackage ? '编辑内容包' : '新增内容包'}
+              </h3>
+              <button
+                onClick={() => setIsPackageModalOpen(false)}
+                className="text-[#64748B] hover:text-[#0F172A] cursor-pointer"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePackage} className="space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">
+                  内容包名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={packageForm.name}
+                  onChange={(e) => setPackageForm({ ...packageForm, name: e.target.value })}
+                  placeholder="如：人教版初中数学全套内容包"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">内容包代码</label>
+                <input
+                  type="text"
+                  value={packageForm.code}
+                  onChange={(e) => setPackageForm({ ...packageForm, code: e.target.value })}
+                  placeholder="如：CP-MATH-CZ"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] font-mono outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">所属学科</label>
+                  <input
+                    type="text"
+                    value={packageForm.subject}
+                    onChange={(e) => setPackageForm({ ...packageForm, subject: e.target.value })}
+                    placeholder="如：初中数学"
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">适用学段</label>
+                  <select
+                    value={packageForm.stage}
+                    onChange={(e) => setPackageForm({ ...packageForm, stage: e.target.value })}
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
+                  >
+                    <option value="小学">小学</option>
+                    <option value="初中">初中</option>
+                    <option value="高中">高中</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">说明描述</label>
+                <textarea
+                  rows={2}
+                  value={packageForm.description}
+                  onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
+                  placeholder="填写简要说明..."
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">状态</label>
+                <select
+                  value={packageForm.status}
+                  onChange={(e) => setPackageForm({ ...packageForm, status: e.target.value as 'active' | 'inactive' })}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
+                >
+                  <option value="active">上架</option>
+                  <option value="inactive">停用</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+                <button
+                  type="button"
+                  onClick={() => setIsPackageModalOpen(false)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] cursor-pointer shadow-xs"
+                >
+                  保存
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

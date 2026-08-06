@@ -3,12 +3,12 @@ import { NavTab, Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
-import { ServicePackageView } from './components/views/ServicePackageView';
-import { QuotaAndAuthCodeView } from './components/views/QuotaAndAuthCodeView';
+import { GoodsView } from './components/views/GoodsView';
 import { QuestionBankView } from './components/views/QuestionBankView';
 import { DashboardView } from './components/views/DashboardView';
-import { DiagnosticsView } from './components/views/DiagnosticsView';
-import { GuardianshipView } from './components/views/GuardianshipView';
+import { TeacherClassView } from './components/views/TeacherClassView';
+import { StudentView } from './components/views/StudentView';
+import { SystemView } from './components/views/SystemView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { HelpModal } from './components/modals/HelpModal';
 
@@ -263,70 +263,72 @@ export default function App() {
 
         {/* Scrollable Main Content Area */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+          {currentTab === 'dashboard' && (
+            <DashboardView
+              stats={stats}
+              institutions={institutions}
+              auditLogs={auditLogs}
+              onNavigateToTab={setCurrentTab}
+            />
+          )}
+
+          {currentTab === 'goods' && (
+            <GoodsView
+              packages={packages}
+              authCodes={authCodes}
+              institutions={institutions}
+              onAddPackage={handleAddPackage}
+              onUpdatePackage={handleUpdatePackage}
+              onRevokeAuthCode={handleRevokeAuthCode}
+              onGenerateCodeForTest={handleGenerateCodeForTest}
+              onAdjustQuota={handleAdjustQuota}
+            />
+          )}
+
+          {currentTab === 'questionBank' && (
+            <QuestionBankView
+              knowledgePoints={knowledgePoints}
+              questions={questions}
+              onAddQuestion={handleAddQuestion}
+              onUpdateQuestion={handleUpdateQuestion}
+              onBatchImportQuestions={handleBatchImportQuestions}
+              onAddKnowledgePoint={handleAddKnowledgePoint}
+            />
+          )}
+
           {currentTab === 'institutions' && (
-          <InstitutionView
-            institutions={institutions}
-            onAddInstitution={handleAddInstitution}
-            onUpdateInstitution={handleUpdateInstitution}
-            onAdjustQuota={handleAdjustQuota}
-            onBatchImport={handleBatchImportInstitutions}
-          />
-        )}
+            <InstitutionView
+              institutions={institutions}
+              onAddInstitution={handleAddInstitution}
+              onUpdateInstitution={handleUpdateInstitution}
+              onAdjustQuota={handleAdjustQuota}
+              onBatchImport={handleBatchImportInstitutions}
+            />
+          )}
 
-        {currentTab === 'packages' && (
-          <ServicePackageView
-            packages={packages}
-            onAddPackage={handleAddPackage}
-            onUpdatePackage={handleUpdatePackage}
-          />
-        )}
+          {currentTab === 'teacherClass' && (
+            <TeacherClassView institutions={institutions} />
+          )}
 
-        {currentTab === 'quota' && (
-          <QuotaAndAuthCodeView
-            authCodes={authCodes}
-            onRevokeAuthCode={handleRevokeAuthCode}
-            onGenerateCodeForTest={handleGenerateCodeForTest}
-          />
-        )}
+          {currentTab === 'students' && (
+            <StudentView
+              students={students}
+              guardianships={guardianships}
+              onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
+              onGenerateReport={(studentId, subject, startDate, endDate) => {
+                addAuditLog('触发智能学习诊断生成', `学生ID: ${studentId}`, `生成 ${subject} 阶段性诊断报告 (${startDate} ~ ${endDate})`, '诊断管理');
+              }}
+            />
+          )}
 
-        {currentTab === 'questionBank' && (
-          <QuestionBankView
-            knowledgePoints={knowledgePoints}
-            questions={questions}
-            onAddQuestion={handleAddQuestion}
-            onUpdateQuestion={handleUpdateQuestion}
-            onBatchImportQuestions={handleBatchImportQuestions}
-            onAddKnowledgePoint={handleAddKnowledgePoint}
-          />
-        )}
+          {currentTab === 'system' && (
+            <SystemView auditLogs={auditLogs} />
+          )}
 
-        {currentTab === 'dashboard' && (
-          <DashboardView
-            stats={stats}
-            institutions={institutions}
-            auditLogs={auditLogs}
-            onNavigateToTab={setCurrentTab}
-          />
-        )}
-
-        {currentTab === 'diagnostics' && (
-          <DiagnosticsView
-            students={students}
-            onGenerateReport={(studentId, subject, startDate, endDate) => {
-              addAuditLog('触发智能学习诊断生成', `学生ID: ${studentId}`, `生成 ${subject} 阶段性诊断报告 (${startDate} ~ ${endDate})`, '诊断管理');
-            }}
-          />
-        )}
-
-        {currentTab === 'guardianship' && (
-          <GuardianshipView
-            guardianships={guardianships}
-            onUpdateStatus={handleUpdateGuardianshipStatus}
-          />
-        )}
-
-        {currentTab === 'auditLogs' && <AuditLogView logs={auditLogs} />}
-      </main>
+          {currentTab === 'auditLogs' && (
+            <AuditLogView logs={auditLogs} />
+          )}
+        </main>
       </div>
 
       {/* Floating Help Button (Bottom Right) */}
