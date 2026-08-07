@@ -493,11 +493,10 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                             <span className="font-bold text-[#0F172A]">
                               {inst.remainingQuota.toLocaleString()}
                             </span>
-                            <span className="text-[#94A3B8]">可用 /</span>
+                            <span className="text-[#94A3B8]">/</span>
                             <span className="text-[#64748B]">
                               {inst.totalQuota.toLocaleString()}
                             </span>
-                            <span className="text-[#94A3B8]">总额</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 w-28 bg-[#E2E8F0] rounded-full overflow-hidden">
@@ -521,7 +520,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                                   : 'text-[#16B45B]'
                               }`}
                             >
-                              {isWarning ? `预警 · ${remainingPct}%` : `健康 · ${remainingPct}%`}
+                              {remainingPct}%
                             </span>
                           </div>
                         </div>
