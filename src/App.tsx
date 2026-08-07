@@ -307,7 +307,14 @@ export default function App() {
           )}
 
           {currentTab === 'teacherClass' && (
-            <TeacherClassView institutions={institutions} />
+            <TeacherClassView
+              institutions={institutions}
+              students={students}
+              onAddStudents={(newStus) => {
+                setStudents((prev) => [...newStus, ...prev]);
+                addAuditLog('批量导入班级学员', `新增 ${newStus.length} 名学员`, `初始划拨额度已生效，服务状态设为待配包。`, '机构管理');
+              }}
+            />
           )}
 
           {currentTab === 'students' && (

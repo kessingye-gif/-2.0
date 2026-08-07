@@ -1,8 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import { TeacherItem, TeacherClassItem, Institution, TeacherPermission } from '../../types';
+import { TeacherItem, TeacherClassItem, Institution, TeacherPermission, StudentItem } from '../../types';
 
 interface TeacherClassViewProps {
   institutions: Institution[];
+  students?: StudentItem[];
+  onAddStudents?: (newStudents: StudentItem[]) => void;
+}
+
+export interface ClassRosterStudent {
+  id: string;
+  name: string;
+  account: string;
+  phone: string;
+  classId: string;
+  className: string;
+  grade: string;
+  subject: string;
+  institutionId: string;
+  institutionName: string;
+  teacherId: string;
+  teacherName: string;
+  allocatedQuota: number; // 默认划拨初始 Token 点数
+  serviceStatus: 'active' | 'none'; // 服务中 / 待配包
+  servicePackageName?: string;
+  createdAt: string;
 }
 
 const defaultPermissions: TeacherPermission = {
@@ -14,18 +35,30 @@ const defaultPermissions: TeacherPermission = {
 };
 
 const initialTeachers: TeacherItem[] = [
-  { id: 'TCH-001', name: '李明', account: 'liming_tch', phone: '13811112222', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 45, allocatedQuota: 5000, remainingQuota: 3200, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2025-09-01' },
-  { id: 'TCH-002', name: '张华', account: 'zhanghua_tch', phone: '13922223333', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 38, allocatedQuota: 4000, remainingQuota: 1500, permissions: { ...defaultPermissions, canEditContent: false }, status: 'active', createdAt: '2025-09-10' },
-  { id: 'TCH-003', name: '陈红', account: 'chenhong_tch', phone: '13733334444', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', studentCount: 22, allocatedQuota: 3000, remainingQuota: 800, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2026-02-15' },
+  { id: 'TCH-001', name: '李明', account: 'liming_tch', phone: '13811112222', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 42, allocatedQuota: 5000, remainingQuota: 3200, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2025-09-01' },
+  { id: 'TCH-002', name: '张华', account: 'zhanghua_tch', phone: '13922223333', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 35, allocatedQuota: 4000, remainingQuota: 1500, permissions: { ...defaultPermissions, canEditContent: false }, status: 'active', createdAt: '2025-09-10' },
+  { id: 'TCH-003', name: '陈红', account: 'chenhong_tch', phone: '13733334444', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', studentCount: 28, allocatedQuota: 3000, remainingQuota: 800, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2026-02-15' },
 ];
 
+const ALL_SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
+
 const initialClasses: TeacherClassItem[] = [
-  { id: 'CLS-01', name: '初三 (1) 班重点冲刺班', code: 'CLS-CS-101', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-001', headTeacherName: '李明', studentCount: 42, createdAt: '2025-09-01' },
-  { id: 'CLS-02', name: '高一 (3) 班物理竞赛班', code: 'CLS-GY-303', grade: '高一', subject: '物理', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-002', headTeacherName: '张华', studentCount: 35, createdAt: '2025-09-05' },
+  { id: 'CLS-01', name: '初三 (1) 班全科重点冲刺班', code: 'CLS-CS-101', grade: '初三', subject: '全科', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-001', headTeacherName: '李明', studentCount: 42, createdAt: '2025-09-01' },
+  { id: 'CLS-02', name: '高一 (3) 班理化竞赛班', code: 'CLS-GY-303', grade: '高一', subject: '数学, 物理, 化学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-002', headTeacherName: '张华', studentCount: 35, createdAt: '2025-09-05' },
   { id: 'CLS-03', name: '中考化学培优 A 班', code: 'CLS-HX-A01', grade: '初三', subject: '化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', headTeacherId: 'TCH-003', headTeacherName: '陈红', studentCount: 28, createdAt: '2026-02-20' },
 ];
 
-export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions }) => {
+const initialClassRoster: ClassRosterStudent[] = [
+  { id: 'STU-001', name: '王小明', account: 'wangxm2026', phone: '13812345678', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-02' },
+  { id: 'STU-002', name: '李思思', account: 'lisisi2026', phone: '13987654321', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2025-09-02' },
+  { id: 'STU-101', name: '张伟', account: 'zhangwei2026', phone: '13700001111', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2025-09-05' },
+  { id: 'STU-102', name: '赵丽', account: 'zhaoli2026', phone: '13622223333', classId: 'CLS-02', className: '高一 (3) 班物理竞赛班', grade: '高一', subject: '物理', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-002', teacherName: '张华', allocatedQuota: 500, serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-06' },
+  { id: 'STU-103', name: '陈杰', account: 'chenjie2026', phone: '13544445555', classId: 'CLS-03', className: '中考化学培优 A 班', grade: '初三', subject: '化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', teacherId: 'TCH-003', teacherName: '陈红', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2026-02-21' },
+];
+
+const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
+
+export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, onAddStudents }) => {
   const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>('teachers');
 
   // Teachers State
@@ -54,6 +87,22 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [isImportStudentModalOpen, setIsImportStudentModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<TeacherClassItem | null>(null);
+
+  // Default Quota & Import State
+  const [defaultQuota, setDefaultQuota] = useState<number>(500);
+  const [importCount, setImportCount] = useState<number>(15);
+
+  // Class Roster Modal State
+  const [classRoster, setClassRoster] = useState<ClassRosterStudent[]>(initialClassRoster);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
+  const [rosterClass, setRosterClass] = useState<TeacherClassItem | null>(null);
+  const [rosterSearch, setRosterSearch] = useState('');
+
+  // Single Student Quota Modal
+  const [studentQuotaModal, setStudentQuotaModal] = useState<ClassRosterStudent | null>(null);
+  const [studentQuotaInput, setStudentQuotaInput] = useState<number>(500);
+
+  const [selectedClassSubjects, setSelectedClassSubjects] = useState<string[]>(['数学']);
 
   const [classForm, setClassForm] = useState({
     name: '',
@@ -149,12 +198,16 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     const inst = institutions.find((i) => i.id === classForm.institutionId);
     const tch = teachers.find((t) => t.id === classForm.headTeacherId);
 
+    const subjectDisplay = selectedClassSubjects.length === ALL_SUBJECTS.length || selectedClassSubjects.includes('全科')
+      ? '全科'
+      : selectedClassSubjects.join(', ') || '数学';
+
     const newC: TeacherClassItem = {
       id: `CLS-${Date.now().toString().slice(-4)}`,
       name: classForm.name,
       code: classForm.code || `CLS-${Date.now().toString().slice(-4)}`,
       grade: classForm.grade,
-      subject: classForm.subject,
+      subject: subjectDisplay,
       institutionId: classForm.institutionId,
       institutionName: inst?.name || '关联机构',
       headTeacherId: classForm.headTeacherId,
@@ -168,12 +221,118 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   const handleSimulateImportStudents = () => {
     if (!selectedClass) return;
+
+    const count = Math.max(1, importCount);
+    const quotaVal = Math.max(0, defaultQuota);
+
+    const classSubjectsList = selectedClass.subject.includes('全科')
+      ? ['语文', '数学', '英语', '物理', '化学', '生物']
+      : selectedClass.subject.split(/[,，\s]+/).filter(Boolean);
+
+    const newRosterItems: ClassRosterStudent[] = [];
+    const newStudentItems: StudentItem[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const name = mockNames[i % mockNames.length] + (i >= mockNames.length ? (i + 1) : '');
+      const studentId = `STU-${Date.now().toString().slice(-5)}-${i + 1}`;
+      const account = `stu${Date.now().toString().slice(-4)}${i + 1}`;
+      const phone = `13${Math.floor(100000000 + Math.random() * 900000000)}`;
+
+      const newRoster: ClassRosterStudent = {
+        id: studentId,
+        name,
+        account,
+        phone,
+        classId: selectedClass.id,
+        className: selectedClass.name,
+        grade: selectedClass.grade,
+        subject: selectedClass.subject,
+        institutionId: selectedClass.institutionId,
+        institutionName: selectedClass.institutionName,
+        teacherId: selectedClass.headTeacherId,
+        teacherName: selectedClass.headTeacherName,
+        allocatedQuota: quotaVal,
+        serviceStatus: 'none',
+        createdAt: new Date().toISOString().slice(0, 10),
+      };
+
+      const newStudentItem: StudentItem = {
+        id: studentId,
+        name,
+        nickname: `${name}同学`,
+        account,
+        grade: selectedClass.grade,
+        school: selectedClass.institutionName,
+        textbook: '人教版',
+        institutionId: selectedClass.institutionId,
+        institutionName: selectedClass.institutionName,
+        teacherId: selectedClass.headTeacherId,
+        teacherName: selectedClass.headTeacherName,
+        subjects: classSubjectsList.length > 0 ? classSubjectsList : [selectedClass.subject],
+        serviceStatus: 'none',
+        totalStudyHours: 0,
+        totalQuestions: 0,
+        accuracyRate: 0,
+        errorCount: 0,
+        unreviewedErrorCount: 0,
+      };
+
+      newRosterItems.push(newRoster);
+      newStudentItems.push(newStudentItem);
+    }
+
+    // 1. Update Roster
+    setClassRoster((prev) => [...newRosterItems, ...prev]);
+
+    // 2. Update Class Student Count
     setClasses((prev) =>
-      prev.map((c) => (c.id === selectedClass.id ? { ...c, studentCount: c.studentCount + 15 } : c))
+      prev.map((c) => (c.id === selectedClass.id ? { ...c, studentCount: c.studentCount + count } : c))
     );
-    alert(`成功向班级【${selectedClass.name}】批量导入 15 名学生！状态设置为“待配包”，已自动挂载至班主任负责关系下。`);
+
+    // 3. Notify Parent App (Global Students List)
+    if (onAddStudents) {
+      onAddStudents(newStudentItems);
+    }
+
     setIsImportStudentModalOpen(false);
+
+    // 4. Open Roster Modal directly so user sees the newly imported roster!
+    setRosterClass(selectedClass);
+    setIsRosterModalOpen(true);
   };
+
+  const handleOpenClassRosterModal = (cls: TeacherClassItem) => {
+    setRosterClass(cls);
+    setIsRosterModalOpen(true);
+  };
+
+  const handleSaveStudentQuota = () => {
+    if (!studentQuotaModal) return;
+    setClassRoster((prev) =>
+      prev.map((s) => (s.id === studentQuotaModal.id ? { ...s, allocatedQuota: Math.max(0, studentQuotaInput) } : s))
+    );
+    setStudentQuotaModal(null);
+  };
+
+  const handleRemoveStudentFromClass = (studentId: string) => {
+    if (!rosterClass) return;
+    if (confirm('确认将该学员从本班级花名册中移除？')) {
+      setClassRoster((prev) => prev.filter((s) => s.id !== studentId));
+      setClasses((prev) =>
+        prev.map((c) => (c.id === rosterClass.id ? { ...c, studentCount: Math.max(0, c.studentCount - 1) } : c))
+      );
+    }
+  };
+
+  // Current Active Class Roster
+  const currentClassRoster = useMemo(() => {
+    if (!rosterClass) return [];
+    return classRoster.filter(
+      (s) =>
+        s.classId === rosterClass.id &&
+        (s.name.includes(rosterSearch) || s.account.includes(rosterSearch) || s.phone.includes(rosterSearch))
+    );
+  }, [classRoster, rosterClass, rosterSearch]);
 
   return (
     <div className="space-y-6">
@@ -235,7 +394,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <th className="py-3 px-4">登录账号/手机</th>
                   <th className="py-3 px-4">所属机构</th>
                   <th className="py-3 px-4 text-center">负责学生数</th>
-                  <th className="py-3 px-4 text-right">分配/可用点数</th>
+                  <th className="py-3 px-4 text-right">可用点数</th>
                   <th className="py-3 px-4 text-center">状态</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
@@ -252,7 +411,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{tch.studentCount} 人</td>
                     <td className="py-3 px-4 text-right">
                       <span className="font-mono font-bold text-[#16B45B] block">{tch.remainingQuota.toLocaleString()} 点</span>
-                      <span className="text-[11px] text-[#94A3B8] font-mono">/ {tch.allocatedQuota.toLocaleString()} 总分配</span>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
@@ -264,7 +422,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                         onClick={() => handleOpenPermissions(tch)}
                         className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
                       >
-                        RBAC 权限
+                        权限
                       </button>
                       <button
                         onClick={() => handleOpenQuota(tch)}
@@ -313,37 +471,45 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {filteredClasses.map((cls) => (
-              <div key={cls.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3">
-                <div className="flex justify-between items-start">
-                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
-                    {cls.grade} · {cls.subject}
-                  </span>
-                  <span className="font-mono text-[11px] text-[#94A3B8]">{cls.code}</span>
+              <div key={cls.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
+                      {cls.grade} · {cls.subject}
+                    </span>
+                    <span className="font-mono text-[11px] text-[#94A3B8]">{cls.code}</span>
+                  </div>
+
+                  <h3 className="text-[16px] font-bold text-[#0F172A]">{cls.name}</h3>
+                  <p className="text-[12px] text-[#64748B]">所属机构：{cls.institutionName}</p>
+
+                  <div className="bg-[#F8FAFC] p-3 rounded-xl flex justify-between items-center text-[12px]">
+                    <div>
+                      <span className="text-[#64748B] block">班主任</span>
+                      <strong className="text-[#0F172A]">{cls.headTeacherName}</strong>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[#64748B] block">班级学员</span>
+                      <strong className="text-[#16B45B] font-mono text-[15px]">{cls.studentCount} 人</strong>
+                    </div>
+                  </div>
                 </div>
 
-                <h3 className="text-[16px] font-bold text-[#0F172A]">{cls.name}</h3>
-                <p className="text-[12px] text-[#64748B]">所属机构：{cls.institutionName}</p>
-
-                <div className="bg-[#F8FAFC] p-3 rounded-xl flex justify-between items-center text-[12px]">
-                  <div>
-                    <span className="text-[#64748B] block">班主任</span>
-                    <strong className="text-[#0F172A]">{cls.headTeacherName}</strong>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[#64748B] block">班级学员</span>
-                    <strong className="text-[#16B45B] font-mono text-[15px]">{cls.studentCount} 人</strong>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-2">
+                <div className="pt-2 flex gap-2">
+                  <button
+                    onClick={() => handleOpenClassRosterModal(cls)}
+                    className="flex-1 border border-[#E2E8F0] text-[#0F172A] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F8FAFC] cursor-pointer transition-colors"
+                  >
+                    查看花名册
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedClass(cls);
                       setIsImportStudentModalOpen(true);
                     }}
-                    className="w-full bg-slate-100 text-slate-700 py-1.5 rounded-xl font-bold text-[12px] hover:bg-slate-200 cursor-pointer"
+                    className="flex-1 bg-[#E8F7EE] text-[#16B45B] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#D3F0DE] cursor-pointer transition-colors"
                   >
-                    + 批量导入待配包学员
+                    + 批量导入
                   </button>
                 </div>
               </div>
@@ -352,156 +518,12 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         </div>
       )}
 
-      {/* Teacher Permission Modal */}
-      {isPermissionModalOpen && selectedTeacher && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">
-              配置教师 RBAC 权限 - {selectedTeacher.name}
-            </h3>
-
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-[#E2E8F0]">
-                <span className="text-[13px] font-bold text-[#0F172A]">编辑题库与知识点</span>
-                <input
-                  type="checkbox"
-                  checked={permForm.canEditContent}
-                  onChange={(e) => setPermForm({ ...permForm, canEditContent: e.target.checked })}
-                  className="w-4 h-4 accent-[#16B45B]"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-[#E2E8F0]">
-                <span className="text-[13px] font-bold text-[#0F172A]">批量导入学生花名册</span>
-                <input
-                  type="checkbox"
-                  checked={permForm.canImportStudents}
-                  onChange={(e) => setPermForm({ ...permForm, canImportStudents: e.target.checked })}
-                  className="w-4 h-4 accent-[#16B45B]"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-[#E2E8F0]">
-                <span className="text-[13px] font-bold text-[#0F172A]">班级管理与学员调配</span>
-                <input
-                  type="checkbox"
-                  checked={permForm.canManageClass}
-                  onChange={(e) => setPermForm({ ...permForm, canManageClass: e.target.checked })}
-                  className="w-4 h-4 accent-[#16B45B]"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-[#E2E8F0]">
-                <span className="text-[13px] font-bold text-[#0F172A]">消耗点数兑换授权码</span>
-                <input
-                  type="checkbox"
-                  checked={permForm.canRedeemPackage}
-                  onChange={(e) => setPermForm({ ...permForm, canRedeemPackage: e.target.checked })}
-                  className="w-4 h-4 accent-[#16B45B]"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer border border-[#E2E8F0]">
-                <span className="text-[13px] font-bold text-[#0F172A]">调阅班级学情诊断报告</span>
-                <input
-                  type="checkbox"
-                  checked={permForm.canViewReport}
-                  onChange={(e) => setPermForm({ ...permForm, canViewReport: e.target.checked })}
-                  className="w-4 h-4 accent-[#16B45B]"
-                />
-              </label>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4 border-t border-[#E2E8F0] mt-4">
-              <button
-                onClick={() => setIsPermissionModalOpen(false)}
-                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSavePermissions}
-                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
-              >
-                保存配置
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Teacher Quota Allocation Modal */}
-      {isQuotaModalOpen && selectedTeacher && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">
-              划拨教师采购点数 - {selectedTeacher.name}
-            </h3>
-
-            <div className="bg-[#F8FAFC] p-3 rounded-xl text-[12px] space-y-1">
-              <div>所属机构：<strong>{selectedTeacher.institutionName}</strong></div>
-              <div>当前剩余点数：<strong className="text-[#16B45B] font-mono">{selectedTeacher.remainingQuota} 点</strong></div>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-bold text-[#475569] mb-1">划拨类型</label>
-              <select
-                value={quotaType}
-                onChange={(e) => setQuotaType(e.target.value as 'allocate' | 'reclaim')}
-                className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold cursor-pointer"
-              >
-                <option value="allocate">分配新额度 (机构池 -&gt; 教师)</option>
-                <option value="reclaim">收回未消耗额度 (教师 -&gt; 机构池)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-bold text-[#475569] mb-1">点数数量</label>
-              <input
-                type="number"
-                value={quotaAdjustAmount}
-                onChange={(e) => setQuotaAdjustAmount(Number(e.target.value))}
-                className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono font-bold"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
-              <button
-                onClick={() => setIsQuotaModalOpen(false)}
-                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSaveQuota}
-                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
-              >
-                确认划拨
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Add Teacher Modal */}
       {isTeacherModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">新增教师账号</h3>
-            <form onSubmit={handleSaveTeacher} className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">所属机构</label>
-                <select
-                  value={teacherForm.institutionId}
-                  onChange={(e) => setTeacherForm({ ...teacherForm, institutionId: e.target.value })}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
-                >
-                  {institutions.map((inst) => (
-                    <option key={inst.id} value={inst.id}>{inst.name}</option>
-                  ))}
-                </select>
-              </div>
-
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">新增教师账号</h3>
+            <form onSubmit={handleSaveTeacher} className="space-y-3">
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">教师姓名</label>
                 <input
@@ -509,40 +531,53 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   required
                   value={teacherForm.name}
                   onChange={(e) => setTeacherForm({ ...teacherForm, name: e.target.value })}
-                  placeholder="如：李明"
+                  placeholder="例如：王教师"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">登录账号</label>
-                  <input
-                    type="text"
-                    required
-                    value={teacherForm.account}
-                    onChange={(e) => setTeacherForm({ ...teacherForm, account: e.target.value })}
-                    placeholder="liming_tch"
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">手机号码</label>
-                  <input
-                    type="text"
-                    required
-                    value={teacherForm.phone}
-                    onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })}
-                    placeholder="13800000000"
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
-                  />
-                </div>
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">登录账号</label>
+                <input
+                  type="text"
+                  required
+                  value={teacherForm.account}
+                  onChange={(e) => setTeacherForm({ ...teacherForm, account: e.target.value })}
+                  placeholder="例如：wang_teacher"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
+                />
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">初始划拨点数</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">手机号码</label>
+                <input
+                  type="text"
+                  required
+                  value={teacherForm.phone}
+                  onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })}
+                  placeholder="例如：13800000000"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">所属机构</label>
+                <select
+                  value={teacherForm.institutionId}
+                  onChange={(e) => setTeacherForm({ ...teacherForm, institutionId: e.target.value })}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
+                >
+                  {institutions.map((i) => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">初始分配点数</label>
                 <input
                   type="number"
+                  required
                   value={teacherForm.initialQuota}
                   onChange={(e) => setTeacherForm({ ...teacherForm, initialQuota: Number(e.target.value) })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
@@ -561,7 +596,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   type="submit"
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
                 >
-                  确认创建
+                  确认保存
                 </button>
               </div>
             </form>
@@ -569,12 +604,234 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         </div>
       )}
 
+      {/* Permissions Modal */}
+      {isPermissionModalOpen && selectedTeacher && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">
+              配置教师权限 - {selectedTeacher.name}
+            </h3>
+
+            <div className="space-y-3">
+              {[
+                { key: 'canEditContent', label: '知识点与精选题库管理', desc: '允许新增、编辑与修改考点题目' },
+                { key: 'canImportStudents', label: '批量导入学生与花名册', desc: '允许通过 Excel 表格划拨导入学生' },
+                { key: 'canManageClass', label: '建立与维系班级信息', desc: '允许新建与更变负责班级' },
+                { key: 'canRedeemPackage', label: '使用点数兑换激活码', desc: '允许扣减可用点数生成学生配包码' },
+                { key: 'canViewReport', label: '查看学生学情诊断报告', desc: '允许生成并导出 AI 学情报告' },
+              ].map((perm) => (
+                <label key={perm.key} className="flex items-start gap-3 p-2.5 rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(permForm as any)[perm.key]}
+                    onChange={(e) => setPermForm({ ...permForm, [perm.key]: e.target.checked })}
+                    className="mt-1 accent-[#16B45B]"
+                  />
+                  <div>
+                    <span className="text-[13px] font-bold text-[#0F172A] block">{perm.label}</span>
+                    <span className="text-[11px] text-[#64748B]">{perm.desc}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-[#E2E8F0] mt-4">
+              <button
+                onClick={() => setIsPermissionModalOpen(false)}
+                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSavePermissions}
+                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
+              >
+                更新权限
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjust Teacher Quota Modal */}
+      {isQuotaModalOpen && selectedTeacher && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">
+              划拨教师可用点数 - {selectedTeacher.name}
+            </h3>
+
+            <div className="text-[12.5px] bg-[#F8FAFC] p-3 rounded-xl space-y-1">
+              <div>所属机构：<strong>{selectedTeacher.institutionName}</strong></div>
+              <div>当前可用点数：<strong className="text-[#16B45B] font-mono">{selectedTeacher.remainingQuota.toLocaleString()} 点</strong></div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">划拨类型</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-[13px] cursor-pointer font-bold text-[#0F172A]">
+                    <input
+                      type="radio"
+                      name="qt"
+                      checked={quotaType === 'allocate'}
+                      onChange={() => setQuotaType('allocate')}
+                      className="accent-[#16B45B]"
+                    />
+                    补充划拨 (+ 点数)
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[13px] cursor-pointer font-bold text-[#0F172A]">
+                    <input
+                      type="radio"
+                      name="qt"
+                      checked={quotaType === 'reclaim'}
+                      onChange={() => setQuotaType('reclaim')}
+                      className="accent-rose-500"
+                    />
+                    收回点数 (- 点数)
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">调整点数数量</label>
+                <input
+                  type="number"
+                  value={quotaAdjustAmount}
+                  onChange={(e) => setQuotaAdjustAmount(Number(e.target.value))}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
+              <button
+                onClick={() => setIsQuotaModalOpen(false)}
+                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveQuota}
+                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
+              >
+                确认变更
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Class Modal */}
       {isClassModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">新建班级</h3>
-            <form onSubmit={handleSaveClass} className="space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">新建教学班级</h3>
+            <form onSubmit={handleSaveClass} className="space-y-3">
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">班级名称</label>
+                <input
+                  type="text"
+                  required
+                  value={classForm.name}
+                  onChange={(e) => setClassForm({ ...classForm, name: e.target.value })}
+                  placeholder="例如：初三 (1) 班重点冲刺班"
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">年级</label>
+                <select
+                  value={classForm.grade}
+                  onChange={(e) => setClassForm({ ...classForm, grade: e.target.value })}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
+                >
+                  {['初一', '初二', '初三', '高一', '高二', '高三'].map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[12px] font-bold text-[#475569]">
+                    班级挂载内容包 (支持单选/多选/全包)
+                  </label>
+                  <span className="text-[11px] font-bold text-[#16B45B]">
+                    {selectedClassSubjects.length === ALL_SUBJECTS.length || selectedClassSubjects.includes('全科')
+                      ? '已选：全科内容包'
+                      : `已选 ${selectedClassSubjects.length} 个学科内容包 (${selectedClassSubjects.join(', ')})`}
+                  </span>
+                </div>
+
+                {/* Preset Shortcuts */}
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassSubjects([...ALL_SUBJECTS])}
+                    className={`px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer transition-colors ${
+                      selectedClassSubjects.length === ALL_SUBJECTS.length
+                        ? 'bg-[#16B45B] text-white shadow-2xs'
+                        : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
+                    }`}
+                  >
+                    ✨ 全科内容包 (全选)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassSubjects(['数学', '物理', '化学', '生物'])}
+                    className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                  >
+                    理科内容包
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassSubjects(['语文', '英语', '历史', '地理', '政治'])}
+                    className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                  >
+                    文科内容包
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClassSubjects(['语文', '数学', '英语'])}
+                    className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                  >
+                    主科内容包
+                  </button>
+                </div>
+
+                {/* Individual Subject Chips */}
+                <div className="grid grid-cols-3 gap-1.5 p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl max-h-40 overflow-y-auto">
+                  {ALL_SUBJECTS.map((sub) => {
+                    const isSelected = selectedClassSubjects.includes(sub);
+                    return (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            if (selectedClassSubjects.length > 1) {
+                              setSelectedClassSubjects(selectedClassSubjects.filter((s) => s !== sub));
+                            }
+                          } else {
+                            setSelectedClassSubjects([...selectedClassSubjects, sub]);
+                          }
+                        }}
+                        className={`flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11.5px] font-bold cursor-pointer transition-all border ${
+                          isSelected
+                            ? 'bg-[#E8F7EE] text-[#16B45B] border-[#16B45B]'
+                            : 'bg-white text-[#64748B] border-[#E2E8F0] hover:border-[#CBD5E1]'
+                        }`}
+                      >
+                        {isSelected && <span className="text-[11px]">✓</span>}
+                        {sub}包
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">所属机构</label>
                 <select
@@ -586,46 +843,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <option key={i.id} value={i.id}>{i.name}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">班级名称</label>
-                <input
-                  type="text"
-                  required
-                  value={classForm.name}
-                  onChange={(e) => setClassForm({ ...classForm, name: e.target.value })}
-                  placeholder="如：初三 (2) 班提优班"
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">适用年级</label>
-                  <select
-                    value={classForm.grade}
-                    onChange={(e) => setClassForm({ ...classForm, grade: e.target.value })}
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                  >
-                    <option value="初一">初一</option>
-                    <option value="初二">初二</option>
-                    <option value="初三">初三</option>
-                    <option value="高一">高一</option>
-                    <option value="高二">高二</option>
-                    <option value="高三">高三</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">主导学科</label>
-                  <input
-                    type="text"
-                    value={classForm.subject}
-                    onChange={(e) => setClassForm({ ...classForm, subject: e.target.value })}
-                    placeholder="数学"
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                  />
-                </div>
               </div>
 
               <div>
@@ -661,36 +878,275 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         </div>
       )}
 
-      {/* Import Students Modal */}
+      {/* Import Students Modal (With Default Quota Setting & Auto Roster View) */}
       {isImportStudentModalOpen && selectedClass && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">
-              导入待配包学员 - {selectedClass.name}
-            </h3>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
+            <div className="border-b pb-3 flex justify-between items-center">
+              <h3 className="text-[16px] font-bold text-[#0F172A]">
+                批量导入待配包学员 - {selectedClass.name}
+              </h3>
+              <span className="text-[11px] px-2 py-0.5 rounded bg-[#E8F7EE] text-[#16B45B] font-bold">
+                {selectedClass.grade} · {selectedClass.subject}
+              </span>
+            </div>
 
+            {/* Default Quota & Allocation Setting */}
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#0F172A] mb-1">
+                    默认每名学员划拨 Token 额度
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      value={defaultQuota}
+                      onChange={(e) => setDefaultQuota(Number(e.target.value))}
+                      placeholder="500"
+                      className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none font-mono font-bold focus:border-[#16B45B] bg-white"
+                    />
+                    <span className="absolute right-3 text-[12px] text-[#64748B] font-bold">点</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-[#0F172A] mb-1">
+                    本次模拟导入学员人数
+                  </label>
+                  <select
+                    value={importCount}
+                    onChange={(e) => setImportCount(Number(e.target.value))}
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none font-bold bg-white focus:border-[#16B45B]"
+                  >
+                    <option value={5}>5 名学员</option>
+                    <option value={10}>10 名学员</option>
+                    <option value={15}>15 名学员 (推荐默认)</option>
+                    <option value={20}>20 名学员</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="text-[11.5px] text-[#16B45B] bg-[#E8F7EE] p-2 rounded-lg font-medium flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px]">info</span>
+                <span>划拨规则：导入成功后，系统将为每位学员生成初始花名册，并自动配发 <strong>{defaultQuota} 点/人</strong> 初始额度，状态设为“待配包”。</span>
+              </div>
+            </div>
+
+            {/* Excel Upload Visual */}
             <div className="p-4 border-2 border-dashed border-[#E2E8F0] rounded-2xl text-center space-y-2 bg-[#F8FAFC]">
               <span className="material-symbols-outlined text-[36px] text-[#16B45B]">upload_file</span>
               <p className="text-[12.5px] font-bold text-[#0F172A]">选择或拖拽学员 Excel 表格文件</p>
               <p className="text-[11px] text-[#64748B]">包含列：学生姓名、手机号/微信标识、初始入学年级</p>
             </div>
 
-            <p className="text-[12px] text-[#64748B]">
-              * 批量导入学员后，学员状态将标记为“待配包”。班主任教师随后可用采购点数为其兑换激活服务包。
-            </p>
-
             <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
               <button
                 onClick={() => setIsImportStudentModalOpen(false)}
-                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
+                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold cursor-pointer"
               >
                 取消
               </button>
               <button
                 onClick={handleSimulateImportStudents}
-                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
+                className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
-                模拟上传并导入
+                <span className="material-symbols-outlined text-[16px]">how_to_reg</span>
+                确认导入并查看班级花名册
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Class Roster Modal (查看/管理班级学员花名册) */}
+      {isRosterModalOpen && rosterClass && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 border border-[#E2E8F0] shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="text-[17px] font-bold text-[#0F172A]">
+                  班级学员花名册 - 【{rosterClass.name}】
+                </h3>
+                <p className="text-[12px] text-[#64748B] mt-0.5">
+                  所属机构：{rosterClass.institutionName} | 责任班主任：{rosterClass.headTeacherName}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsRosterModalOpen(false)}
+                className="text-[#94A3B8] hover:text-[#0F172A] text-[20px] font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* KPI Summary Strip */}
+            <div className="grid grid-cols-4 gap-3 bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+              <div>
+                <span className="text-[11px] text-[#64748B] block">班级总人数</span>
+                <strong className="text-[15px] font-mono text-[#0F172A]">{currentClassRoster.length} 人</strong>
+              </div>
+              <div>
+                <span className="text-[11px] text-[#64748B] block">人均默认划拨</span>
+                <strong className="text-[15px] font-mono text-[#16B45B]">{defaultQuota} 点</strong>
+              </div>
+              <div>
+                <span className="text-[11px] text-[#64748B] block">待配包学员</span>
+                <strong className="text-[15px] font-mono text-amber-600">
+                  {currentClassRoster.filter((s) => s.serviceStatus === 'none').length} 人
+                </strong>
+              </div>
+              <div>
+                <span className="text-[11px] text-[#64748B] block">已激活服务</span>
+                <strong className="text-[15px] font-mono text-[#16B45B]">
+                  {currentClassRoster.filter((s) => s.serviceStatus === 'active').length} 人
+                </strong>
+              </div>
+            </div>
+
+            {/* Filter & Action Bar */}
+            <div className="flex justify-between items-center gap-3">
+              <input
+                type="text"
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                placeholder="搜索学生姓名、账号或手机号..."
+                className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[12.5px] outline-none w-64 focus:border-[#16B45B]"
+              />
+              <button
+                onClick={() => {
+                  setSelectedClass(rosterClass);
+                  setIsImportStudentModalOpen(true);
+                }}
+                className="bg-[#16B45B] text-white px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 hover:bg-[#139B4E] cursor-pointer shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">group_add</span>
+                批量导入更多学员
+              </button>
+            </div>
+
+            {/* Roster Table */}
+            <div className="flex-1 overflow-y-auto border border-[#E2E8F0] rounded-xl custom-scrollbar">
+              <table className="w-full text-left text-[12.5px]">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold sticky top-0 bg-white z-10">
+                  <tr>
+                    <th className="py-2.5 px-4">学生姓名</th>
+                    <th className="py-2.5 px-4">登录账号/手机号</th>
+                    <th className="py-2.5 px-4">年级/挂载内容包</th>
+                    <th className="py-2.5 px-4 text-center">初始划拨额度</th>
+                    <th className="py-2.5 px-4 text-center">服务包状态</th>
+                    <th className="py-2.5 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0]">
+                  {currentClassRoster.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-[#94A3B8] font-bold">
+                        暂无该班级学员花名册，请点击右上角“批量导入更多学员”
+                      </td>
+                    </tr>
+                  ) : (
+                    currentClassRoster.map((s) => (
+                      <tr key={s.id} className="hover:bg-[#F8FAFC]">
+                        <td className="py-2.5 px-4 font-bold text-[#0F172A]">{s.name}</td>
+                        <td className="py-2.5 px-4">
+                          <div className="font-mono text-[12px]">{s.account}</div>
+                          <div className="text-[11px] text-[#64748B]">{s.phone}</div>
+                        </td>
+                        <td className="py-2.5 px-4 font-bold text-[#475569]">
+                          {s.grade} · {s.subject.includes('包') ? s.subject : `${s.subject}内容包`}
+                        </td>
+                        <td className="py-2.5 px-4 text-center">
+                          <span className="font-mono font-bold text-[#16B45B] bg-[#E8F7EE] px-2 py-0.5 rounded text-[11.5px]">
+                            {s.allocatedQuota} 点
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-center">
+                          {s.serviceStatus === 'active' ? (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
+                              服务中 ({s.servicePackageName || '标准包'})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
+                              待配包
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => {
+                              setStudentQuotaModal(s);
+                              setStudentQuotaInput(s.allocatedQuota);
+                            }}
+                            className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            微调额度
+                          </button>
+                          <button
+                            onClick={() => handleRemoveStudentFromClass(s.id)}
+                            className="text-rose-500 hover:underline font-bold text-[12px] cursor-pointer"
+                          >
+                            移除
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="pt-2 border-t flex justify-between items-center text-[12px] text-[#64748B]">
+              <span>共找到 <strong>{currentClassRoster.length}</strong> 名花名册学员</span>
+              <button
+                onClick={() => setIsRosterModalOpen(false)}
+                className="px-4 py-1.5 border border-[#E2E8F0] rounded-xl text-[#0F172A] font-bold cursor-pointer hover:bg-slate-50"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjust Single Student Quota Modal */}
+      {studentQuotaModal && (
+        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 border border-[#E2E8F0] shadow-xl space-y-3">
+            <h3 className="text-[15px] font-bold text-[#0F172A] border-b pb-2">
+              微调学员初始额度 - {studentQuotaModal.name}
+            </h3>
+
+            <p className="text-[12px] text-[#64748B]">
+              班级：<strong>{studentQuotaModal.className}</strong>
+            </p>
+
+            <div>
+              <label className="block text-[12px] font-bold text-[#475569] mb-1">重设初始划拨点数</label>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  value={studentQuotaInput}
+                  onChange={(e) => setStudentQuotaInput(Number(e.target.value))}
+                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none font-mono font-bold focus:border-[#16B45B]"
+                />
+                <span className="absolute right-3 text-[12px] text-[#64748B] font-bold">点</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
+              <button
+                onClick={() => setStudentQuotaModal(null)}
+                className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[12px] font-bold"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveStudentQuota}
+                className="px-3 py-1.5 bg-[#16B45B] text-white rounded-xl text-[12px] font-bold hover:bg-[#139B4E]"
+              >
+                保存额度
               </button>
             </div>
           </div>

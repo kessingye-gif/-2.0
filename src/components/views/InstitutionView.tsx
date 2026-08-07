@@ -24,7 +24,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAdjustQuotaOpen, setIsAdjustQuotaOpen] = useState(false);
-  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isAccountPasswordModalOpen, setIsAccountPasswordModalOpen] = useState(false);
@@ -240,90 +239,57 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top Overview Cards with Sparklines */}
+      {/* Top Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[20px]">domain</span>
-            </div>
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
+          <div>
             <span className="text-[12.5px] font-semibold text-[#64748B]">运行中机构数</span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
               {stats.activeCount}
-            </span>
-            <span className="text-[14px] text-[#16B45B] font-bold">↑</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
-            <span>较上月 <strong className="text-[#16B45B] font-bold">+1</strong></span>
-            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#16B45B] fill-none stroke-2">
-              <path d="M0,25 Q25,20 50,22 T100,5" />
-            </svg>
+          <div className="w-10 h-10 rounded-xl bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px]">domain</span>
           </div>
         </div>
 
         {/* Card 2 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[20px]">layers</span>
-            </div>
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
+          <div>
             <span className="text-[12.5px] font-semibold text-[#64748B]">平台剩余额度</span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
               {stats.totalRemaining}
-            </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
-            <span>较上月 <strong className="text-[#16B45B] font-bold">+12.6%</strong></span>
-            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#3B82F6] fill-none stroke-2">
-              <path d="M0,25 Q30,28 60,15 T100,8" />
-            </svg>
+          <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px]">layers</span>
           </div>
         </div>
 
         {/* Card 3 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[20px]">group</span>
-            </div>
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
+          <div>
             <span className="text-[12.5px] font-semibold text-[#64748B]">服务学生总数</span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
               {stats.totalStudents.toLocaleString()}
-            </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
-            <span>较上月 <strong className="text-[#16B45B] font-bold">+8.3%</strong></span>
-            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#F59E0B] fill-none stroke-2">
-              <path d="M0,25 Q25,22 50,18 T100,5" />
-            </svg>
+          <div className="w-10 h-10 rounded-xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px]">group</span>
           </div>
         </div>
 
         {/* Card 4 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex flex-col justify-between h-32 relative overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[20px]">warning</span>
-            </div>
+        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
+          <div>
             <span className="text-[12.5px] font-semibold text-[#64748B]">低额度预警机构</span>
-          </div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none">
+            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
               {stats.alertCount}
-            </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mt-2">
-            <span>较上月 <strong className="text-[#64748B] font-bold">+1</strong></span>
-            <svg viewBox="0 0 100 30" className="w-20 h-7 stroke-[#EF4444] fill-none stroke-2">
-              <path d="M0,15 Q30,5 60,25 T100,10" />
-            </svg>
+          <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px]">warning</span>
           </div>
         </div>
       </div>
@@ -409,14 +375,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             title="重置"
           >
             <span className="material-symbols-outlined text-[18px]">refresh</span>
-          </button>
-
-          <button
-            onClick={() => setIsBatchImportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E2E8F0] bg-white text-[#334155] font-medium text-[13px] hover:bg-[#F8FAFC] transition-all cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">file_upload</span>
-            <span>批量导入</span>
           </button>
 
           <button
@@ -738,7 +696,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 {!selectedInstitution && (
                   <div>
                     <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                      初始采购额度
+                      初始划拨采购点数 (机构点数)
                     </label>
                     <input
                       type="number"
@@ -746,7 +704,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       value={formData.initialQuota}
                       onChange={(e) => setFormData({ ...formData, initialQuota: Number(e.target.value) })}
                       className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] font-mono outline-none focus:border-[#16B45B]"
+                      placeholder="如: 100000"
                     />
+                    <p className="text-[11px] text-[#64748B] mt-1">划拨给该机构使用的 AI 采购点数，机构可二次分发给旗下教师与班级</p>
                   </div>
                 )}
               </div>
@@ -873,51 +833,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
         </div>
       )}
 
-      {/* Batch Import Modal */}
-      {isBatchImportOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
-            <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
-              <h3 className="text-[17px] font-bold text-[#0F172A]">
-                批量导入机构
-              </h3>
-              <button
-                onClick={() => setIsBatchImportOpen(false)}
-                className="text-[#64748B] hover:text-[#0F172A] cursor-pointer"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
 
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-[#E2E8F0] rounded-2xl p-6 text-center hover:border-[#16B45B] bg-[#F8FAFC] cursor-pointer transition-colors">
-                <span className="material-symbols-outlined text-[40px] text-[#16B45B] mb-2">
-                  cloud_upload
-                </span>
-                <p className="text-[14px] font-bold text-[#0F172A]">点击或拖拽 Excel / CSV 文件到此处</p>
-                <p className="text-[12px] text-[#64748B] mt-1">支持 .xlsx, .xls, .csv 格式表格</p>
-              </div>
-
-              <div className="flex justify-between items-center text-[12px] text-[#64748B]">
-                <span>还没下载模版？</span>
-                <a href="#download" className="text-[#16B45B] font-bold hover:underline">
-                  下载标准机构导入模版.xlsx
-                </a>
-              </div>
-
-              <div className="pt-3 flex justify-end gap-3 border-t border-[#E2E8F0]">
-                <button
-                  type="button"
-                  onClick={() => setIsBatchImportOpen(false)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-lg text-[14px] text-[#475569] hover:bg-[#F8FAFC] cursor-pointer"
-                >
-                  关闭
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Institution Detail Drawer */}
       {isDetailDrawerOpen && selectedInstitution && (

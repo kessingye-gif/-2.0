@@ -140,7 +140,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   <th className="py-3 px-4">登录账号/微信绑定</th>
                   <th className="py-3 px-4">所属机构</th>
                   <th className="py-3 px-4">负责教师</th>
-                  <th className="py-3 px-4">年级/开通学科</th>
+                  <th className="py-3 px-4">年级/开通内容包</th>
                   <th className="py-3 px-4 text-center">服务包状态</th>
                   <th className="py-3 px-4 text-center">到期时间</th>
                 </tr>
@@ -157,7 +157,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
                     <td className="py-3 px-4">{stu.teacherName}</td>
                     <td className="py-3 px-4">
                       <span className="font-bold text-[#0F172A] mr-2">{stu.grade}</span>
-                      <span className="text-[11px] text-[#64748B]">{stu.subjects.join(', ')}</span>
+                      <span className="text-[11px] text-[#16B45B] font-bold bg-[#E8F7EE] px-2 py-0.5 rounded">
+                        {stu.subjects.map(s => s.includes('包') ? s : `${s}内容包`).join(' / ')}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${

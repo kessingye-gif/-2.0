@@ -7,6 +7,17 @@ interface ServicePackageViewProps {
   onUpdatePackage: (id: string, updates: Partial<ServicePackage>) => void;
 }
 
+const ALL_SYSTEM_CONTENT_PACKAGES = [
+  '人教版初中数学全套内容包',
+  '人教版初中物理精选内容包',
+  '人教版初中化学核心内容包',
+  '人教版初中生物精选内容包',
+  '初中英语词汇与阅读包',
+  '人教版高中数学必修与选修包',
+  '人教版高中物理竞赛包',
+  '初中全科中考提分通关内容包',
+];
+
 export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
   packages,
   onAddPackage,
@@ -25,6 +36,8 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
     description: '',
     status: 'active' as 'active' | 'inactive',
     subjectRequirement: 'single' as 'single' | 'all',
+    contentPackageMode: 'single' as 'single' | 'multiple',
+    selectedContentPackages: ALL_SYSTEM_CONTENT_PACKAGES.slice(0, 4),
   });
 
   const handleOpenAdd = () => {
@@ -39,12 +52,15 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       description: '',
       status: 'active',
       subjectRequirement: 'single',
+      contentPackageMode: 'single',
+      selectedContentPackages: ALL_SYSTEM_CONTENT_PACKAGES.slice(0, 4),
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (pkg: ServicePackage) => {
     setEditingPkg(pkg);
+    const isSingleType = pkg.type.startsWith('single');
     setForm({
       name: pkg.name,
       code: pkg.code,
@@ -55,6 +71,10 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       description: pkg.description,
       status: pkg.status,
       subjectRequirement: pkg.subjectRequirement,
+      contentPackageMode: pkg.contentPackageMode || (isSingleType ? 'single' : 'multiple'),
+      selectedContentPackages: pkg.includedContentPackages && pkg.includedContentPackages.length > 0
+        ? pkg.includedContentPackages
+        : ALL_SYSTEM_CONTENT_PACKAGES.slice(0, 4),
     });
     setIsModalOpen(true);
   };
@@ -68,6 +88,9 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       all_high: '全科高量包',
     };
 
+    const isSingle = form.type.startsWith('single');
+    const mode = form.contentPackageMode;
+
     if (editingPkg) {
       onUpdatePackage(editingPkg.id, {
         name: form.name,
@@ -78,7 +101,9 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
         durationDays: form.durationDays ? Number(form.durationDays) : null,
         description: form.description,
         status: form.status,
-        subjectRequirement: form.type.startsWith('single') ? 'single' : 'all',
+        subjectRequirement: isSingle ? 'single' : 'all',
+        contentPackageMode: mode,
+        includedContentPackages: form.selectedContentPackages,
       });
     } else {
       onAddPackage({
@@ -91,7 +116,9 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
         durationDays: form.durationDays ? Number(form.durationDays) : null,
         description: form.description,
         status: form.status,
-        subjectRequirement: form.type.startsWith('single') ? 'single' : 'all',
+        subjectRequirement: isSingle ? 'single' : 'all',
+        contentPackageMode: mode,
+        includedContentPackages: form.selectedContentPackages,
       });
     }
     setIsModalOpen(false);
@@ -101,14 +128,19 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
     <div className="space-y-4">
       {/* Action Bar */}
       <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-[#E2E8F0] shadow-2xs">
-        <span className="text-[13px] font-bold text-[#0F172A] flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[#16B45B] text-[18px]">inventory_2</span>
-          四类标准服务包配置 (按使用额度扣减)
-        </span>
+        <div>
+          <span className="text-[14px] font-bold text-[#0F172A] flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[#16B45B] text-[20px]">inventory_2</span>
+            服务包与内容包关联配置
+          </span>
+          <p className="text-[11.5px] text-[#64748B] mt-0.5">
+            服务包定义额度扣减与 AI 限制，支持为服务包关联单个或多个【内容包】资源
+          </p>
+        </div>
 
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1.5 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+          className="flex items-center gap-1 bg-[#16B45B] text-white px-3.5 py-1.5 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
         >
           <span className="material-symbols-outlined text-[16px]">add</span>
           <span>新建服务包</span>
@@ -120,11 +152,13 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
         {packages.map((pkg) => {
           const isSingle = pkg.type.startsWith('single');
           const isHigh = pkg.type.endsWith('high');
+          const mode = pkg.contentPackageMode || (isSingle ? 'single' : 'multiple');
+          const contentPacks = pkg.includedContentPackages || ALL_SYSTEM_CONTENT_PACKAGES.slice(0, 3);
 
           return (
             <div
               key={pkg.id}
-              className={`bg-white rounded-xl border p-4 shadow-2xs flex flex-col justify-between transition-all ${
+              className={`bg-white rounded-2xl border p-4 shadow-2xs flex flex-col justify-between transition-all ${
                 pkg.status === 'active'
                   ? 'border-[#E2E8F0] hover:border-[#16B45B]'
                   : 'border-gray-200 opacity-60 bg-gray-50'
@@ -161,6 +195,38 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                 <p className="text-[12px] text-[#475569] mt-2 line-clamp-2 min-h-[36px]">
                   {pkg.description}
                 </p>
+
+                {/* Content Package Scope Section */}
+                <div className="mt-3 p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[11.5px] space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[#334155] flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px] text-[#16B45B]">
+                        {mode === 'single' ? 'looks_one' : 'auto_awesome_motion'}
+                      </span>
+                      {mode === 'single' ? '单内容包模式 (任选1包)' : '多内容包模式 (包含多包)'}
+                    </span>
+                    <span className="text-[10.5px] font-bold text-[#64748B]">
+                      {contentPacks.length} 个备选
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {contentPacks.slice(0, 3).map((cpName) => (
+                      <span
+                        key={cpName}
+                        className="bg-white border border-[#CBD5E1] text-[#334155] text-[10.5px] px-1.5 py-0.5 rounded-md font-medium truncate max-w-full"
+                        title={cpName}
+                      >
+                        📦 {cpName.replace(/人教版|全套|核心|精选|内容包/g, '')}
+                      </span>
+                    ))}
+                    {contentPacks.length > 3 && (
+                      <span className="text-[10px] text-[#64748B] font-bold px-1 py-0.5">
+                        +{contentPacks.length - 3} More
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {/* Key Metrics */}
                 <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-1.5 text-[12px]">
@@ -218,10 +284,10 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#E2E8F0] max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
               <h3 className="text-[17px] font-bold text-[#0F172A]">
-                {editingPkg ? '编辑服务包配置' : '新建 AI 服务包'}
+                {editingPkg ? '编辑服务包与内容包关联' : '新建 AI 服务包'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -265,7 +331,15 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                   </label>
                   <select
                     value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as PackageType })}
+                    onChange={(e) => {
+                      const newType = e.target.value as PackageType;
+                      const isSingle = newType.startsWith('single');
+                      setForm({
+                        ...form,
+                        type: newType,
+                        contentPackageMode: isSingle ? 'single' : 'multiple',
+                      });
+                    }}
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none cursor-pointer focus:border-[#16B45B]"
                   >
                     <option value="single_low">单科低量包</option>
@@ -273,6 +347,99 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                     <option value="all_low">全科低量包</option>
                     <option value="all_high">全科高量包</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Content Packages Configuration Section */}
+              <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-[12.5px] font-bold text-[#0F172A] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-[#16B45B]">folder_zip</span>
+                    内容包包含模式
+                  </label>
+                  <div className="flex bg-[#E2E8F0] p-0.5 rounded-lg text-[11.5px]">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, contentPackageMode: 'single' })}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                        form.contentPackageMode === 'single'
+                          ? 'bg-white text-[#16B45B] shadow-2xs'
+                          : 'text-[#64748B]'
+                      }`}
+                    >
+                      任选1个内容包
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, contentPackageMode: 'multiple' })}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                        form.contentPackageMode === 'multiple'
+                          ? 'bg-white text-[#16B45B] shadow-2xs'
+                          : 'text-[#64748B]'
+                      }`}
+                    >
+                      包含多个内容包
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-[#64748B]">
+                  {form.contentPackageMode === 'single'
+                    ? '【单内容包模式】：激活时学生可在勾选的内容包池中选择 1 个指定内容包使用。'
+                    : '【多内容包模式】：激活后学生可直接同时开通并使用勾选的全部内容包。'}
+                </p>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[12px] font-bold text-[#334155]">
+                      关联/可选的内容包列表 ({form.selectedContentPackages.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (form.selectedContentPackages.length === ALL_SYSTEM_CONTENT_PACKAGES.length) {
+                          setForm({ ...form, selectedContentPackages: [] });
+                        } else {
+                          setForm({ ...form, selectedContentPackages: [...ALL_SYSTEM_CONTENT_PACKAGES] });
+                        }
+                      }}
+                      className="text-[11px] font-bold text-[#16B45B] hover:underline cursor-pointer"
+                    >
+                      {form.selectedContentPackages.length === ALL_SYSTEM_CONTENT_PACKAGES.length ? '取消全选' : '全选内容包'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto p-2 bg-white border border-[#E2E8F0] rounded-lg">
+                    {ALL_SYSTEM_CONTENT_PACKAGES.map((cpName) => {
+                      const isChecked = form.selectedContentPackages.includes(cpName);
+                      return (
+                        <label
+                          key={cpName}
+                          className="flex items-center gap-2 p-1.5 rounded hover:bg-[#F1F5F9] text-[12px] cursor-pointer text-[#334155]"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setForm({
+                                  ...form,
+                                  selectedContentPackages: [...form.selectedContentPackages, cpName],
+                                });
+                              } else {
+                                setForm({
+                                  ...form,
+                                  selectedContentPackages: form.selectedContentPackages.filter((p) => p !== cpName),
+                                });
+                              }
+                            }}
+                            className="rounded accent-[#16B45B]"
+                          />
+                          <span className="font-medium truncate">{cpName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -356,3 +523,4 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
     </div>
   );
 };
+

@@ -116,6 +116,23 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     difficulty: '基础',
     type: '填空题',
   },
+  {
+    stage: '初中',
+    subject: '数学',
+    grade: '初三',
+    textbook: '人教版',
+    level1Name: '数与代数',
+    level2Name: '一元二次方程',
+    level3Name: '配方法与公式法解方程',
+    level3Code: 'KP-MATH-305',
+    title: '一元二次方程配方法解题与分步演算',
+    content: '已知一元二次方程 x² - 6x + 5 = 0，请用配方法求该方程的解，并列出完整解答与演算步骤。',
+    options: [],
+    answer: 'x₁ = 1, x₂ = 5',
+    analysis: '【分步解答与评分标准】\n1. 移项：x² - 6x = -5；\n2. 配方：两边同时加9得 (x - 3)² = 4；\n3. 开方：x - 3 = ±2；\n4. 得解：x₁ = 5，x₂ = 1。',
+    difficulty: '压轴',
+    type: '解答题',
+  },
 ];
 
 export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
@@ -1964,8 +1981,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 </select>
               </div>
 
-              {/* Dynamic Choice Options Editor */}
-              {isChoiceType(qForm.type) && (
+              {/* Dynamic Choice Options Editor or Non-Choice Type Instructions */}
+              {isChoiceType(qForm.type) ? (
                 <div className="space-y-3 bg-[#F8FAFC] p-3.5 rounded-xl border border-[#E2E8F0]">
                   {/* Choice Mode Switcher: Single vs Multi */}
                   <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-[#E2E8F0] shadow-2xs">
@@ -2066,6 +2083,30 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     })}
                   </div>
                 </div>
+              ) : qForm.type === '填空题' ? (
+                <div className="bg-[#E8F7EE] border border-[#16B45B]/30 rounded-xl p-3.5 text-[12.5px] text-[#0E7D3E] space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">edit_note</span>
+                    填空题录入说明：
+                  </div>
+                  <p className="text-[12px] text-[#334155]">
+                    • 填空题无需维护选项列表。<br />
+                    • 请在【完整题干】中使用 <code className="bg-white px-1.5 py-0.5 rounded font-bold text-[#16B45B]">___</code> (下划线) 标示填空位置。<br />
+                    • 在【正确答案】中填写填空对应的标准数值或表达式（多个填空使用分号 <code className="bg-white px-1 rounded font-bold text-[#16B45B]">;</code> 隔开）。
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-[#EFF6FF] border border-[#2563EB]/30 rounded-xl p-3.5 text-[12.5px] text-[#1E40AF] space-y-1">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px] text-[#2563EB]">description</span>
+                    {qForm.type}录入说明：
+                  </div>
+                  <p className="text-[12px] text-[#334155]">
+                    • {qForm.type}无需维护选择选项列表。<br />
+                    • 在【正确答案】中填写最终核心结论、结论结论值或得分要点。<br />
+                    • 在【分步解题步骤与解析】中填写完整的计算推导步骤、定理依据与分步计分点。
+                  </p>
+                </div>
               )}
 
               <div>
@@ -2085,7 +2126,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   placeholder={
                     qForm.type === '多选题'
                       ? '如: A, B 或 A, B, D'
-                      : '如: A 或 A. x = -14'
+                      : qForm.type === '填空题'
+                      ? '如: 5 或 x₁ = 1; x₂ = 5 (多空用分号隔开)'
+                      : qForm.type === '解答题'
+                      ? '如: x₁ = 1, x₂ = 5 或 见完整解答过程'
+                      : qForm.type === '判断题'
+                      ? '如: 正确 或 错误'
+                      : '如: A 或 A. 9小时'
                   }
                   value={qForm.answer}
                   onChange={(e) => setQForm({ ...qForm, answer: e.target.value })}
@@ -2095,12 +2142,16 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                  分步解题步骤与解析 <span className="text-red-500">*</span>
+                  {qForm.type === '解答题' ? '分步解题步骤、演算推导与得分标准' : '解题步骤与解析'} <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  rows={3}
+                  rows={qForm.type === '解答题' ? 4 : 3}
                   required
-                  placeholder="详细说明推导过程..."
+                  placeholder={
+                    qForm.type === '解答题'
+                      ? '【分步解答】\n1. 移项：x² - 6x = -5\n2. 配方：(x - 3)² = 4\n3. 得解：x₁ = 5，x₂ = 1'
+                      : '详细说明推导过程...'
+                  }
                   value={qForm.analysis}
                   onChange={(e) => setQForm({ ...qForm, analysis: e.target.value })}
                   className="w-full border border-[#E2E8F0] rounded-lg p-2.5 text-[13px] outline-none"
@@ -2310,8 +2361,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             ) : (
               /* Split demonstration view */
               <div className="space-y-4 text-[12.5px]">
-                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
-                  示例：Excel 输入表格内容（包含考点 + 单选/多选/填空等多题型及选项）：
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl flex items-center justify-between">
+                  <span className="font-bold text-[#0F172A]">
+                    示例：Excel 输入表格内容（包含考点 + 单选 / 多选 / 填空 / 解答题全题型规范）：
+                  </span>
+                  <span className="text-[11px] text-[#16B45B] bg-[#E8F7EE] px-2 py-0.5 rounded font-bold border border-[#16B45B]/20">
+                    💡 填空/解答题选项列填 '-' 即可
+                  </span>
                 </div>
                 <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white whitespace-nowrap">
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
@@ -2403,10 +2459,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <span className="text-[10px] bg-[#2563EB] text-white px-2 py-0.5 rounded">试题与选项明细</span>
                     </div>
                     <ul className="space-y-1 text-[11.5px] text-[#334155]">
-                      <li>• <strong>支持题型:</strong> 单选题、多选题、填空题、解答题等</li>
-                      <li>• <strong>选项列表:</strong> 选择题自动解析提取 A/B/C/D 动态选项数组</li>
-                      <li>• <strong>解题解析:</strong> 完整解析与正确答案映射保存</li>
-                      <li>• <strong>外键ID:</strong> <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id: "KP-MATH-3xx"</code></li>
+                      <li>• <strong>支持全类题型:</strong> 单选题、多选题、填空题、解答题、判断题、综合题等</li>
+                      <li>• <strong>选择题选项:</strong> Excel 中写入 <code className="text-[#16B45B]">A. ... | B. ...</code> 自动解析提取为选项数组</li>
+                      <li>• <strong>填空/解答题规范:</strong> 选项列留空或写 <code className="text-[#64748B]">-</code>；填空题在题干中写 <code className="text-[#16B45B]">___</code>，解答题在【解题解析】中写入分步解答与计分点</li>
+                      <li>• <strong>关系关联:</strong> 自动以 <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id</code> 映射绑定三级考点</li>
                     </ul>
                   </div>
                 </div>
