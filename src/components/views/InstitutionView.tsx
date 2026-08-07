@@ -28,6 +28,11 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const [isAdjustQuotaOpen, setIsAdjustQuotaOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [isScopeConfigOpen, setIsScopeConfigOpen] = useState(false);
+  const [scopeForm, setScopeForm] = useState({
+    contentPackages: [] as string[],
+    servicePackageIds: [] as string[],
+  });
   const [isAccountPasswordModalOpen, setIsAccountPasswordModalOpen] = useState(false);
   const [accountForm, setAccountForm] = useState({
     username: '',
@@ -61,6 +66,30 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     );
 
     return { contentPackageNames, servicePackagesInScope };
+  };
+
+  const contentPackageOptions = useMemo(
+    () => [...new Set(servicePackages.flatMap((pkg) => pkg.includedContentPackages || []))],
+    [servicePackages]
+  );
+
+  const handleOpenScopeConfig = (institution: Institution) => {
+    setScopeForm({
+      contentPackages: institution.availableContentPackages || [],
+      servicePackageIds: institution.availableServicePackageIds || [],
+    });
+    setIsScopeConfigOpen(true);
+  };
+
+  const handleSaveScopeConfig = () => {
+    if (!selectedInstitution) return;
+    const updates = {
+      availableContentPackages: scopeForm.contentPackages,
+      availableServicePackageIds: scopeForm.servicePackageIds,
+    };
+    onUpdateInstitution(selectedInstitution.id, updates);
+    setSelectedInstitution({ ...selectedInstitution, ...updates });
+    setIsScopeConfigOpen(false);
   };
 
   // Filtered institutions
@@ -909,7 +938,82 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       </h4>
                       <p className="mt-1 text-[11px] text-[#64748B]">内容包范围决定可访问与维护的内容；服务包范围决定可兑换的商品。</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenScopeConfig(selectedInstitution)}
+                      className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-bold hover:bg-[#16B45B] hover:text-white transition-colors cursor-pointer"
+                    >
+                      配置范围
+                    </button>
                   </div>
+
+                  {isScopeConfigOpen && (
+                    <div className="rounded-xl border border-[#BBE7CC] bg-[#F4FCF7] p-3 space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[12px] font-bold text-[#0F172A]">可用内容包</span>
+                          <span className="text-[11px] text-[#64748B]">{scopeForm.contentPackages.length} 个已选</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 gap-1.5">
+                          {contentPackageOptions.map((contentPackage) => {
+                            const checked = scopeForm.contentPackages.includes(contentPackage);
+                            return (
+                              <label key={contentPackage} className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-[11.5px] text-[#334155] cursor-pointer border border-transparent hover:border-[#BBE7CC]">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setScopeForm((current) => ({
+                                    ...current,
+                                    contentPackages: checked
+                                      ? current.contentPackages.filter((item) => item !== contentPackage)
+                                      : [...current.contentPackages, contentPackage],
+                                  }))}
+                                  className="accent-[#16B45B]"
+                                />
+                                {contentPackage}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[12px] font-bold text-[#0F172A]">可兑换服务包</span>
+                          <span className="text-[11px] text-[#64748B]">{scopeForm.servicePackageIds.length} 个已选</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 gap-1.5">
+                          {servicePackages.map((pkg) => {
+                            const checked = scopeForm.servicePackageIds.includes(pkg.id);
+                            return (
+                              <label key={pkg.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-[11.5px] text-[#334155] cursor-pointer border border-transparent hover:border-[#BBE7CC]">
+                                <span className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => setScopeForm((current) => ({
+                                      ...current,
+                                      servicePackageIds: checked
+                                        ? current.servicePackageIds.filter((item) => item !== pkg.id)
+                                        : [...current.servicePackageIds, pkg.id],
+                                    }))}
+                                    className="accent-[#16B45B]"
+                                  />
+                                  <span className="font-medium truncate">{pkg.name}</span>
+                                </span>
+                                <span className="shrink-0 text-[#94A3B8]">{pkg.quotaCost} 点</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button type="button" onClick={() => setIsScopeConfigOpen(false)} className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold text-[#64748B] hover:bg-white cursor-pointer">取消</button>
+                        <button type="button" onClick={handleSaveScopeConfig} className="px-3 py-1.5 rounded-lg bg-[#16B45B] text-[11.5px] font-bold text-white hover:bg-[#139B4E] cursor-pointer">保存范围</button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-3">
                     <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
