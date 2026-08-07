@@ -330,18 +330,12 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-[#F1F5F9] rounded-xl text-[11.5px] border border-[#E2E8F0] space-y-1">
+                <div className="p-2.5 bg-[#F1F5F9] rounded-xl text-[11.5px] border border-[#E2E8F0] flex items-center justify-between gap-3">
                   <span className="font-bold text-[#334155] flex items-center gap-1">
                     <span className="material-symbols-outlined text-[15px] text-[#16B45B]">folder_zip</span>
-                    {pkg.contentPackageMode === 'single' ? '单内容包 (激活任选1包)' : '多内容包 (包含多科内容包)'}
+                    {pkg.contentPackageMode === 'single' ? '激活时任选 1 个内容包' : '激活后包含多个内容包'}
                   </span>
-                  <div className="flex flex-wrap gap-1">
-                    {(pkg.includedContentPackages || ['人教版初中数学全套内容包', '人教版初中物理精选内容包']).slice(0, 3).map((cp) => (
-                      <span key={cp} className="bg-white border border-[#CBD5E1] text-[#334155] text-[10.5px] px-1.5 py-0.5 rounded font-medium">
-                        📦 {cp.replace(/人教版|全套|核心|精选|内容包/g, '')}
-                      </span>
-                    ))}
-                  </div>
+                  <span className="shrink-0 text-[#64748B] font-bold">覆盖 {(pkg.includedContentPackages || []).length} 个内容包</span>
                 </div>
 
                 <p className="text-[12px] text-[#64748B]">{pkg.description || '无详细配置说明'}</p>

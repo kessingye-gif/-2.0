@@ -197,34 +197,17 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                 </p>
 
                 {/* Content Package Scope Section */}
-                <div className="mt-3 p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[11.5px] space-y-1">
+                <div className="mt-3 p-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[11.5px]">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-[#334155] flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px] text-[#16B45B]">
                         {mode === 'single' ? 'looks_one' : 'auto_awesome_motion'}
                       </span>
-                      {mode === 'single' ? '单内容包模式 (任选1包)' : '多内容包模式 (包含多包)'}
+                      {mode === 'single' ? '激活时任选 1 个内容包' : '激活后包含多个内容包'}
                     </span>
                     <span className="text-[10.5px] font-bold text-[#64748B]">
-                      {contentPacks.length} 个备选
+                      覆盖 {contentPacks.length} 个内容包
                     </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {contentPacks.slice(0, 3).map((cpName) => (
-                      <span
-                        key={cpName}
-                        className="bg-white border border-[#CBD5E1] text-[#334155] text-[10.5px] px-1.5 py-0.5 rounded-md font-medium truncate max-w-full"
-                        title={cpName}
-                      >
-                        📦 {cpName.replace(/人教版|全套|核心|精选|内容包/g, '')}
-                      </span>
-                    ))}
-                    {contentPacks.length > 3 && (
-                      <span className="text-[10px] text-[#64748B] font-bold px-1 py-0.5">
-                        +{contentPacks.length - 3} More
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -523,4 +506,3 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
     </div>
   );
 };
-
