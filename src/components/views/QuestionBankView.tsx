@@ -6,6 +6,7 @@ import {
   QuestionType,
 } from '../../types';
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
+import { formatEducationMetadata } from '../../utils/educationStage';
 
 export interface SubjectItem {
   id: string;
@@ -1513,7 +1514,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <th className="px-5 py-3.5 font-bold">一级模块 (Level 1)</th>
                       <th className="px-5 py-3.5 font-bold">二级主题 (Level 2)</th>
                       <th className="px-5 py-3.5 font-bold">三级考点 (Level 3)</th>
-                      <th className="px-5 py-3.5 font-bold">关联学科 / 年级</th>
+                      <th className="px-5 py-3.5 font-bold">关联学科 / 学段 / 版本</th>
                       <th className="px-5 py-3.5 font-bold">关联精选题</th>
                       <th className="px-5 py-3.5 font-bold text-right">快捷操作</th>
                     </tr>
@@ -1542,7 +1543,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             <span className="px-2.5 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[11px]">
-                              {row.subject} · {row.grade} ({row.textbook})
+                              {formatEducationMetadata(row)}
                             </span>
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
@@ -1679,7 +1680,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         </span>
 
                         <span className="text-[11px] bg-[#E8F7EE] text-[#0E7D3E] font-bold px-2 py-0.5 rounded font-mono">
-                          {l1.subject} · {l1.grade} ({l1.textbook})
+                          {formatEducationMetadata(l1)}
                         </span>
 
                         <span className="text-[11px] text-[#94A3B8] font-mono ml-2">
@@ -1975,7 +1976,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 >
                   {level3Points.map((kp) => (
                     <option key={kp.id} value={kp.id}>
-                      [{kp.subject} - {kp.grade}] {kp.name} ({kp.code})
+                      [{formatEducationMetadata(kp)}] {kp.name} ({kp.code})
                     </option>
                   ))}
                 </select>
