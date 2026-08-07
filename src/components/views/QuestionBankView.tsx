@@ -35,6 +35,7 @@ export interface ContentPackageItem {
   id: string;
   code: string;
   name: string;
+  subjectId: string;
   subject: string;
   stage: string;
   kpCount: number;
@@ -44,11 +45,11 @@ export interface ContentPackageItem {
 }
 
 const initialContentPackages: ContentPackageItem[] = [
-  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subject: '初中数学', stage: '初中', kpCount: 156, questionCount: 1280, status: 'active', description: '涵盖初一至初三全部核心章节与中考压轴题库' },
-  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '力学、电学与声光热全模块精选及实验探究' },
-  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '身边的化学物质、化学方程式与推断计算' },
-  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '函数、导数、解析几何与数列专题全覆盖' },
-  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '语法考点、阅读理解与完形填空核心题库' },
+  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', subject: '初中数学', stage: '初中', kpCount: 156, questionCount: 1280, status: 'active', description: '引用初中数学下已发布的知识点与题目' },
+  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '引用初中物理下已发布的知识点与题目' },
+  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '引用初中化学下已发布的知识点与题目' },
+  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '引用高中数学下已发布的知识点与题目' },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '引用初中英语下已发布的知识点与题目' },
 ];
 
 interface QuestionBankViewProps {
@@ -156,6 +157,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [packageForm, setPackageForm] = useState({
     name: '',
     code: '',
+    subjectId: 'SUB-01',
     subject: '初中数学',
     stage: '初中',
     description: '',
@@ -489,6 +491,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     setPackageForm({
       name: '',
       code: `CP-${Date.now().toString().slice(-4)}`,
+      subjectId: 'SUB-01',
       subject: '初中数学',
       stage: '初中',
       description: '',
@@ -502,6 +505,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     setPackageForm({
       name: pkg.name,
       code: pkg.code,
+      subjectId: pkg.subjectId,
       subject: pkg.subject,
       stage: pkg.stage,
       description: pkg.description,
@@ -522,6 +526,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 ...p,
                 name: packageForm.name,
                 code: packageForm.code,
+                subjectId: packageForm.subjectId,
                 subject: packageForm.subject,
                 stage: packageForm.stage,
                 description: packageForm.description,
@@ -535,6 +540,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         id: `CP-${Date.now().toString().slice(-5)}`,
         name: packageForm.name,
         code: packageForm.code || `CP-${Date.now().toString().slice(-4)}`,
+        subjectId: packageForm.subjectId,
         subject: packageForm.subject,
         stage: packageForm.stage,
         description: packageForm.description,
@@ -1002,8 +1008,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <tr>
                     <th className="py-3 px-4">内容包名称</th>
                     <th className="py-3 px-4">内容包代码</th>
-                    <th className="py-3 px-4">所属学科</th>
-                    <th className="py-3 px-4">学段</th>
+                    <th className="py-3 px-4">内容来源</th>
                     <th className="py-3 px-4 text-center">包含知识点</th>
                     <th className="py-3 px-4 text-center">包含试题</th>
                     <th className="py-3 px-4 text-center">状态</th>
@@ -1013,7 +1018,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 <tbody className="divide-y divide-[#E2E8F0] text-[#334155]">
                   {filteredContentPackages.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
+                      <td colSpan={7} className="py-12 text-center text-[#94A3B8]">
                         <span className="material-symbols-outlined text-[36px] block mb-1">find_in_page</span>
                         暂无相关内容包数据
                       </td>
@@ -1033,11 +1038,16 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           </div>
                         </td>
                         <td className="py-3 px-4 font-mono text-[12px] text-[#64748B]">{pkg.code}</td>
-                        <td className="py-3 px-4 font-bold">{pkg.subject}</td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[12px]">
-                            {pkg.stage}
-                          </span>
+                          {(() => {
+                            const sourceSubject = subjects.find((subject) => subject.id === pkg.subjectId);
+                            return (
+                              <div>
+                                <div className="font-bold text-[#334155]">{sourceSubject?.name || pkg.subject}</div>
+                                <div className="mt-1 text-[11px] text-[#94A3B8]">{sourceSubject?.stage || pkg.stage} · {sourceSubject?.textbook || '未配置版本'}</div>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{pkg.kpCount}</td>
                         <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B]">{pkg.questionCount}</td>
@@ -2800,28 +2810,30 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">所属学科</label>
-                  <input
-                    type="text"
-                    value={packageForm.subject}
-                    onChange={(e) => setPackageForm({ ...packageForm, subject: e.target.value })}
-                    placeholder="如：初中数学"
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">适用学段</label>
+                <div className="col-span-2">
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">内容来源学科 <span className="text-red-500">*</span></label>
                   <select
-                    value={packageForm.stage}
-                    onChange={(e) => setPackageForm({ ...packageForm, stage: e.target.value })}
+                    required
+                    value={packageForm.subjectId}
+                    onChange={(e) => {
+                      const selectedSubject = subjects.find((subject) => subject.id === e.target.value);
+                      if (!selectedSubject) return;
+                      setPackageForm({
+                        ...packageForm,
+                        subjectId: selectedSubject.id,
+                        subject: selectedSubject.name,
+                        stage: selectedSubject.stage,
+                      });
+                    }}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
                   >
-                    <option value="小学">小学</option>
-                    <option value="初中">初中</option>
-                    <option value="高中">高中</option>
+                    {subjects.filter((subject) => subject.status === 'active').map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name} · {subject.stage} · {subject.textbook}
+                      </option>
+                    ))}
                   </select>
+                  <p className="mt-1.5 text-[11px] text-[#64748B]">内容包自动引用该学科下已发布的知识点与题目；学段和版本由学科主数据统一提供。</p>
                 </div>
               </div>
 
