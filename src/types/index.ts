@@ -27,6 +27,8 @@ export interface Institution {
   adminPassword?: string;
   totalQuota: number; // 100000
   remainingQuota: number; // 75402
+  availableContentPackages?: string[]; // 平台配置的机构可用/可维护内容包范围
+  availableServicePackageIds?: string[]; // 平台配置的机构可兑换服务包范围
   isFrozen?: boolean;
   teacherCount: number; // 124
   studentCount: number; // 2150

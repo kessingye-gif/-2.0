@@ -300,7 +300,6 @@ export default function App() {
             <InstitutionView
               institutions={institutions}
               servicePackages={packages}
-              authCodes={authCodes}
               onAddInstitution={handleAddInstitution}
               onUpdateInstitution={handleUpdateInstitution}
               onAdjustQuota={handleAdjustQuota}

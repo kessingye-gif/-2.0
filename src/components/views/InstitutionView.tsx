@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { AuthCode, Institution, RegionType, ServicePackage } from '../../types';
+import { Institution, RegionType, ServicePackage } from '../../types';
 
 interface InstitutionViewProps {
   institutions: Institution[];
   servicePackages: ServicePackage[];
-  authCodes: AuthCode[];
   onAddInstitution: (inst: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
@@ -14,7 +13,6 @@ interface InstitutionViewProps {
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
   institutions,
   servicePackages,
-  authCodes,
   onAddInstitution,
   onUpdateInstitution,
   onAdjustQuota,
@@ -56,14 +54,13 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const [quotaAdjustAmount, setQuotaAdjustAmount] = useState<number>(10000);
   const [quotaAdjustReason, setQuotaAdjustReason] = useState<string>('超级管理员例行采购额度划拨');
 
-  const getAuthorizationSummary = (institutionId: string) => {
-    const institutionCodes = authCodes.filter((code) => code.institutionId === institutionId);
-    const packageIds = [...new Set(institutionCodes.map((code) => code.packageId))];
-    const authorizedPackages = servicePackages.filter((pkg) => packageIds.includes(pkg.id));
-    const contentPackageNames = [...new Set(authorizedPackages.flatMap((pkg) => pkg.includedContentPackages || []))];
-    const activeCodeCount = institutionCodes.filter((code) => code.status === 'used' || code.status === 'pending').length;
+  const getScopeSummary = (institution: Institution) => {
+    const contentPackageNames = institution.availableContentPackages || [];
+    const servicePackagesInScope = servicePackages.filter((pkg) =>
+      (institution.availableServicePackageIds || []).includes(pkg.id)
+    );
 
-    return { authorizedPackages, contentPackageNames, activeCodeCount, totalCodeCount: institutionCodes.length };
+    return { contentPackageNames, servicePackagesInScope };
   };
 
   // Filtered institutions
@@ -429,7 +426,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   const isInactive = inst.status === 'inactive';
                   const remainingPct = inst.totalQuota > 0 ? Math.round((inst.remainingQuota / inst.totalQuota) * 100) : 0;
                   const isWarning = !isInactive && remainingPct <= 15;
-                  const authorization = getAuthorizationSummary(inst.id);
+                  const scope = getScopeSummary(inst);
 
                   return (
                     <tr
@@ -531,15 +528,15 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       </td>
 
                       <td className={`px-5 py-3.5 ${isInactive ? 'opacity-60' : ''}`}>
-                        {authorization.totalCodeCount === 0 ? (
-                          <div className="text-[12px] text-[#94A3B8]">尚未发放服务包</div>
+                        {scope.contentPackageNames.length === 0 && scope.servicePackagesInScope.length === 0 ? (
+                          <div className="text-[12px] text-[#94A3B8]">尚未配置可用范围</div>
                         ) : (
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[#334155]">
                               <span className="material-symbols-outlined text-[16px] text-[#16B45B]">inventory_2</span>
-                              {authorization.authorizedPackages.length} 个服务包 · {authorization.contentPackageNames.length} 个内容包
+                              {scope.contentPackageNames.length} 个内容包 · {scope.servicePackagesInScope.length} 个服务包
                             </div>
-                            <p className="text-[11px] text-[#64748B]">{authorization.activeCodeCount}/{authorization.totalCodeCount} 个授权码生效中</p>
+                            <p className="text-[11px] text-[#64748B]">内容与服务包范围独立配置</p>
                           </div>
                         )}
                       </td>
@@ -909,41 +906,50 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                     <div>
                       <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px] text-[#16B45B]">deployed_code</span>
-                        内容授权概览
+                        机构可用范围
                       </h4>
-                      <p className="mt-1 text-[11px] text-[#64748B]">服务包决定权益，内容包决定可访问的学科资源。</p>
+                      <p className="mt-1 text-[11px] text-[#64748B]">内容包范围决定可访问与维护的内容；服务包范围决定可兑换的商品。</p>
                     </div>
-                    <span className="shrink-0 px-2 py-1 rounded-lg bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-bold">
-                      {getAuthorizationSummary(selectedInstitution.id).activeCodeCount} 个生效授权
-                    </span>
                   </div>
 
-                  {getAuthorizationSummary(selectedInstitution.id).authorizedPackages.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-3 py-4 text-center text-[12px] text-[#64748B]">
-                      当前机构尚未通过授权码发放服务包
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {getAuthorizationSummary(selectedInstitution.id).authorizedPackages.map((pkg) => (
-                        <div key={pkg.id} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-[12.5px] font-bold text-[#0F172A]">{pkg.name}</span>
-                            <span className="text-[10.5px] text-[#64748B] font-mono">{pkg.contentPackageMode === 'single' ? '任选 1 包' : '包含多包'}</span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {(pkg.includedContentPackages || []).slice(0, 4).map((contentPackage) => (
-                              <span key={contentPackage} className="rounded-md border border-[#D6EBDD] bg-white px-1.5 py-0.5 text-[10.5px] text-[#475569]">
-                                {contentPackage.replace(/人教版|全套|核心|精选|内容包/g, '')}
-                              </span>
-                            ))}
-                            {(pkg.includedContentPackages || []).length > 4 && (
-                              <span className="px-1 py-0.5 text-[10.5px] text-[#64748B]">+{(pkg.includedContentPackages || []).length - 4}</span>
-                            )}
-                          </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12.5px] font-bold text-[#0F172A]">内容包范围</span>
+                        <span className="text-[11px] text-[#64748B]">{getScopeSummary(selectedInstitution).contentPackageNames.length} 个可用内容包</span>
+                      </div>
+                      {getScopeSummary(selectedInstitution).contentPackageNames.length === 0 ? (
+                        <p className="mt-2 text-[11.5px] text-[#94A3B8]">尚未配置内容包范围</p>
+                      ) : (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {getScopeSummary(selectedInstitution).contentPackageNames.map((contentPackage) => (
+                            <span key={contentPackage} className="rounded-md border border-[#D6EBDD] bg-white px-1.5 py-0.5 text-[10.5px] text-[#475569]">
+                              {contentPackage.replace(/人教版|全套|核心|精选|内容包/g, '')}
+                            </span>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
+
+                    <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[12.5px] font-bold text-[#0F172A]">服务包范围</span>
+                        <span className="text-[11px] text-[#64748B]">{getScopeSummary(selectedInstitution).servicePackagesInScope.length} 个可兑换服务包</span>
+                      </div>
+                      {getScopeSummary(selectedInstitution).servicePackagesInScope.length === 0 ? (
+                        <p className="mt-2 text-[11.5px] text-[#94A3B8]">尚未配置服务包范围</p>
+                      ) : (
+                        <div className="mt-2 space-y-1">
+                          {getScopeSummary(selectedInstitution).servicePackagesInScope.map((pkg) => (
+                            <div key={pkg.id} className="flex items-center justify-between gap-3 text-[11.5px]">
+                              <span className="font-medium text-[#334155]">{pkg.name}</span>
+                              <span className="text-[#64748B]">{pkg.quotaCost} 点 / {pkg.durationDays || '长期'}{pkg.durationDays ? ' 天' : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Scale info */}
