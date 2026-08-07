@@ -299,6 +299,8 @@ export default function App() {
           {currentTab === 'institutions' && (
             <InstitutionView
               institutions={institutions}
+              servicePackages={packages}
+              authCodes={authCodes}
               onAddInstitution={handleAddInstitution}
               onUpdateInstitution={handleUpdateInstitution}
               onAdjustQuota={handleAdjustQuota}

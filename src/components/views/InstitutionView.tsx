@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Institution, RegionType } from '../../types';
+import { AuthCode, Institution, RegionType, ServicePackage } from '../../types';
 
 interface InstitutionViewProps {
   institutions: Institution[];
+  servicePackages: ServicePackage[];
+  authCodes: AuthCode[];
   onAddInstitution: (inst: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
@@ -11,6 +13,8 @@ interface InstitutionViewProps {
 
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
   institutions,
+  servicePackages,
+  authCodes,
   onAddInstitution,
   onUpdateInstitution,
   onAdjustQuota,
@@ -51,6 +55,16 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const [quotaAdjustType, setQuotaAdjustType] = useState<'increase' | 'decrease'>('increase');
   const [quotaAdjustAmount, setQuotaAdjustAmount] = useState<number>(10000);
   const [quotaAdjustReason, setQuotaAdjustReason] = useState<string>('超级管理员例行采购额度划拨');
+
+  const getAuthorizationSummary = (institutionId: string) => {
+    const institutionCodes = authCodes.filter((code) => code.institutionId === institutionId);
+    const packageIds = [...new Set(institutionCodes.map((code) => code.packageId))];
+    const authorizedPackages = servicePackages.filter((pkg) => packageIds.includes(pkg.id));
+    const contentPackageNames = [...new Set(authorizedPackages.flatMap((pkg) => pkg.includedContentPackages || []))];
+    const activeCodeCount = institutionCodes.filter((code) => code.status === 'used' || code.status === 'pending').length;
+
+    return { authorizedPackages, contentPackageNames, activeCodeCount, totalCodeCount: institutionCodes.length };
+  };
 
   // Filtered institutions
   const filteredInstitutions = useMemo(() => {
@@ -393,16 +407,17 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
-                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构名称</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构与状态</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">负责人</th>
-                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度使用情况</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度健康度</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">内容授权</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] text-right whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0]">
               {filteredInstitutions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-[#64748B]">
+                  <td colSpan={5} className="px-6 py-12 text-center text-[#64748B]">
                     <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2 block">
                       domain_disabled
                     </span>
@@ -414,6 +429,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   const isInactive = inst.status === 'inactive';
                   const remainingPct = inst.totalQuota > 0 ? Math.round((inst.remainingQuota / inst.totalQuota) * 100) : 0;
                   const isWarning = !isInactive && remainingPct <= 15;
+                  const authorization = getAuthorizationSummary(inst.id);
 
                   return (
                     <tr
@@ -436,8 +452,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                               {isInactive ? 'domain_disabled' : 'school'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
                               onClick={() => {
                                 setSelectedInstitution(inst);
                                 setIsDetailDrawerOpen(true);
@@ -447,18 +464,19 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                               }`}
                             >
                               {inst.name}
-                            </span>
+                              </span>
 
-                            {/* Status Tag */}
-                            {inst.status === 'active' ? (
-                              <span className="px-2 py-0.5 rounded-full bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-semibold">
-                                正常
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#64748B] text-[11px] font-medium">
-                                已停用
-                              </span>
-                            )}
+                              {inst.status === 'active' ? (
+                                <span className="px-2 py-0.5 rounded-full bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-semibold">
+                                  正常服务
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#64748B] text-[11px] font-medium">
+                                  已停用
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-[11px] text-[#94A3B8] font-mono">{inst.code} · {inst.regionName}</p>
                           </div>
                         </div>
                       </td>
@@ -468,19 +486,21 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                         <div className="text-[13px] font-semibold text-[#0F172A]">
                           {inst.contactPerson}
                         </div>
+                        <p className="mt-1 text-[11px] text-[#94A3B8] font-mono">{inst.phone}</p>
                       </td>
 
                       {/* 额度使用情况 */}
                       <td className={`px-5 py-3.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
                         <div>
-                          <div className="text-[12.5px] font-mono mb-1">
+                          <div className="flex items-baseline gap-1 text-[12.5px] font-mono mb-1">
                             <span className="font-bold text-[#0F172A]">
                               {inst.remainingQuota.toLocaleString()}
                             </span>
-                            <span className="text-[#94A3B8] mx-1">/</span>
+                            <span className="text-[#94A3B8]">可用 /</span>
                             <span className="text-[#64748B]">
                               {inst.totalQuota.toLocaleString()}
                             </span>
+                            <span className="text-[#94A3B8]">总额</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 w-28 bg-[#E2E8F0] rounded-full overflow-hidden">
@@ -504,15 +524,29 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                                   : 'text-[#16B45B]'
                               }`}
                             >
-                              {isWarning ? `剩余 ${remainingPct}%` : `剩余 ${remainingPct}%`}
+                              {isWarning ? `预警 · ${remainingPct}%` : `健康 · ${remainingPct}%`}
                             </span>
                           </div>
                         </div>
                       </td>
 
+                      <td className={`px-5 py-3.5 ${isInactive ? 'opacity-60' : ''}`}>
+                        {authorization.totalCodeCount === 0 ? (
+                          <div className="text-[12px] text-[#94A3B8]">尚未发放服务包</div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[#334155]">
+                              <span className="material-symbols-outlined text-[16px] text-[#16B45B]">inventory_2</span>
+                              {authorization.authorizedPackages.length} 个服务包 · {authorization.contentPackageNames.length} 个内容包
+                            </div>
+                            <p className="text-[11px] text-[#64748B]">{authorization.activeCodeCount}/{authorization.totalCodeCount} 个授权码生效中</p>
+                          </div>
+                        )}
+                      </td>
+
                       {/* 操作 */}
                       <td className="px-5 py-3.5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-3 text-[12.5px]">
+                        <div className="flex items-center justify-end gap-2 text-[12.5px]">
                           <button
                             onClick={() => handleOpenAdjustQuota(inst)}
                             className="px-2.5 py-1 bg-[#E8F7EE] text-[#0E7D3E] hover:bg-[#16B45B] hover:text-white rounded-lg font-bold transition-all cursor-pointer shadow-2xs"
@@ -521,38 +555,14 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                           </button>
 
                           <button
-                            onClick={() => handleOpenEditModal(inst)}
-                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
-                          >
-                            编辑
-                          </button>
-
-                          <button
-                            onClick={() => handleOpenAccountModal(inst)}
-                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
-                          >
-                            账号
-                          </button>
-
-                          <button
                             onClick={() => {
                               setSelectedInstitution(inst);
                               setIsDetailDrawerOpen(true);
                             }}
-                            className="text-[#334155] hover:text-[#16B45B] font-semibold transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-lg border border-[#E2E8F0] text-[#475569] hover:text-[#16B45B] hover:border-[#16B45B]/30 hover:bg-[#E8F7EE] flex items-center justify-center transition-colors cursor-pointer"
+                            title="查看详情与更多操作"
                           >
-                            详情
-                          </button>
-
-                          <button
-                            onClick={() => handleToggleStatus(inst)}
-                            className={`font-semibold transition-colors cursor-pointer ${
-                              inst.status === 'active'
-                                ? 'text-[#94A3B8] hover:text-[#DC2626]'
-                                : 'text-[#16B45B] hover:underline'
-                            }`}
-                          >
-                            {inst.status === 'active' ? '停用' : '启用'}
+                            <span className="material-symbols-outlined text-[18px]">more_horiz</span>
                           </button>
                         </div>
                       </td>
@@ -894,6 +904,48 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   </div>
                 </div>
 
+                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px] text-[#16B45B]">deployed_code</span>
+                        内容授权概览
+                      </h4>
+                      <p className="mt-1 text-[11px] text-[#64748B]">服务包决定权益，内容包决定可访问的学科资源。</p>
+                    </div>
+                    <span className="shrink-0 px-2 py-1 rounded-lg bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-bold">
+                      {getAuthorizationSummary(selectedInstitution.id).activeCodeCount} 个生效授权
+                    </span>
+                  </div>
+
+                  {getAuthorizationSummary(selectedInstitution.id).authorizedPackages.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-3 py-4 text-center text-[12px] text-[#64748B]">
+                      当前机构尚未通过授权码发放服务包
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {getAuthorizationSummary(selectedInstitution.id).authorizedPackages.map((pkg) => (
+                        <div key={pkg.id} className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-[12.5px] font-bold text-[#0F172A]">{pkg.name}</span>
+                            <span className="text-[10.5px] text-[#64748B] font-mono">{pkg.contentPackageMode === 'single' ? '任选 1 包' : '包含多包'}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {(pkg.includedContentPackages || []).slice(0, 4).map((contentPackage) => (
+                              <span key={contentPackage} className="rounded-md border border-[#D6EBDD] bg-white px-1.5 py-0.5 text-[10.5px] text-[#475569]">
+                                {contentPackage.replace(/人教版|全套|核心|精选|内容包/g, '')}
+                              </span>
+                            ))}
+                            {(pkg.includedContentPackages || []).length > 4 && (
+                              <span className="px-1 py-0.5 text-[10.5px] text-[#64748B]">+{(pkg.includedContentPackages || []).length - 4}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Scale info */}
                 <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3 text-[13px]">
                   <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
@@ -934,7 +986,35 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#E2E8F0] flex justify-end">
+            <div className="pt-4 border-t border-[#E2E8F0] flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => {
+                  handleOpenEditModal(selectedInstitution);
+                  setIsDetailDrawerOpen(false);
+                }}
+                className="px-4 py-2 bg-white border border-[#E2E8F0] text-[#334155] rounded-xl text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
+              >
+                编辑资料
+              </button>
+              <button
+                onClick={() => {
+                  handleOpenAccountModal(selectedInstitution);
+                  setIsDetailDrawerOpen(false);
+                }}
+                className="px-4 py-2 bg-white border border-[#E2E8F0] text-[#334155] rounded-xl text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
+              >
+                账号管理
+              </button>
+              <button
+                onClick={() => handleToggleStatus(selectedInstitution)}
+                className={`px-4 py-2 rounded-xl text-[13px] font-bold cursor-pointer ${
+                  selectedInstitution.status === 'active'
+                    ? 'bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2]'
+                    : 'bg-[#E8F7EE] text-[#0E7D3E] hover:bg-[#D6F2E1]'
+                }`}
+              >
+                {selectedInstitution.status === 'active' ? '停用机构' : '启用机构'}
+              </button>
               <button
                 onClick={() => setIsDetailDrawerOpen(false)}
                 className="px-5 py-2 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] rounded-xl text-[13.5px] font-bold hover:bg-gray-100 cursor-pointer"
