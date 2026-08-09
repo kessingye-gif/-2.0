@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { AuditLogItem, AiModelConfig, TokenCompensation } from '../../types';
+import { AuditLogItem, AiModelConfig, TokenCompensation, TokenTopUpPack } from '../../types';
 import { AuditLogView } from './AuditLogView';
+import { getTokenRefundEligibility } from '../../utils/tokenRefund';
+import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowledgeTypeRegistry';
 
 interface SystemViewProps {
   auditLogs: AuditLogItem[];
+  mode: 'exceptions' | 'settings';
 }
 
 const initialAiModels: AiModelConfig[] = [
@@ -17,8 +20,32 @@ const initialCompensations: TokenCompensation[] = [
   { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', tokenAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
 ];
 
-export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
-  const [activeTab, setActiveTab] = useState<'aiRules' | 'masterData' | 'compensation' | 'auditLogs' | 'exceptionReversal'>('aiRules');
+const initialStudentTokenPacks: TokenTopUpPack[] = [
+  { id: 'TP-01', code: 'TP-20W', name: '轻量加油包', tokenAmount: 200000, price: 9.9, status: 'active', description: '适合临时补充', createdAt: '2026-08-01' },
+  { id: 'TP-02', code: 'TP-100W', name: '标准加油包', tokenAmount: 1000000, price: 39.9, status: 'active', description: '学生端推荐', createdAt: '2026-08-01' },
+  { id: 'TP-03', code: 'TP-300W', name: '畅用加油包', tokenAmount: 3000000, price: 99, status: 'inactive', description: '适合高频使用', createdAt: '2026-08-01' },
+];
+
+const initialRefundOrders = [
+  { id: 'PAY-20260808-0192', student: '张伟强', channel: '微信支付', amount: 39.9, grantedToken: 1000000, remainingToken: 1000000, status: 'paid' as const },
+  { id: 'PAY-20260808-0186', student: '李思思', channel: '支付宝', amount: 9.9, grantedToken: 200000, remainingToken: 185200, status: 'paid' as const },
+  { id: 'PAY-20260807-0163', student: '王浩然', channel: '微信支付', amount: 99, grantedToken: 3000000, remainingToken: 3000000, status: 'refunded' as const },
+];
+
+type SystemTab = 'aiRules' | 'masterData' | 'tokenPacks' | 'compensation' | 'auditLogs' | 'exceptionReversal';
+
+export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
+  const [activeTab, setActiveTab] = useState<SystemTab>(mode === 'settings' ? 'aiRules' : 'compensation');
+  const tabs: { id: SystemTab; label: string }[] = mode === 'settings'
+    ? [
+        { id: 'aiRules', label: 'AI 模型' },
+        { id: 'masterData', label: '基础数据' },
+        { id: 'tokenPacks', label: 'Token 加油包' },
+      ]
+    : [
+        { id: 'compensation', label: '额度补发' },
+        { id: 'exceptionReversal', label: '支付退款' },
+      ];
 
   // AI Models State
   const [aiModels, setAiModels] = useState<AiModelConfig[]>(initialAiModels);
@@ -32,6 +59,10 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
 
   // Token Compensations State
   const [compensations, setCompensations] = useState<TokenCompensation[]>(initialCompensations);
+  const [tokenPacks, setTokenPacks] = useState<TokenTopUpPack[]>(initialStudentTokenPacks);
+  const [refundOrders, setRefundOrders] = useState(initialRefundOrders);
+  const [knowledgeTypes, setKnowledgeTypes] = useState(defaultKnowledgeTypes);
+  const [newKnowledgeTypeName, setNewKnowledgeTypeName] = useState('');
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);
   const [compForm, setCompForm] = useState({
     studentId: 'STU-001',
@@ -77,25 +108,26 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
 
   return (
     <div className="space-y-6">
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
-        <button
-          onClick={() => setActiveTab('aiRules')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'aiRules' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          AI 模型与 Token 换算规则
-        </button>
+      <div>
+        <p className="text-[13px] text-[#64748B]">{mode === 'settings' ? '系统' : '运营'}</p>
+        <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">
+          {mode === 'settings' ? '平台设置' : '异常处理'}
+        </h2>
+      </div>
 
-        <button
-          onClick={() => setActiveTab('compensation')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'compensation' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          非付费 Token 补偿发放 ({compensations.length})
-        </button>
+      {/* Navigation Sub-Tabs */}
+      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-2 transition-colors cursor-pointer ${
+              activeTab === tab.id ? 'text-[#0E7D3E] border-b-2 border-[#0E7D3E]' : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            {tab.label}{tab.id === 'compensation' ? ` (${compensations.length})` : ''}
+          </button>
+        ))}
       </div>
 
       {/* Tab 1: AI Model & Token Rules */}
@@ -211,39 +243,56 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
 
       {/* Tab 3: Master Data */}
       {activeTab === 'masterData' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-3">
-            <h3 className="text-[15px] font-bold text-[#0F172A]">全平台学科主数据</h3>
-            <div className="flex flex-wrap gap-2 text-[12px]">
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">数学</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">物理</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">化学</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">生物</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">英语</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">语文</span>
-            </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {[['学科', '数学、语文、英语、物理、化学、生物'], ['学段与年级', '小学、初中、高中'], ['教材版本', '人教版、浙教版、苏教版、北师大版']].map(([title, value]) => (
+              <div key={title} className="rounded-xl border border-[#E2E8F0] bg-white p-4"><p className="text-[12px] text-[#64748B]">{title}</p><p className="mt-2 text-[13px] font-medium text-[#0F172A]">{value}</p></div>
+            ))}
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-3">
-            <h3 className="text-[15px] font-bold text-[#0F172A]">适用学段与年级</h3>
-            <div className="flex flex-wrap gap-2 text-[12px]">
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">初一</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">初二</span>
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">初三</span>
-              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">高一</span>
-              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">高二</span>
-              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold">高三</span>
+          <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
+              <div><h3 className="text-[15px] font-semibold text-[#0F172A]">知识类型</h3><p className="mt-1 text-[12px] text-[#64748B]">内容中心和导入模板统一使用这里启用的类型</p></div>
+              <div className="flex gap-2"><input value={newKnowledgeTypeName} onChange={(event) => setNewKnowledgeTypeName(event.target.value)} placeholder="输入新类型名称" className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] outline-none focus:border-[#0E7D3E]" /><button disabled={!newKnowledgeTypeName.trim()} onClick={() => { const name = newKnowledgeTypeName.trim(); if (!name) return; setKnowledgeTypes((items) => [...items, { id: `KT-${Date.now()}`, name, applicableSubjects: '全学科', status: 'active', usageCount: 0 }]); setNewKnowledgeTypeName(''); }} className="rounded-lg bg-[#0E7D3E] px-4 py-2 text-[12px] font-semibold text-white disabled:bg-[#CBD5E1]">新增类型</button></div>
             </div>
+            <table className="w-full text-left text-[13px]">
+              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">类型名称</th><th className="px-4 py-3">适用学科</th><th className="px-4 py-3">状态</th><th className="px-4 py-3">使用知识点</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
+              <tbody className="divide-y divide-[#EEF2F6]">
+                {knowledgeTypes.map((item) => (
+                  <tr key={item.id}><td className="px-4 py-3.5 font-medium text-[#0F172A]">{item.name}</td><td className="px-4 py-3.5 text-[#64748B]">{item.applicableSubjects}</td><td className={`px-4 py-3.5 ${item.status === 'active' ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}`}>{item.status === 'active' ? '已启用' : '已停用'}</td><td className="px-4 py-3.5 tabular-nums">{item.usageCount}</td><td className="px-4 py-3.5 text-right"><button onClick={() => setKnowledgeTypes((items) => items.map((type) => type.id === item.id ? { ...type, status: type.status === 'active' ? 'inactive' : 'active' } : type))} className="mr-4 font-medium text-[#0E7D3E]">{item.status === 'active' ? '停用' : '启用'}</button><button disabled={!canDeleteKnowledgeType(item)} onClick={() => setKnowledgeTypes((items) => items.filter((type) => type.id !== item.id))} title={canDeleteKnowledgeType(item) ? '删除' : '已被知识点使用，只能停用'} className="font-medium text-[#DC2626] disabled:cursor-not-allowed disabled:text-[#CBD5E1]">删除</button></td></tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </div>
+      )}
 
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-3">
-            <h3 className="text-[15px] font-bold text-[#0F172A]">权威教材版本规范</h3>
-            <div className="flex flex-wrap gap-2 text-[12px]">
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">人教版 (PEP)</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">浙教版</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">苏教版</span>
-              <span className="px-2.5 py-1 bg-slate-100 rounded-lg font-bold">北师大版</span>
+      {activeTab === 'tokenPacks' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-xl border border-[#E2E8F0] bg-white px-5 py-4">
+            <div>
+              <h3 className="text-[15px] font-semibold text-[#0F172A]">学生端 Token 加油包</h3>
+              <p className="mt-1 text-[12px] text-[#64748B]">学生通过微信或支付宝直接购买</p>
             </div>
+            <button className="rounded-lg bg-[#0E7D3E] px-4 py-2 text-[12px] font-semibold text-white">新增加油包</button>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+            <table className="w-full text-left text-[13px]">
+              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]">
+                <tr><th className="px-4 py-3">名称</th><th className="px-4 py-3">Token</th><th className="px-4 py-3">售价</th><th className="px-4 py-3">学生端状态</th><th className="px-4 py-3 text-right">操作</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[#EEF2F6]">
+                {tokenPacks.map((pack) => (
+                  <tr key={pack.id}>
+                    <td className="px-4 py-3.5"><div className="font-medium text-[#0F172A]">{pack.name}</div><div className="text-[11px] text-[#94A3B8]">{pack.code}</div></td>
+                    <td className="px-4 py-3.5 font-medium tabular-nums">{pack.tokenAmount.toLocaleString()}</td>
+                    <td className="px-4 py-3.5 font-medium tabular-nums">¥{pack.price}</td>
+                    <td className="px-4 py-3.5"><span className={pack.status === 'active' ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}>{pack.status === 'active' ? '已上架' : '已下架'}</span></td>
+                    <td className="px-4 py-3.5 text-right"><button onClick={() => setTokenPacks((items) => items.map((item) => item.id === pack.id ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' } : item))} className="font-medium text-[#0E7D3E]">{pack.status === 'active' ? '下架' : '上架'}</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -253,16 +302,26 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs }) => {
 
       {/* Tab 5: Exception Reversal */}
       {activeTab === 'exceptionReversal' && (
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-4">
-          <h3 className="text-[16px] font-bold text-[#0F172A]">异常冲正与退款纠错追溯</h3>
-          <p className="text-[12.5px] text-[#64748B]">
-            遵循 PRD 规范，所有错充点数或误扣减交易均禁止直接擦除原记录。系统必须通过“逆向冲正订单”进行平账追溯。
-          </p>
-
-          <div className="border border-red-200 bg-red-50/50 p-4 rounded-xl text-[12.5px] text-red-700 space-y-1">
-            <div className="font-bold">冲正安全提示：</div>
-            <div>发起冲正后将自动扣减/退回对应机构采购点数，并联动产生不可更改的负向充值流水凭证。</div>
+        <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+          <div className="border-b border-[#E2E8F0] px-5 py-4">
+            <h3 className="text-[15px] font-semibold text-[#0F172A]">学生加油包退款</h3>
+            <p className="mt-1 text-[12px] text-[#64748B]">仅 Token 完全未使用时支持原路全额退款</p>
           </div>
+          <table className="w-full text-left text-[13px]">
+            <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">支付订单</th><th className="px-4 py-3">学生</th><th className="px-4 py-3">支付方式</th><th className="px-4 py-3">金额</th><th className="px-4 py-3">Token 使用情况</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
+            <tbody className="divide-y divide-[#EEF2F6]">
+              {refundOrders.map((order) => {
+                const eligibility = getTokenRefundEligibility(order);
+                return (
+                  <tr key={order.id}>
+                    <td className="px-4 py-3.5 font-mono text-[12px]">{order.id}</td><td className="px-4 py-3.5 font-medium">{order.student}</td><td className="px-4 py-3.5">{order.channel}</td><td className="px-4 py-3.5 tabular-nums">¥{order.amount}</td>
+                    <td className="px-4 py-3.5"><div>{order.remainingToken.toLocaleString()} / {order.grantedToken.toLocaleString()}</div><div className={`text-[11px] ${eligibility.allowed ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}`}>{eligibility.reason}</div></td>
+                    <td className="px-4 py-3.5 text-right"><button disabled={!eligibility.allowed} onClick={() => setRefundOrders((items) => items.map((item) => item.id === order.id ? { ...item, status: 'refunded' as const } : item))} className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[12px] font-medium text-[#0E7D3E] disabled:cursor-not-allowed disabled:text-[#CBD5E1]">全额退款</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

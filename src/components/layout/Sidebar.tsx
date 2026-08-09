@@ -1,14 +1,7 @@
 import React from 'react';
+import { NavTab, navGroups } from '../../navigation';
 
-export type NavTab = 
-  | 'dashboard' 
-  | 'goods'
-  | 'questionBank' 
-  | 'institutions' 
-  | 'teacherClass'
-  | 'students' 
-  | 'system'
-  | 'auditLogs';
+export type { NavTab } from '../../navigation';
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -17,42 +10,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
-  const navGroups: {
-    title: string;
-    items: { id: NavTab; label: string; icon: string; badge?: string }[];
-  }[] = [
-    {
-      title: '工作台',
-      items: [
-        { id: 'dashboard', label: '工作台概览', icon: 'dashboard' },
-      ],
-    },
-    {
-      title: '机构与教务',
-      items: [
-        { id: 'institutions', label: '机构管理', icon: 'domain', badge: '138' },
-        { id: 'teacherClass', label: '教师与班级', icon: 'groups' },
-        { id: 'students', label: '学生与诊断', icon: 'analytics' },
-      ],
-    },
-    {
-      title: '资源与权益',
-      items: [
-        { id: 'questionBank', label: '内容管理', icon: 'menu_book' },
-        { id: 'goods', label: '商品与权益', icon: 'package_2' },
-      ],
-    },
-    {
-      title: '系统与审计',
-      items: [
-        { id: 'system', label: '系统管理', icon: 'settings' },
-        { id: 'auditLogs', label: '操作日志', icon: 'receipt_long' },
-      ],
-    },
-  ];
-
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-white border-r border-[#E2E8F0] flex flex-col py-4 z-50 shadow-xs select-none">
+    <aside className="fixed left-0 top-0 h-screen w-[220px] bg-white border-r border-[#E2E8F0] flex flex-col py-5 z-50 select-none">
       {/* Brand Header */}
       <div className="px-5 mb-4">
         <div className="flex items-center gap-3">
@@ -77,22 +36,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
       </div>
 
       {/* Nav Groups */}
-      <nav className="flex-1 space-y-4 px-3 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar">
         {navGroups.map((group, groupIdx) => (
           <div key={groupIdx} className="space-y-1">
-            <div className="px-3 text-[10.5px] font-bold text-[#94A3B8] uppercase tracking-wider mb-1">
-              {group.title}
-            </div>
+            {group.title && <div className="px-3 text-[11px] font-medium text-[#94A3B8] mb-2">{group.title}</div>}
             {group.items.map((item) => {
               const isActive = currentTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => onSelectTab(item.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 text-[13px] font-medium text-left cursor-pointer group ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-[14px] font-medium text-left cursor-pointer group ${
                     isActive
-                      ? 'bg-[#E8F7EE] text-[#16B45B] font-bold shadow-2xs'
-                      : 'text-[#334155] hover:bg-[#F8FAFC] hover:text-[#16B45B]'
+                      ? 'bg-[#EAF7EF] text-[#0E7D3E] font-semibold'
+                      : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                   }`}
                 >
                   <span className={`material-symbols-outlined text-[19px] transition-colors ${
@@ -111,9 +68,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
                     </span>
                   )}
 
-                  {isActive && !item.badge && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#16B45B]"></span>
-                  )}
                 </button>
               );
             })}
@@ -121,19 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
         ))}
       </nav>
 
-      {/* System Status Footer */}
-      <div className="px-3 pt-3 border-t border-[#E2E8F0] mt-auto">
-        <div className="bg-[#F8FAFC] px-3 py-2 rounded-xl border border-[#E2E8F0] flex items-center justify-between text-[11px]">
-          <div className="flex items-center gap-1.5 font-bold text-[#0F172A]">
-            <span className="w-2 h-2 rounded-full bg-[#16B45B] animate-pulse"></span>
-            <span>系统运行正常</span>
-          </div>
-          <span className="font-mono text-[10px] text-[#64748B] bg-white px-1.5 py-0.5 rounded border border-[#E2E8F0]">
-            v2.4.0
-          </span>
-        </div>
-      </div>
+      <div className="px-5 pt-4 border-t border-[#E2E8F0] text-[11px] text-[#94A3B8]">平台总部运营</div>
     </aside>
   );
 };
-

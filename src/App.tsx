@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { NavTab, Sidebar } from './components/layout/Sidebar';
+import { resolveLegacyView } from './navigation';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
 import { GoodsView } from './components/views/GoodsView';
 import { QuestionBankView } from './components/views/QuestionBankView';
 import { DashboardView } from './components/views/DashboardView';
-import { TeacherClassView } from './components/views/TeacherClassView';
-import { StudentView } from './components/views/StudentView';
 import { SystemView } from './components/views/SystemView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { HelpModal } from './components/modals/HelpModal';
@@ -21,7 +20,6 @@ import {
   initialQuestions,
   initialTeachers,
   initialStudents,
-  initialParentGuardianships,
   initialAuditLogs,
 } from './mockData';
 
@@ -31,14 +29,12 @@ import {
   AuthCode,
   KnowledgePointNode,
   QuestionItem,
-  ParentGuardianship,
   AuditLogItem,
-  GuardianshipStatus,
   CurrentUser,
 } from './types';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavTab>('institutions');
+  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Authentication & Current User State
@@ -58,7 +54,6 @@ export default function App() {
   const [authCodes, setAuthCodes] = useState<AuthCode[]>(initialAuthCodes);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointNode[]>(initialKnowledgePoints);
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
-  const [guardianships, setGuardianships] = useState<ParentGuardianship[]>(initialParentGuardianships);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
 
@@ -233,16 +228,11 @@ export default function App() {
     addAuditLog('新增知识考点节点', `${newKp.name} (${newKp.code})`, `新增第 ${newKp.level} 级节点，学科：${newKp.subject}`, '题库管理');
   };
 
-  // Guardianship Operations
-  const handleUpdateGuardianshipStatus = (id: string, status: GuardianshipStatus) => {
-    setGuardianships((prev) => prev.map((g) => (g.id === id ? { ...g, status } : g)));
-    const targetG = guardianships.find((g) => g.id === id);
-    addAuditLog('处理家长监护关系', `${targetG?.parentName} -> ${targetG?.studentName}`, `关系状态调整为：${status}`, '机构管理');
-  };
-
   if (!isAuthenticated) {
     return <LoginView institutions={institutions} onLogin={handleLogin} />;
   }
+
+  const currentView = resolveLegacyView(currentTab);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
@@ -250,7 +240,7 @@ export default function App() {
       <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
 
       {/* Main Container Column */}
-      <div className="flex-1 flex flex-col h-screen min-w-0 pl-[240px]">
+      <div className="flex-1 flex flex-col h-screen min-w-0 pl-[220px]">
         {/* Top Header */}
         <Header
           searchQuery={searchQuery}
@@ -262,8 +252,8 @@ export default function App() {
         />
 
         {/* Scrollable Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
-          {currentTab === 'dashboard' && (
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
+          {currentView === 'dashboard' && (
             <DashboardView
               stats={stats}
               institutions={institutions}
@@ -272,7 +262,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'goods' && (
+          {currentView === 'goods' && (
             <GoodsView
               packages={packages}
               authCodes={authCodes}
@@ -285,7 +275,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'questionBank' && (
+          {currentView === 'questionBank' && (
             <QuestionBankView
               knowledgePoints={knowledgePoints}
               questions={questions}
@@ -296,7 +286,7 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'institutions' && (
+          {currentView === 'institutions' && (
             <InstitutionView
               institutions={institutions}
               servicePackages={packages}
@@ -307,50 +297,14 @@ export default function App() {
             />
           )}
 
-          {currentTab === 'teacherClass' && (
-            <TeacherClassView
-              institutions={institutions}
-              students={students}
-              onAddStudents={(newStus) => {
-                setStudents((prev) => [...newStus, ...prev]);
-                addAuditLog('批量导入班级学员', `新增 ${newStus.length} 名学员`, `初始划拨额度已生效，服务状态设为待配包。`, '机构管理');
-              }}
-            />
+          {(currentView === 'exceptions' || currentView === 'settings') && (
+            <SystemView key={currentView} auditLogs={auditLogs} mode={currentView} />
           )}
 
-          {currentTab === 'students' && (
-            <StudentView
-              students={students}
-              guardianships={guardianships}
-              onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
-              onGenerateReport={(studentId, subject, startDate, endDate) => {
-                addAuditLog('触发智能学习诊断生成', `学生ID: ${studentId}`, `生成 ${subject} 阶段性诊断报告 (${startDate} ~ ${endDate})`, '诊断管理');
-              }}
-            />
-          )}
-
-          {currentTab === 'system' && (
-            <SystemView auditLogs={auditLogs} />
-          )}
-
-          {currentTab === 'auditLogs' && (
+          {currentView === 'auditLogs' && (
             <AuditLogView logs={auditLogs} />
           )}
         </main>
-      </div>
-
-      {/* Floating Help Button (Bottom Right) */}
-      <div className="fixed bottom-8 right-8 z-50">
-        <button
-          onClick={() => setIsHelpModalOpen(true)}
-          className="w-14 h-14 bg-[#2e3132] text-white rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform group cursor-pointer"
-          title="系统帮助与文档"
-        >
-          <span className="material-symbols-outlined text-[24px]">help_outline</span>
-          <div className="absolute right-full mr-4 bg-[#2e3132] text-white text-[12px] px-3 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium shadow-md">
-            系统帮助与 PRD V2.0 规范说明
-          </div>
-        </button>
       </div>
 
       {/* System Help Floating Modal */}

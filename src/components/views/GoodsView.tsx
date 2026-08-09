@@ -43,6 +43,12 @@ const initialLedgers: OrderLedgerRecord[] = [
   { id: 'ORD-1004', orderNo: 'ORD-20260731-002', institutionId: 'INS-2022091', institutionName: '博雅语言学院', type: 'reversal', typeName: '点数误冲正冲销', paymentAmount: 0, creditChange: -2000, status: 'reversed', operatorName: '超级管理员', timestamp: '2026-07-31 18:00', originalOrderNo: 'ORD-20260720-005', reason: '充值金额核算纠错冲正' },
 ];
 
+const initialStudentTokenOrders = [
+  { id: 'PAY-20260808-0192', student: '张伟强', institution: '浙江大学附属中学', pack: '标准加油包', channel: '微信支付', amount: 39.9, token: 1000000, status: '已到账', time: '2026-08-08 19:32' },
+  { id: 'PAY-20260808-0186', student: '李思思', institution: '上海青葱教育培训中心', pack: '轻量加油包', channel: '支付宝', amount: 9.9, token: 200000, status: '已到账', time: '2026-08-08 18:46' },
+  { id: 'PAY-20260807-0163', student: '王浩然', institution: '博雅语言学院', pack: '畅用加油包', channel: '微信支付', amount: 99, token: 3000000, status: '已退款', time: '2026-08-07 16:03' },
+];
+
 export const GoodsView: React.FC<GoodsViewProps> = ({
   packages,
   authCodes,
@@ -53,7 +59,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onGenerateCodeForTest,
   onAdjustQuota,
 }) => {
-  const [activeTab, setActiveTab] = useState<'packages' | 'tokenPacks' | 'creditEntry' | 'authCodes' | 'ledger'>('packages');
+  const [activeTab, setActiveTab] = useState<'packages' | 'tokenPacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'tokenOrders'>('tokenOrders');
 
   // Token Packs State
   const [tokenPacks, setTokenPacks] = useState<TokenTopUpPack[]>(initialTokenPacks);
@@ -253,26 +259,47 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
   return (
     <div className="space-y-6">
+      <div>
+        <p className="text-[13px] text-[#64748B]">运营</p>
+        <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">开通监管</h2>
+      </div>
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
+      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">
         <button
-          onClick={() => setActiveTab('packages')}
+          onClick={() => setActiveTab('tokenOrders')}
           className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'packages' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
+            activeTab === 'tokenOrders' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          服务包配置 ({packages.length})
+          Token 订单 ({initialStudentTokenOrders.length})
         </button>
 
         <button
-          onClick={() => setActiveTab('tokenPacks')}
+          onClick={() => setActiveTab('authCodes')}
           className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'tokenPacks' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
+            activeTab === 'authCodes' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          Token 加油包 ({tokenPacks.length})
+          服务开通记录 ({authCodes.length})
         </button>
       </div>
+
+      {activeTab === 'tokenOrders' && (
+        <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
+            <div><h3 className="text-[15px] font-semibold text-[#0F172A]">学生 Token 加油包订单</h3><p className="mt-1 text-[12px] text-[#64748B]">微信、支付宝支付与 Token 到账状态</p></div>
+            <input className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] outline-none" placeholder="搜索订单或学生" />
+          </div>
+          <table className="w-full text-left text-[13px]">
+            <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">订单号</th><th className="px-4 py-3">学生 / 机构</th><th className="px-4 py-3">加油包</th><th className="px-4 py-3">支付方式</th><th className="px-4 py-3">实付</th><th className="px-4 py-3">到账 Token</th><th className="px-4 py-3">状态</th><th className="px-4 py-3">时间</th></tr></thead>
+            <tbody className="divide-y divide-[#EEF2F6]">
+              {initialStudentTokenOrders.map((order) => (
+                <tr key={order.id}><td className="px-4 py-3.5 font-mono text-[12px]">{order.id}</td><td className="px-4 py-3.5"><div className="font-medium">{order.student}</div><div className="text-[11px] text-[#94A3B8]">{order.institution}</div></td><td className="px-4 py-3.5">{order.pack}</td><td className="px-4 py-3.5">{order.channel}</td><td className="px-4 py-3.5 tabular-nums">¥{order.amount}</td><td className="px-4 py-3.5 tabular-nums">{order.token.toLocaleString()}</td><td className={`px-4 py-3.5 font-medium ${order.status === '已退款' ? 'text-[#94A3B8]' : 'text-[#0E7D3E]'}`}>{order.status}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{order.time}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Tab 1: Service Packages */}
       {activeTab === 'packages' && (

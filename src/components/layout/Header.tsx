@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1.5 pl-9 pr-3 text-[13px] text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:border-[#16B45B] focus:ring-2 focus:ring-[#16B45B]/15 transition-all outline-none"
-            placeholder="搜索机构、授权码、题目或服务包..."
+            placeholder="搜索机构、学生、授权码"
           />
         </div>
       </div>
@@ -131,4 +131,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

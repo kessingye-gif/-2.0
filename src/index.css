@@ -6,10 +6,10 @@
     --brand-green-hover: #139B4E;
     --brand-dark-green: #0E7D3E;
     --brand-yellow: #F5B700;
-    --brand-bg: #F4F6F5;
+    --brand-bg: #F6F7F8;
     --primary: #16B45B;
     --primary-container: #0E7D3E;
-    --background: #F4F6F5;
+    --background: #F6F7F8;
     --surface: #ffffff;
     --border: #E2E8F0;
     --text-primary: #0F172A;
@@ -45,11 +45,10 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  background-color: #F4F6F5;
+  background-color: #F6F7F8;
   color: #0F172A;
 }
 
 .font-headline {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
-
