@@ -282,6 +282,8 @@ export default function App() {
 
           {currentView === 'goods' && (
             <GoodsView
+              key={currentTab}
+              mode={currentTab === 'catalog' ? 'catalog' : currentTab === 'fulfillment' ? 'fulfillment' : 'finance'}
               packages={packages}
               authCodes={authCodes}
               institutions={institutions}

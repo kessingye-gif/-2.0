@@ -10,6 +10,7 @@ import {
 } from '../../types';
 
 interface GoodsViewProps {
+  mode: 'catalog' | 'fulfillment' | 'finance';
   packages: ServicePackage[];
   authCodes: AuthCode[];
   institutions: Institution[];
@@ -50,6 +51,7 @@ const initialStudentTokenOrders = [
 ];
 
 export const GoodsView: React.FC<GoodsViewProps> = ({
+  mode,
   packages,
   authCodes,
   institutions,
@@ -59,7 +61,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onGenerateCodeForTest,
   onAdjustQuota,
 }) => {
-  const [activeTab, setActiveTab] = useState<'packages' | 'tokenPacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'tokenOrders'>('tokenOrders');
+  const [activeTab, setActiveTab] = useState<'packages' | 'tokenPacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'tokenOrders'>(
+    mode === 'catalog' ? 'packages' : mode === 'fulfillment' ? 'authCodes' : 'creditEntry',
+  );
 
   // Token Packs State
   const [tokenPacks, setTokenPacks] = useState<TokenTopUpPack[]>(initialTokenPacks);
@@ -257,31 +261,32 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     });
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
 
+  const pageMeta = {
+    catalog: { eyebrow: '商业履约 · 服务商品', title: '商品与定价', description: '配置服务包、Token 加油包与机构采购成本。' },
+    fulfillment: { eyebrow: '商业履约 · 学生开通', title: '开通与履约', description: '跟踪学生开通码的生成、激活、过期与作废状态。' },
+    finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、Token 购买与退款流水。' },
+  }[mode];
+
+  const tabs = mode === 'catalog'
+    ? [{ id: 'packages' as const, label: '服务包' }, { id: 'tokenPacks' as const, label: 'Token 加油包' }]
+    : mode === 'fulfillment'
+      ? [{ id: 'authCodes' as const, label: `学生开通记录 (${authCodes.length})` }]
+      : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'tokenOrders' as const, label: 'Token 订单' }];
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[13px] text-[#64748B]">运营</p>
-        <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">开通监管</h2>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">{pageMeta.eyebrow}</p>
+        <h2 className="mt-1 text-[24px] font-bold tracking-tight text-[#0F172A]">{pageMeta.title}</h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">{pageMeta.description}</p>
       </div>
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">
-        <button
-          onClick={() => setActiveTab('tokenOrders')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'tokenOrders' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          Token 订单 ({initialStudentTokenOrders.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('authCodes')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'authCodes' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          服务开通记录 ({authCodes.length})
-        </button>
+        {tabs.map((tab) => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === tab.id ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'tokenOrders' && (
@@ -506,7 +511,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 cursor-pointer hover:bg-[#139B4E]"
             >
               <span className="material-symbols-outlined text-[16px]">key</span>
-              生成测试授权码
+              生成学生开通码
             </button>
           </div>
 
@@ -519,6 +524,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   <th className="py-3 px-4">对应教师</th>
                   <th className="py-3 px-4">指定学生</th>
                   <th className="py-3 px-4">服务包名称</th>
+                  <th className="py-3 px-4">生成 / 激活 / 到期</th>
                   <th className="py-3 px-4 text-center">状态</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
@@ -531,6 +537,11 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <td className="py-3 px-4">{code.teacherName}</td>
                     <td className="py-3 px-4 font-bold">{code.studentName || '暂未绑定'}</td>
                     <td className="py-3 px-4">{code.packageName}</td>
+                    <td className="py-3 px-4 text-[10px] leading-5 text-[#64748B]">
+                      <div>生成 {code.createdAt}</div>
+                      <div>激活 {code.activatedAt ?? '尚未激活'}</div>
+                      <div>到期 {code.expireAt}</div>
+                    </td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                         code.status === 'used' ? 'bg-green-100 text-green-700' : code.status === 'revoked' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
