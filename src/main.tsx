@@ -6,6 +6,6 @@ import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter><App /></BrowserRouter>
+    <BrowserRouter basename={window.location.pathname.startsWith('/houtai') ? '/houtai' : '/'}><App /></BrowserRouter>
   </StrictMode>,
 );
