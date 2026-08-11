@@ -5,6 +5,7 @@ interface TeacherClassViewProps {
   institutions: Institution[];
   students?: StudentItem[];
   onAddStudents?: (newStudents: StudentItem[]) => void;
+  initialTab?: 'teachers' | 'classes';
 }
 
 export interface ClassRosterStudent {
@@ -58,8 +59,8 @@ const initialClassRoster: ClassRosterStudent[] = [
 
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
 
-export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, onAddStudents }) => {
-  const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>('teachers');
+export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, onAddStudents, initialTab = 'teachers' }) => {
+  const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>(initialTab);
 
   // Teachers State
   const [teachers, setTeachers] = useState<TeacherItem[]>(initialTeachers);
@@ -91,6 +92,26 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   // Default Quota & Import State
   const [defaultQuota, setDefaultQuota] = useState<number>(500);
   const [importCount, setImportCount] = useState<number>(15);
+
+  const handleBatchImportTeachers = (file: File) => {
+    const institution = institutions[0];
+    if (!institution) return;
+    const stamp = Date.now().toString().slice(-5);
+    setTeachers((current) => [
+      {
+        id: `TCH-B-${stamp}-1`, name: '批量教师一', account: `teacher_${stamp}_1`, phone: '13800001001',
+        institutionId: institution.id, institutionName: institution.name, studentCount: 0,
+        allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
+      },
+      {
+        id: `TCH-B-${stamp}-2`, name: '批量教师二', account: `teacher_${stamp}_2`, phone: '13800001002',
+        institutionId: institution.id, institutionName: institution.name, studentCount: 0,
+        allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
+      },
+      ...current,
+    ]);
+    alert(`已读取【${file.name}】，成功导入 2 位教师；初始额度为 0，可在教师列表单独划拨。`);
+  };
 
   // Class Roster Modal State
   const [classRoster, setClassRoster] = useState<ClassRosterStudent[]>(initialClassRoster);
@@ -368,7 +389,21 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索教师姓名、账号、手机号或机构..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <button
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer rounded-xl border border-[#16B45B]/30 bg-[#E8F7EE] px-3.5 py-1.5 text-[12.5px] font-bold text-[#0E7D3E] hover:bg-[#DDF3E6]">
+                批量导入教师
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) handleBatchImportTeachers(file);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+              <button
               onClick={() => {
                 setTeacherForm({
                   name: '',
@@ -383,7 +418,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               新增教师账号
-            </button>
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">

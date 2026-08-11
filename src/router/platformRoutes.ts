@@ -1,4 +1,12 @@
-export type PlatformRouteId = 'dashboard' | 'institutions' | 'activations' | 'afterSales' | 'content' | 'audit' | 'settings';
+export type PlatformRouteId =
+  | 'dashboard'
+  | 'goods'
+  | 'content'
+  | 'institutions'
+  | 'teachers'
+  | 'classes'
+  | 'students'
+  | 'system';
 
 export interface PlatformRoute {
   id: PlatformRouteId;
@@ -9,12 +17,13 @@ export interface PlatformRoute {
 
 export const platformRoutes: PlatformRoute[] = [
   { id: 'dashboard', path: '/platform/dashboard', label: '经营驾驶舱', icon: 'space_dashboard' },
-  { id: 'institutions', path: '/platform/institutions', label: '机构与额度', icon: 'domain' },
-  { id: 'activations', path: '/platform/activations', label: '开通与使用', icon: 'verified_user' },
-  { id: 'afterSales', path: '/platform/after-sales', label: '售后与异常', icon: 'support_agent' },
-  { id: 'content', path: '/platform/content', label: '内容中心', icon: 'library_books' },
-  { id: 'audit', path: '/platform/audit', label: '数据与审计', icon: 'history' },
-  { id: 'settings', path: '/platform/settings', label: '平台设置', icon: 'settings' },
+  { id: 'goods', path: '/platform/goods', label: '商品与权益', icon: 'inventory_2' },
+  { id: 'content', path: '/platform/content', label: '内容管理', icon: 'library_books' },
+  { id: 'institutions', path: '/platform/institutions', label: '机构管理', icon: 'domain' },
+  { id: 'teachers', path: '/platform/teachers', label: '教师管理', icon: 'school' },
+  { id: 'classes', path: '/platform/classes', label: '班级管理', icon: 'groups' },
+  { id: 'students', path: '/platform/students', label: '学生管理', icon: 'person_search' },
+  { id: 'system', path: '/platform/system', label: '系统管理', icon: 'settings' },
 ];
 
 export const getPlatformRoute = (id: PlatformRouteId) => platformRoutes.find((route) => route.id === id)!;

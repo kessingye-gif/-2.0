@@ -10,7 +10,8 @@ import { GoodsView } from './components/views/GoodsView';
 import { QuestionBankView } from './components/views/QuestionBankView';
 import { DashboardView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
-import { AuditLogView } from './components/views/AuditLogView';
+import { TeacherClassView } from './components/views/TeacherClassView';
+import { StudentView } from './components/views/StudentView';
 import { HelpModal } from './components/modals/HelpModal';
 import { Toast } from './components/ui/Toast';
 
@@ -21,10 +22,10 @@ import {
   initialAuthCodes,
   initialKnowledgePoints,
   initialQuestions,
-  initialTeachers,
   initialStudents,
   initialAuditLogs,
   initialOrderLedger,
+  initialParentGuardianships,
 } from './mockData';
 import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
 import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
@@ -66,6 +67,7 @@ export default function App() {
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
+  const [guardianships, setGuardianships] = useState(initialParentGuardianships);
   const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
   const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
@@ -128,6 +130,17 @@ export default function App() {
   };
 
   const handleNotify = (message: string, tone: 'success' | 'warning' | 'error' = 'success') => setToast({ message, tone });
+
+  const handleUpdateGuardianshipStatus = (id: string, status: (typeof guardianships)[number]['status']) => {
+    setGuardianships((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+    addAuditLog('更新监护关系', id, `监护关系状态更新为：${status}`, '系统设置');
+  };
+
+  const handleGenerateReport = (studentId: string, subject: string, startDate: string, endDate: string) => {
+    const student = students.find((item) => item.id === studentId);
+    addAuditLog('生成学生学习报告', student?.name ?? studentId, `${subject} · ${startDate} 至 ${endDate}`, '诊断管理');
+    handleNotify(`已生成${student?.name ?? '学生'}的${subject}学习报告`);
+  };
 
   // Institution Operations
   const handleAddInstitution = (instData: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -274,13 +287,7 @@ export default function App() {
 
   if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
 
-  const currentView = currentTab === 'institutions' ? 'institutions'
-    : currentTab === 'content' ? 'questionBank'
-      : currentTab === 'activations' ? 'goods'
-        : currentTab === 'afterSales' ? 'exceptions'
-          : currentTab === 'audit' ? 'auditLogs'
-            : currentTab === 'settings' ? 'settings'
-              : 'dashboard';
+  const currentView = currentTab === 'content' ? 'questionBank' : currentTab;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
@@ -310,7 +317,7 @@ export default function App() {
           {currentView === 'goods' && (
             <GoodsView
               key={currentTab}
-              mode="fulfillment"
+              mode="catalog"
               packages={packages}
               authCodes={authCodes}
               institutions={institutions}
@@ -346,19 +353,44 @@ export default function App() {
             />
           )}
 
-          {(currentView === 'exceptions' || currentView === 'settings') && (
-            <SystemView
-              key={currentView}
-              auditLogs={auditLogs}
-              mode={currentView}
-              workItems={currentView === 'exceptions' ? fulfillmentSnapshot.workItems : []}
-              onResolveWorkItem={handleResolveWorkItem}
-              onNotify={handleNotify}
+          {currentView === 'teachers' && (
+            <TeacherClassView
+              key="teachers"
+              institutions={institutions}
+              students={students}
+              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              initialTab="teachers"
             />
           )}
 
-          {currentView === 'auditLogs' && (
-            <AuditLogView logs={auditLogs} />
+          {currentView === 'classes' && (
+            <TeacherClassView
+              key="classes"
+              institutions={institutions}
+              students={students}
+              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              initialTab="classes"
+            />
+          )}
+
+          {currentView === 'students' && (
+            <StudentView
+              students={students}
+              guardianships={guardianships}
+              onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
+              onGenerateReport={handleGenerateReport}
+            />
+          )}
+
+          {currentView === 'system' && (
+            <SystemView
+              key={currentView}
+              auditLogs={auditLogs}
+              mode="settings"
+              workItems={fulfillmentSnapshot.workItems}
+              onResolveWorkItem={handleResolveWorkItem}
+              onNotify={handleNotify}
+            />
           )}
         </main>
       </div>

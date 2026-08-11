@@ -3,7 +3,7 @@ import { getPlatformRoute, platformRoutes, type PlatformRouteId } from './router
 export type NavTab = PlatformRouteId;
 
 export const navGroups = [
-  { items: platformRoutes.slice(0, 4) },
-  { title: '内容', items: [getPlatformRoute('content')] },
-  { title: '系统', items: [getPlatformRoute('audit'), getPlatformRoute('settings')] },
+  { items: [getPlatformRoute('dashboard')] },
+  { title: '业务模块', items: platformRoutes.slice(1, 7) },
+  { title: '系统', items: [getPlatformRoute('system')] },
 ];

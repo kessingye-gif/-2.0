@@ -73,23 +73,23 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
       },
       {
         id: 'students', title: '学生与开通', description: '全平台学生的开通和激活结果', metrics: [
-          metric(students.length, { id: 'students', label: '学生总数', suffix: ' 人', sourceLabel: '机构学生档案', definition: '所有机构学生数', targetPath: '/platform/learning' }),
-          metric(activated, { id: 'activated', label: '已激活', suffix: ' 人', sourceLabel: '开通码记录', definition: '状态为已激活的开通记录', targetPath: '/platform/activations?status=used', tone: 'positive' }),
-          metric(pending, { id: 'pending', label: '待激活', suffix: ' 人', sourceLabel: '开通码记录', definition: '已生成但尚未激活的开通记录', targetPath: '/platform/activations?status=pending', tone: 'warning' }),
+          metric(students.length, { id: 'students', label: '学生总数', suffix: ' 人', sourceLabel: '机构学生档案', definition: '所有机构学生数', targetPath: '/platform/students' }),
+          metric(activated, { id: 'activated', label: '已激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '状态为已激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=used', tone: 'positive' }),
+          metric(pending, { id: 'pending', label: '待激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '已创建但尚未激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' }),
         ],
       },
       {
         id: 'learning', title: '学习与使用', description: '只展示学生档案中已有的学习累计数据', metrics: [
-          metric(activeStudents, { id: 'activeStudents', label: '服务中学生', suffix: ' 人', sourceLabel: '学生服务档案', definition: '服务状态为正常的学生', targetPath: '/platform/learning?service=active' }),
-          metric(studyHours, { id: 'studyHours', label: '累计学习时长', suffix: ' 小时', sourceLabel: '学生学习档案', definition: '学生累计学习时长之和', targetPath: '/platform/learning' }),
-          metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '学生学习档案', definition: '学生累计答题数之和', targetPath: '/platform/learning' }),
+          metric(activeStudents, { id: 'activeStudents', label: '服务中学生', suffix: ' 人', sourceLabel: '学生服务档案', definition: '服务状态为正常的学生', targetPath: '/platform/students?service=active' }),
+          metric(studyHours, { id: 'studyHours', label: '累计学习时长', suffix: ' 小时', sourceLabel: '学生学习档案', definition: '学生累计学习时长之和', targetPath: '/platform/students?tab=diagnostics' }),
+          metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '学生学习档案', definition: '学生累计答题数之和', targetPath: '/platform/students?tab=diagnostics' }),
         ],
       },
     ],
     workItems: [
       ...(lowQuota.length ? [{ id: 'low-quota', title: '机构额度过低', description: '进入机构列表查看并追加额度', count: lowQuota.length, targetPath: '/platform/institutions?quota=low', tone: 'warning' as const }] : []),
       ...(unconfigured.length ? [{ id: 'unconfigured', title: '机构未配置服务范围', description: '进入机构详情配置内容包和服务包', count: unconfigured.length, targetPath: '/platform/institutions?scope=missing', tone: 'danger' as const }] : []),
-      ...(pending ? [{ id: 'pending-activation', title: '学生待激活', description: '查看对应机构、老师、学生和开通码', count: pending, targetPath: '/platform/activations?status=pending', tone: 'warning' as const }] : []),
+      ...(pending ? [{ id: 'pending-activation', title: '学生待激活', description: '查看对应机构、老师、学生和权益记录', count: pending, targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' as const }] : []),
     ],
   };
 };

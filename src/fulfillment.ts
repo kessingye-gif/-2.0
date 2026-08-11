@@ -62,12 +62,12 @@ export const deriveFulfillmentSnapshot = ({
 
   const funnel: FulfillmentFunnelStep[] = [
     { id: 'contracted', label: '机构签约', value: contracted, displayValue: `${contracted} 家`, targetTab: 'institutions' },
-    { id: 'funded', label: '额度到账', value: fundedOrders.length, displayValue: `${fundedOrders.length} 笔`, conversionRate: rate(fundedOrders.length, contracted), targetTab: 'activations' },
+    { id: 'funded', label: '额度到账', value: fundedOrders.length, displayValue: `${fundedOrders.length} 笔`, conversionRate: rate(fundedOrders.length, contracted), targetTab: 'goods' },
     { id: 'configured', label: '服务配置', value: configured, displayValue: `${configured} 家`, conversionRate: rate(configured, contracted), targetTab: 'institutions' },
-    { id: 'issued', label: '开通码生成', value: issued, displayValue: `${issued} 个`, targetTab: 'activations' },
-    { id: 'activated', label: '学生激活', value: activated, displayValue: `${activated} 人`, conversionRate: rate(activated, issued), targetTab: 'activations' },
-    { id: 'servicing', label: '服务履约', value: servicing, displayValue: `${servicing} 人`, conversionRate: rate(servicing, activated), targetTab: 'activations' },
-    { id: 'renewal', label: '续费 / 退款', value: renewalOrders.length, displayValue: `${renewalOrders.length} 笔`, targetTab: 'afterSales' },
+    { id: 'issued', label: '开通码生成', value: issued, displayValue: `${issued} 个`, targetTab: 'goods' },
+    { id: 'activated', label: '学生激活', value: activated, displayValue: `${activated} 人`, conversionRate: rate(activated, issued), targetTab: 'students' },
+    { id: 'servicing', label: '服务履约', value: servicing, displayValue: `${servicing} 人`, conversionRate: rate(servicing, activated), targetTab: 'students' },
+    { id: 'renewal', label: '续费 / 退款', value: renewalOrders.length, displayValue: `${renewalOrders.length} 笔`, targetTab: 'goods' },
   ];
 
   const lowCreditItems: FulfillmentWorkItem[] = institutions
@@ -79,7 +79,7 @@ export const deriveFulfillmentSnapshot = ({
       description: `剩余 ${item.remainingQuota.toLocaleString('zh-CN')} 点，需跟进续费或补充额度`,
       institutionName: item.name,
       severity: item.remainingQuota === 0 ? 'high' : 'medium',
-      targetTab: 'afterSales',
+      targetTab: 'system',
     }));
 
   const expiringCodeItems: FulfillmentWorkItem[] = authCodes
@@ -91,7 +91,7 @@ export const deriveFulfillmentSnapshot = ({
       description: `${item.studentName ?? '未绑定学生'}的 ${item.packageName} 将于 ${item.expireAt} 到期`,
       institutionName: item.institutionName,
       severity: 'medium',
-      targetTab: 'activations',
+      targetTab: 'goods',
     }));
 
   const workItems = [...lowCreditItems, ...expiringCodeItems].slice(0, 6);
@@ -131,17 +131,17 @@ export const buildGlobalSearchResults = (query: string, data: SearchData): Globa
   });
   data.students.forEach((item) => {
     if (includes(item.name, item.nickname, item.account, item.institutionName)) {
-      results.push({ id: item.id, type: 'student', title: item.name, subtitle: `${item.institutionName} · ${item.account}`, targetTab: 'activations' });
+      results.push({ id: item.id, type: 'student', title: item.name, subtitle: `${item.institutionName} · ${item.account}`, targetTab: 'students' });
     }
   });
   data.authCodes.forEach((item) => {
     if (includes(item.code, item.institutionName, item.studentName, item.teacherName)) {
-      results.push({ id: item.id, type: 'authCode', title: item.code, subtitle: `${item.institutionName} · ${item.studentName ?? '未绑定学生'}`, targetTab: 'activations' });
+      results.push({ id: item.id, type: 'authCode', title: item.code, subtitle: `${item.institutionName} · ${item.studentName ?? '未绑定学生'}`, targetTab: 'goods' });
     }
   });
   data.orders.forEach((item) => {
     if (includes(item.orderNo, item.institutionName, item.operatorName)) {
-      results.push({ id: item.id, type: 'order', title: item.orderNo, subtitle: `${item.institutionName} · ${item.typeName}`, targetTab: item.type === 'refund' ? 'afterSales' : 'activations' });
+      results.push({ id: item.id, type: 'order', title: item.orderNo, subtitle: `${item.institutionName} · ${item.typeName}`, targetTab: 'goods' });
     }
   });
 

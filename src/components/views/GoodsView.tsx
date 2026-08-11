@@ -262,13 +262,20 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
 
   const pageMeta = {
-    catalog: { eyebrow: '商业履约 · 服务商品', title: '商品与定价', description: '配置服务包、Token 加油包与机构采购成本。' },
+    catalog: { eyebrow: '商品、额度与权益', title: '商品与权益管理', description: '从商品配置、机构额度入账到学生权益开通和流水追溯，统一在此闭环。' },
     fulfillment: { eyebrow: '商业履约 · 学生开通', title: '开通与履约', description: '跟踪学生开通码的生成、激活、过期与作废状态。' },
     finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、Token 购买与退款流水。' },
   }[mode];
 
   const tabs = mode === 'catalog'
-    ? [{ id: 'packages' as const, label: '服务包' }, { id: 'tokenPacks' as const, label: 'Token 加油包' }]
+    ? [
+        { id: 'packages' as const, label: '服务包' },
+        { id: 'tokenPacks' as const, label: 'Token 加油包' },
+        { id: 'creditEntry' as const, label: '机构额度入账' },
+        { id: 'authCodes' as const, label: `学生权益开通 (${authCodes.length})` },
+        { id: 'ledger' as const, label: '权益流水' },
+        { id: 'tokenOrders' as const, label: 'Token 订单' },
+      ]
     : mode === 'fulfillment'
       ? [{ id: 'authCodes' as const, label: `学生开通记录 (${authCodes.length})` }]
       : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'tokenOrders' as const, label: 'Token 订单' }];

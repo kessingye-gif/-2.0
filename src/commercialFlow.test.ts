@@ -15,7 +15,7 @@ const workItem: FulfillmentWorkItem = {
   description: '剩余 3,200 点，需跟进续费',
   institutionName: '华中师范大学第一附属中学',
   severity: 'high',
-  targetTab: 'afterSales',
+  targetTab: 'system',
 };
 
 test('after-sales workspace renders unresolved commercial work items', () => {

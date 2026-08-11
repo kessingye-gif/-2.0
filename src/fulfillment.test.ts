@@ -37,7 +37,7 @@ test('global search returns a routable authorization-code result', () => {
 
   assert.equal(results.length, 1);
   assert.equal(results[0]?.type, 'authCode');
-  assert.equal(results[0]?.targetTab, 'fulfillment');
+  assert.equal(results[0]?.targetTab, 'goods');
 });
 
 test('global search trims empty input and caps broad results at eight', () => {

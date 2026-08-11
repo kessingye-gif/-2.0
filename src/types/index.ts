@@ -63,7 +63,7 @@ export interface FulfillmentFunnelStep {
   value: number;
   displayValue: string;
   conversionRate?: number;
-  targetTab: 'institutions' | 'activations' | 'afterSales';
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
 }
 
 export interface FulfillmentWorkItem {
@@ -73,7 +73,7 @@ export interface FulfillmentWorkItem {
   description: string;
   institutionName: string;
   severity: 'high' | 'medium' | 'low';
-  targetTab: 'institutions' | 'activations' | 'afterSales';
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
 }
 
 export interface FulfillmentEvent {
@@ -99,7 +99,7 @@ export interface GlobalSearchResult {
   type: 'institution' | 'student' | 'authCode' | 'order';
   title: string;
   subtitle: string;
-  targetTab: 'institutions' | 'activations' | 'afterSales';
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
 }
 
 export type PackageType = 'single_low' | 'single_high' | 'all_low' | 'all_high';
