@@ -9,6 +9,7 @@ import {
 } from '../../types';
 import { DiagnosticsView } from './DiagnosticsView';
 import { createGuardianBindingCode, deriveStudentRights } from '../../utils/studentCodeManagement';
+import { filterStudents, getStudentFilterOptions } from '../../utils/studentFilters';
 
 interface StudentViewProps {
   students: StudentItem[];
@@ -39,6 +40,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
   // Roster Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceStatusFilter, setServiceStatusFilter] = useState('');
+  const [institutionFilter, setInstitutionFilter] = useState('');
+  const [teacherFilter, setTeacherFilter] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
 
   // Rebind Requests
   const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(initialRebindRequests);
@@ -57,17 +61,10 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
 
   // Filtered Roster
-  const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
-      const matchSearch =
-        s.name.includes(searchTerm) ||
-        s.account.includes(searchTerm) ||
-        s.teacherName.includes(searchTerm) ||
-        s.institutionName.includes(searchTerm);
-      const matchStatus = !serviceStatusFilter || s.serviceStatus === serviceStatusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [students, searchTerm, serviceStatusFilter]);
+  const organizationFilters = { institution: institutionFilter, teacher: teacherFilter, grade: gradeFilter };
+  const filterOptions = useMemo(() => getStudentFilterOptions(students, organizationFilters), [students, institutionFilter, teacherFilter, gradeFilter]);
+  const filteredStudents = useMemo(() => filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter }), [students, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, gradeFilter]);
+  const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || gradeFilter);
 
   // Handlers for Rebind Requests
   const handleReviewRebind = (id: string, isApproved: boolean) => {
@@ -141,8 +138,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
       {/* Tab 1: Student Roster */}
       {activeTab === 'roster' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 type="text"
                 value={searchTerm}
@@ -150,6 +147,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 placeholder="搜索学生姓名、账号、负责教师或机构..."
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
               />
+              <select value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+              <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+              <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部年级</option>{filterOptions.grades.map((value) => <option key={value} value={value}>{value}</option>)}</select>
               <select
                 value={serviceStatusFilter}
                 onChange={(e) => setServiceStatusFilter(e.target.value)}
@@ -161,7 +161,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 <option value="expired">已到期</option>
               </select>
             </div>
-            <span className="text-[12px] text-[#64748B]">共计 {filteredStudents.length} 名学生账号</span>
+            <div className="flex items-center justify-between gap-3"><span className="text-[12px] text-[#64748B]">当前显示 {filteredStudents.length} / {students.length} 名学生</span>{hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除筛选</button>}</div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -178,7 +178,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {filteredStudents.map((stu) => (
+                {filteredStudents.length === 0 ? <tr><td colSpan={7} className="px-6 py-12 text-center text-[#64748B]">当前筛选条件下暂无学生</td></tr> : filteredStudents.map((stu) => (
                   <tr key={stu.id} className="hover:bg-[#F8FAFC]">
                     <td className="py-3 px-4 font-bold text-[#0F172A]">{stu.name}</td>
                     <td className="py-3 px-4 font-mono text-[12px]">
