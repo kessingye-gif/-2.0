@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   ServicePackage,
-  TokenTopUpPack,
+  AiUsagePack,
   CreditEntryRecord,
   AuthCode,
   OrderLedgerRecord,
@@ -30,10 +30,10 @@ interface GoodsViewProps {
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
 }
 
-const initialTokenPacks: TokenTopUpPack[] = [
-  { id: 'TP-01', code: 'TP-1M', name: '100万 Token 超值加油包', tokenAmount: 1000000, price: 500, status: 'active', description: '适用于重度 AI 问答与大篇幅诊断报告生成', createdAt: '2026-06-01' },
-  { id: 'TP-02', code: 'TP-5M', name: '500万 Token 机构专属包', tokenAmount: 5000000, price: 2200, status: 'active', description: '适合中大型机构全学期 AI 高频使用', createdAt: '2026-06-15' },
-  { id: 'TP-03', code: 'TP-10M', name: '1000万 Token 旗舰算力包', tokenAmount: 10000000, price: 4000, status: 'active', description: '旗舰级算力配额，无时间限制直至消耗完毕', createdAt: '2026-07-01' },
+const initialAiUsagePacks: AiUsagePack[] = [
+  { id: 'AUP-01', code: 'AUP-1M', name: '100万 AI 用量超值加油包', usageAmount: 1000000, price: 500, status: 'active', description: '适用于重度 AI 问答与大篇幅诊断报告生成', createdAt: '2026-06-01' },
+  { id: 'AUP-02', code: 'AUP-5M', name: '500万 AI 用量机构专属包', usageAmount: 5000000, price: 2200, status: 'active', description: '适合中大型机构全学期 AI 高频使用', createdAt: '2026-06-15' },
+  { id: 'AUP-03', code: 'AUP-10M', name: '1000万 AI 用量旗舰包', usageAmount: 10000000, price: 4000, status: 'active', description: '旗舰级 AI 用量，无时间限制直至消耗完毕', createdAt: '2026-07-01' },
 ];
 
 const initialCreditEntries: CreditEntryRecord[] = [
@@ -44,7 +44,7 @@ const initialCreditEntries: CreditEntryRecord[] = [
 const initialLedgers: OrderLedgerRecord[] = [
   { id: 'ORD-1001', orderNo: 'ORD-20260728-001', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'credit_inflow', typeName: '机构点数入账', paymentAmount: 50000, creditChange: 50000, status: 'completed', operatorName: '超级管理员', timestamp: '2026-07-28 11:20', reason: '线下对公充值' },
   { id: 'ORD-1002', orderNo: 'ORD-20260729-014', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'package_redeem', typeName: '授权码服务包兑换', paymentAmount: 0, creditChange: -350, status: 'completed', operatorName: '王教师', timestamp: '2026-07-29 09:15', reason: '兑换高三全科冲刺包' },
-  { id: 'ORD-1003', orderNo: 'ORD-20260730-008', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', type: 'token_pack_buy', typeName: 'Token加油包购买', paymentAmount: 500, creditChange: -500, status: 'completed', operatorName: '张管理员', timestamp: '2026-07-30 16:40', reason: '购买100万 Token加油包' },
+  { id: 'ORD-1003', orderNo: 'ORD-20260730-008', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', type: 'ai_usage_pack_buy', typeName: 'AI 加油包购买', paymentAmount: 500, creditChange: -500, status: 'completed', operatorName: '张管理员', timestamp: '2026-07-30 16:40', reason: '购买100万 AI 用量加油包' },
   { id: 'ORD-1004', orderNo: 'ORD-20260731-002', institutionId: 'INS-2022091', institutionName: '博雅语言学院', type: 'reversal', typeName: '点数误冲正冲销', paymentAmount: 0, creditChange: -2000, status: 'reversed', operatorName: '超级管理员', timestamp: '2026-07-31 18:00', originalOrderNo: 'ORD-20260720-005', reason: '充值金额核算纠错冲正' },
 ];
 
@@ -61,17 +61,17 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onAudit,
   onNotify,
 }) => {
-  const [activeTab, setActiveTab] = useState<'packages' | 'tokenPacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'tokenOrders'>(
+  const [activeTab, setActiveTab] = useState<'packages' | 'aiUsagePacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'addOnOrders'>(
     mode === 'catalog' ? 'packages' : mode === 'fulfillment' ? 'authCodes' : 'creditEntry',
   );
 
-  // Token Packs State
-  const [tokenPacks, setTokenPacks] = useState<TokenTopUpPack[]>(initialTokenPacks);
-  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
-  const [tokenForm, setTokenForm] = useState({
+  // AI usage packs state
+  const [aiUsagePacks, setAiUsagePacks] = useState<AiUsagePack[]>(initialAiUsagePacks);
+  const [isAiUsageModalOpen, setIsAiUsageModalOpen] = useState(false);
+  const [aiUsageForm, setAiUsageForm] = useState({
     name: '',
     code: '',
-    tokenAmount: 1000000,
+    usageAmount: 1000000,
     price: 500,
     description: '',
   });
@@ -179,20 +179,20 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     setIsPkgModalOpen(false);
   };
 
-  const handleAddTokenPack = (e: React.FormEvent) => {
+  const handleAddAiUsagePack = (e: React.FormEvent) => {
     e.preventDefault();
-    const newPack: TokenTopUpPack = {
-      id: `TP-${Date.now().toString().slice(-4)}`,
-      code: tokenForm.code || `TP-${Date.now().toString().slice(-4)}`,
-      name: tokenForm.name,
-      tokenAmount: Number(tokenForm.tokenAmount),
-      price: Number(tokenForm.price),
-      description: tokenForm.description,
+    const newPack: AiUsagePack = {
+      id: `AUP-${Date.now().toString().slice(-4)}`,
+      code: aiUsageForm.code || `AUP-${Date.now().toString().slice(-4)}`,
+      name: aiUsageForm.name,
+      usageAmount: Number(aiUsageForm.usageAmount),
+      price: Number(aiUsageForm.price),
+      description: aiUsageForm.description,
       status: 'active',
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setTokenPacks((prev) => [newPack, ...prev]);
-    setIsTokenModalOpen(false);
+    setAiUsagePacks((prev) => [newPack, ...prev]);
+    setIsAiUsageModalOpen(false);
   };
 
   const handleAddCreditEntry = (e: React.FormEvent) => {
@@ -264,21 +264,21 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   const pageMeta = {
     catalog: { eyebrow: '商品、额度与权益', title: '商品与权益管理', description: '从商品配置、机构额度入账到学生权益开通和流水追溯，统一在此闭环。' },
     fulfillment: { eyebrow: '商业履约 · 学生开通', title: '开通与履约', description: '跟踪学生开通码的生成、激活、过期与作废状态。' },
-    finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、Token 购买与退款流水。' },
+    finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、AI 加油包购买与退款流水。' },
   }[mode];
 
   const tabs = mode === 'catalog'
     ? [
         { id: 'packages' as const, label: '服务包' },
-        { id: 'tokenPacks' as const, label: 'Token 加油包' },
+        { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
         { id: 'creditEntry' as const, label: '机构额度入账' },
         { id: 'authCodes' as const, label: `学生权益开通 (${authCodes.length})` },
         { id: 'ledger' as const, label: '权益流水' },
-        { id: 'tokenOrders' as const, label: '学生加油包订单' },
+        { id: 'addOnOrders' as const, label: '学生加油包订单' },
       ]
     : mode === 'fulfillment'
       ? [{ id: 'authCodes' as const, label: `学生开通记录 (${authCodes.length})` }]
-      : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'tokenOrders' as const, label: '学生加油包订单' }];
+      : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
 
   return (
     <div className="space-y-6">
@@ -296,7 +296,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         ))}
       </div>
 
-      {activeTab === 'tokenOrders' && (
+      {activeTab === 'addOnOrders' && (
         <StudentAddOnOrdersPanel onAudit={onAudit} onNotify={onNotify} />
       )}
 
@@ -371,33 +371,33 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: Token TopUp Packs */}
-      {activeTab === 'tokenPacks' && (
+      {/* AI usage packs */}
+      {activeTab === 'aiUsagePacks' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              Token 加油包供机构在基本额度消耗完后独立采购，直接充值至机构全局 Token 资金池
+              AI 加油包用于补充学生端 AI 用量，与机构点数和学生权益分别记账
             </span>
             <button
               onClick={() => {
-                setTokenForm({
+                setAiUsageForm({
                   name: '',
                   code: `TP-${Date.now().toString().slice(-4)}`,
-                  tokenAmount: 1000000,
+                  usageAmount: 1000000,
                   price: 500,
                   description: '',
                 });
-                setIsTokenModalOpen(true);
+                setIsAiUsageModalOpen(true);
               }}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              新建 Token 加油包
+              新建 AI 加油包
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {tokenPacks.map((pack) => (
+            {aiUsagePacks.map((pack) => (
               <div key={pack.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3">
                 <div className="flex justify-between items-start">
                   <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
@@ -415,7 +415,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   <div>
                     <span className="text-[11px] text-[#64748B] block">包含算力</span>
                     <span className="text-[16px] font-extrabold font-mono text-[#0F172A]">
-                      {(pack.tokenAmount / 10000).toFixed(0)}万 Token
+                      {(pack.usageAmount / 10000).toFixed(0)}万 AI 用量
                     </span>
                   </div>
                   <div className="text-right">
@@ -581,7 +581,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <option value="">全部流水类型</option>
                 <option value="credit_inflow">机构点数入账</option>
                 <option value="package_redeem">服务包兑换</option>
-                <option value="token_pack_buy">Token加油包购买</option>
+                <option value="ai_usage_pack_buy">AI 加油包购买</option>
                 <option value="reversal">冲正/退款流水</option>
               </select>
             </div>
@@ -719,32 +719,32 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         </div>
       )}
 
-      {/* Token Pack Modal */}
-      {isTokenModalOpen && (
+      {/* AI usage pack modal */}
+      {isAiUsageModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">新建 Token 加油包</h3>
-            <form onSubmit={handleAddTokenPack} className="space-y-4">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">新建 AI 加油包</h3>
+            <form onSubmit={handleAddAiUsagePack} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">加油包名称</label>
                 <input
                   type="text"
                   required
-                  value={tokenForm.name}
-                  onChange={(e) => setTokenForm({ ...tokenForm, name: e.target.value })}
-                  placeholder="如：200万 Token 专项加油包"
+                  value={aiUsageForm.name}
+                  onChange={(e) => setAiUsageForm({ ...aiUsageForm, name: e.target.value })}
+                  placeholder="如：200万 AI 用量专项加油包"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">包含 Token 数</label>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">包含 AI 用量</label>
                   <input
                     type="number"
                     required
-                    value={tokenForm.tokenAmount}
-                    onChange={(e) => setTokenForm({ ...tokenForm, tokenAmount: Number(e.target.value) })}
+                    value={aiUsageForm.usageAmount}
+                    onChange={(e) => setAiUsageForm({ ...aiUsageForm, usageAmount: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>
@@ -753,8 +753,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   <input
                     type="number"
                     required
-                    value={tokenForm.price}
-                    onChange={(e) => setTokenForm({ ...tokenForm, price: Number(e.target.value) })}
+                    value={aiUsageForm.price}
+                    onChange={(e) => setAiUsageForm({ ...aiUsageForm, price: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>
@@ -764,8 +764,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">说明描述</label>
                 <textarea
                   rows={2}
-                  value={tokenForm.description}
-                  onChange={(e) => setTokenForm({ ...tokenForm, description: e.target.value })}
+                  value={aiUsageForm.description}
+                  onChange={(e) => setAiUsageForm({ ...aiUsageForm, description: e.target.value })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
                 />
               </div>
@@ -773,7 +773,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                 <button
                   type="button"
-                  onClick={() => setIsTokenModalOpen(false)}
+                  onClick={() => setIsAiUsageModalOpen(false)}
                   className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
                 >
                   取消

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, TokenCompensation } from '../../types';
+import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, AiUsageCompensation } from '../../types';
 import { AuditLogView } from './AuditLogView';
 import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowledgeTypeRegistry';
 
@@ -12,14 +12,14 @@ interface SystemViewProps {
 }
 
 const initialAiModels: AiModelConfig[] = [
-  { id: 'MOD-01', name: 'Gemini 1.5 Flash (推理高响应)', provider: 'Google AI Studio', capability: '文本解析', tokenMultiplier: 1.0, isDefault: true, status: 'active', updatedAt: '2026-08-01' },
-  { id: 'MOD-02', name: 'Gemini 1.5 Pro (深度学习分析)', provider: 'Google AI Studio', capability: '多模态识图', tokenMultiplier: 1.5, isDefault: false, status: 'active', updatedAt: '2026-08-01' },
-  { id: 'MOD-03', name: 'TTS 智能提问与口语练习', provider: 'Native Audio Synthesizer', capability: '语音合成', tokenMultiplier: 2.0, isDefault: false, status: 'active', updatedAt: '2026-07-20' },
+  { id: 'MOD-01', name: 'Gemini 1.5 Flash (推理高响应)', provider: 'Google AI Studio', capability: '文本解析', usageMultiplier: 1.0, isDefault: true, status: 'active', updatedAt: '2026-08-01' },
+  { id: 'MOD-02', name: 'Gemini 1.5 Pro (深度学习分析)', provider: 'Google AI Studio', capability: '多模态识图', usageMultiplier: 1.5, isDefault: false, status: 'active', updatedAt: '2026-08-01' },
+  { id: 'MOD-03', name: 'TTS 智能提问与口语练习', provider: 'Native Audio Synthesizer', capability: '语音合成', usageMultiplier: 2.0, isDefault: false, status: 'active', updatedAt: '2026-07-20' },
 ];
 
-const initialCompensations: TokenCompensation[] = [
-  { id: 'COMP-101', studentId: 'STU-001', studentName: '张伟强', institutionName: '浙江大学附属中学', tokenAmount: 50000, reason: '7月30日线上网络超时导致题目AI诊断中断补偿', operatorName: '超级管理员', timestamp: '2026-07-31 10:00' },
-  { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', tokenAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
+const initialCompensations: AiUsageCompensation[] = [
+  { id: 'COMP-101', studentId: 'STU-001', studentName: '张伟强', institutionName: '浙江大学附属中学', usageAmount: 50000, reason: '7月30日线上网络超时导致题目AI诊断中断补偿', operatorName: '超级管理员', timestamp: '2026-07-31 10:00' },
+  { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', usageAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
 ];
 
 type SystemTab = 'aiRules' | 'masterData' | 'compensation' | 'auditLogs' | 'exceptionReversal';
@@ -45,11 +45,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
     name: '',
     provider: 'Google AI Studio',
     capability: '文本解析' as '文本解析' | '多模态识图' | '语音合成',
-    tokenMultiplier: 1.0,
+    usageMultiplier: 1.0,
   });
 
-  // Token Compensations State
-  const [compensations, setCompensations] = useState<TokenCompensation[]>(initialCompensations);
+  // AI usage compensation state
+  const [compensations, setCompensations] = useState<AiUsageCompensation[]>(initialCompensations);
   const [knowledgeTypes, setKnowledgeTypes] = useState(defaultKnowledgeTypes);
   const [newKnowledgeTypeName, setNewKnowledgeTypeName] = useState('');
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);
@@ -57,7 +57,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
     studentId: 'STU-001',
     studentName: '张伟强',
     institutionName: '浙江大学附属中学',
-    tokenAmount: 50000,
+    usageAmount: 50000,
     reason: '',
   });
 
@@ -69,7 +69,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
       name: modelForm.name,
       provider: modelForm.provider,
       capability: modelForm.capability,
-      tokenMultiplier: Number(modelForm.tokenMultiplier),
+      usageMultiplier: Number(modelForm.usageMultiplier),
       isDefault: false,
       status: 'active',
       updatedAt: new Date().toISOString().slice(0, 10),
@@ -80,19 +80,19 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
 
   const handleSaveCompensation = (e: React.FormEvent) => {
     e.preventDefault();
-    const newC: TokenCompensation = {
+    const newC: AiUsageCompensation = {
       id: `COMP-${Date.now().toString().slice(-3)}`,
       studentId: compForm.studentId,
       studentName: compForm.studentName,
       institutionName: compForm.institutionName,
-      tokenAmount: Number(compForm.tokenAmount),
-      reason: compForm.reason || '运营补发 Token 额度',
+      usageAmount: Number(compForm.usageAmount),
+      reason: compForm.reason || '运营补发 AI 用量',
       operatorName: '超级管理员',
       timestamp: new Date().toLocaleString().slice(0, 16),
     };
     setCompensations((prev) => [newC, ...prev]);
     setIsCompModalOpen(false);
-    onNotify?.(`已向学生【${compForm.studentName}】补发 ${Number(compForm.tokenAmount).toLocaleString('zh-CN')} Token 额度`);
+    onNotify?.(`已向学生【${compForm.studentName}】补发 ${Number(compForm.usageAmount).toLocaleString('zh-CN')} AI 用量`);
   };
 
   return (
@@ -142,16 +142,16 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
         ))}
       </div>
 
-      {/* Tab 1: AI Model & Token Rules */}
+      {/* AI model usage rules */}
       {activeTab === 'aiRules' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              针对不同 AI 模型与请求能力类型配置全局 Token 扣减倍率系数
+              针对不同 AI 模型与请求能力类型配置全局 AI 用量倍率
             </span>
             <button
               onClick={() => {
-                setModelForm({ name: '', provider: 'Google AI Studio', capability: '文本解析', tokenMultiplier: 1.0 });
+                setModelForm({ name: '', provider: 'Google AI Studio', capability: '文本解析', usageMultiplier: 1.0 });
                 setIsModelModalOpen(true);
               }}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
@@ -168,7 +168,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
                   <th className="py-3 px-4">AI 模型名称</th>
                   <th className="py-3 px-4">能力类型</th>
                   <th className="py-3 px-4">技术服务商</th>
-                  <th className="py-3 px-4 text-center">Token 换算倍率</th>
+                  <th className="py-3 px-4 text-center">AI 用量倍率</th>
                   <th className="py-3 px-4 text-center">默认模型</th>
                   <th className="py-3 px-4 text-center">状态</th>
                 </tr>
@@ -184,7 +184,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
                     </td>
                     <td className="py-3 px-4">{m.provider}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B] text-[14px]">
-                      {m.tokenMultiplier}x
+                      {m.usageMultiplier}x
                     </td>
                     <td className="py-3 px-4 text-center">
                       {m.isDefault ? (
@@ -204,19 +204,19 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
         </div>
       )}
 
-      {/* Tab 2: Non-paid Token Compensation */}
+      {/* Non-paid AI usage compensation */}
       {activeTab === 'compensation' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              针对技术网络故障、退款纠纷或特邀体验，直接向指定学生补发非付费算力 Token 额度
+              针对技术网络故障、退款纠纷或特邀体验，向指定学生补发非付费 AI 用量
             </span>
             <button
               onClick={() => setIsCompModalOpen(true)}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              补发 Token 额度
+              补发 AI 用量
             </button>
           </div>
 
@@ -227,7 +227,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
                   <th className="py-3 px-4">补偿编号</th>
                   <th className="py-3 px-4">受补学生</th>
                   <th className="py-3 px-4">所属机构</th>
-                  <th className="py-3 px-4 text-right">补发 Token 数量</th>
+                  <th className="py-3 px-4 text-right">补发 AI 用量</th>
                   <th className="py-3 px-4">补发事由说明</th>
                   <th className="py-3 px-4">经办人</th>
                   <th className="py-3 px-4">时间</th>
@@ -240,7 +240,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
                     <td className="py-3 px-4 font-bold">{c.studentName}</td>
                     <td className="py-3 px-4">{c.institutionName}</td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#16B45B] text-[14px]">
-                      +{c.tokenAmount.toLocaleString()} Token
+                      +{c.usageAmount.toLocaleString()} AI 用量
                     </td>
                     <td className="py-3 px-4 text-[12px] text-[#64748B]">{c.reason}</td>
                     <td className="py-3 px-4 font-bold">{c.operatorName}</td>
@@ -295,7 +295,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
       {isCompModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">补发非付费 Token 额度</h3>
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">补发非付费 AI 用量</h3>
             <form onSubmit={handleSaveCompensation} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">受补学生姓名</label>
@@ -320,12 +320,12 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">补偿 Token 数量</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">补偿 AI 用量</label>
                 <input
                   type="number"
                   required
-                  value={compForm.tokenAmount}
-                  onChange={(e) => setCompForm({ ...compForm, tokenAmount: Number(e.target.value) })}
+                  value={compForm.usageAmount}
+                  onChange={(e) => setCompForm({ ...compForm, usageAmount: Number(e.target.value) })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                 />
               </div>
@@ -399,8 +399,8 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
                     type="number"
                     step="0.1"
                     required
-                    value={modelForm.tokenMultiplier}
-                    onChange={(e) => setModelForm({ ...modelForm, tokenMultiplier: Number(e.target.value) })}
+                    value={modelForm.usageMultiplier}
+                    onChange={(e) => setModelForm({ ...modelForm, usageMultiplier: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>

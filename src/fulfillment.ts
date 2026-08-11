@@ -42,7 +42,7 @@ export const deriveFulfillmentSnapshot = ({
   const issued = authCodes.length;
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const servicing = students.filter((item) => item.serviceStatus === 'active').length;
-  const renewalOrders = orders.filter((item) => item.type === 'token_pack_buy' || item.type === 'refund');
+  const renewalOrders = orders.filter((item) => item.type === 'ai_usage_pack_buy' || item.type === 'refund');
   const contractAmount = institutions.reduce((sum, item) => sum + (item.contractAmount ?? 0), 0);
   const fundedAmount = fundedOrders.reduce((sum, item) => sum + Math.max(item.paymentAmount, 0), 0);
   const revenue = orders

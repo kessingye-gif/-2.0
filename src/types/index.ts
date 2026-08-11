@@ -183,11 +183,11 @@ export interface QuestionItem {
   createdAt: string;
 }
 
-export interface TokenTopUpPack {
+export interface AiUsagePack {
   id: string;
   name: string;
   code: string;
-  tokenAmount: number; // e.g. 1000000 Token
+  usageAmount: number;
   price: number; // e.g. 500 元
   status: 'active' | 'inactive';
   description: string;
@@ -212,7 +212,7 @@ export interface OrderLedgerRecord {
   orderNo: string;
   institutionId: string;
   institutionName: string;
-  type: 'credit_inflow' | 'package_redeem' | 'token_pack_buy' | 'refund' | 'reversal';
+  type: 'credit_inflow' | 'package_redeem' | 'ai_usage_pack_buy' | 'refund' | 'reversal';
   typeName: string;
   paymentAmount: number;
   creditChange: number;
@@ -280,18 +280,18 @@ export interface AiModelConfig {
   name: string; // e.g. Gemini 1.5 Pro
   provider: string; // e.g. Google AI
   capability: '文本解析' | '多模态识图' | '语音合成';
-  tokenMultiplier: number; // e.g. 1.0, 1.5, 2.0
+  usageMultiplier: number;
   isDefault: boolean;
   status: 'active' | 'inactive';
   updatedAt: string;
 }
 
-export interface TokenCompensation {
+export interface AiUsageCompensation {
   id: string;
   studentId: string;
   studentName: string;
   institutionName: string;
-  tokenAmount: number;
+  usageAmount: number;
   reason: string;
   operatorName: string;
   timestamp: string;

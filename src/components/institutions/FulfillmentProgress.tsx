@@ -16,7 +16,7 @@ export const getInstitutionFulfillmentProgress = (
   const codes = authCodes.filter((item) => item.institutionId === institution.id);
   const institutionOrders = orders.filter((item) => item.institutionId === institution.id);
   const activated = codes.filter((item) => item.status === 'used').length;
-  const hasRenewal = institutionOrders.some((item) => item.type === 'token_pack_buy' || item.type === 'refund');
+  const hasRenewal = institutionOrders.some((item) => item.type === 'ai_usage_pack_buy' || item.type === 'refund');
   const values = [
     { id: 'contracted' as const, label: '机构签约', count: institution.contractStatus === 'active' || institution.contractStatus === 'expiring' ? 1 : 0 },
     { id: 'funded' as const, label: '额度到账', count: institution.totalQuota > 0 ? 1 : 0 },
