@@ -332,6 +332,17 @@ export interface ParentGuardianship {
   expireAt?: string;
 }
 
+export interface GuardianBindingCode {
+  id: string;
+  code: string;
+  studentId: string;
+  studentName: string;
+  institutionName: string;
+  createdAt: string;
+  expireAt: string;
+  status: 'pending' | 'bound' | 'expired';
+}
+
 export interface AuditLogItem {
   id: string;
   operatorName: string; // e.g. 超级管理员 (admin)

@@ -9,7 +9,7 @@ const handlers = {
   onAddPackage: () => undefined,
   onUpdatePackage: () => undefined,
   onRevokeAuthCode: () => undefined,
-  onGenerateCodeForTest: () => undefined,
+  onGenerateAuthCode: () => undefined,
   onAdjustQuota: () => undefined,
   onAudit: () => undefined,
   onNotify: () => undefined,
@@ -27,6 +27,7 @@ test('catalog mode opens on service products instead of orders', () => {
   const markup = renderMode('catalog');
   assert.match(markup, /商品与权益管理/);
   assert.match(markup, /新增服务包/);
+  assert.doesNotMatch(markup, /学生权益开通/);
   assert.doesNotMatch(markup, /学生加油包订单.*申请退款/);
 });
 
@@ -40,7 +41,7 @@ test('服务包只表达点数和 AI 权益，不绑定内容包', () => {
 test('fulfillment mode opens on the authorization-code lifecycle', () => {
   const markup = renderMode('fulfillment');
   assert.match(markup, /开通与履约/);
-  assert.match(markup, /生成学生开通码/);
+  assert.match(markup, /生成授权码/);
   assert.match(markup, /KQ-8829-9102-1823/);
   assert.match(markup, /2026-07-20 10:30/);
   assert.match(markup, /2026-07-21 14:20/);

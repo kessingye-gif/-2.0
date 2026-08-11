@@ -4,13 +4,18 @@ import {
   ParentGuardianship,
   WeChatRebindRequest,
   GuardianshipStatus,
-  Institution,
+  AuthCode,
+  GuardianBindingCode,
 } from '../../types';
 import { DiagnosticsView } from './DiagnosticsView';
+import { createGuardianBindingCode, deriveStudentRights } from '../../utils/studentCodeManagement';
 
 interface StudentViewProps {
   students: StudentItem[];
   guardianships: ParentGuardianship[];
+  authCodes: AuthCode[];
+  onGenerateAuthCode: (institutionName: string, teacherName: string, studentName: string, packageName: string) => void;
+  onRevokeAuthCode: (codeId: string) => void;
   onUpdateGuardianshipStatus: (id: string, status: GuardianshipStatus) => void;
   onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void;
 }
@@ -23,10 +28,13 @@ const initialRebindRequests: WeChatRebindRequest[] = [
 export const StudentView: React.FC<StudentViewProps> = ({
   students,
   guardianships,
+  authCodes,
+  onGenerateAuthCode,
+  onRevokeAuthCode,
   onUpdateGuardianshipStatus,
   onGenerateReport,
 }) => {
-  const [activeTab, setActiveTab] = useState<'roster' | 'rebind' | 'guardianship' | 'diagnostics'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'rights' | 'rebind' | 'guardianship' | 'diagnostics'>('roster');
 
   // Roster Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,6 +42,19 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
   // Rebind Requests
   const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(initialRebindRequests);
+  const [guardianBindingCodes, setGuardianBindingCodes] = useState<GuardianBindingCode[]>(() =>
+    guardianships.filter((item) => item.status === 'active').map((item, index) => ({
+      id: `GBC-SEED-${index + 1}`,
+      code: `JB-2026-${String(8101 + index).padStart(4, '0')}`,
+      studentId: item.studentId,
+      studentName: item.studentName,
+      institutionName: item.institutionName,
+      createdAt: item.createdAt,
+      expireAt: item.expireAt || '长期有效',
+      status: 'bound',
+    }))
+  );
+  const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
 
   // Filtered Roster
   const filteredStudents = useMemo(() => {
@@ -65,10 +86,14 @@ export const StudentView: React.FC<StudentViewProps> = ({
     alert(isApproved ? '已批准微信重新绑定申请！原微信号已安全解绑，学生可凭新账号重新扫码关联。' : '已拒绝解绑申请。');
   };
 
+  const handleGenerateGuardianBindingCode = () => {
+    if (students[0]) setGuardianBindingCodes((current) => [createGuardianBindingCode(students[0]), ...current]);
+  };
+
   return (
     <div className="space-y-6">
       {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
+      <div className="flex flex-wrap border-b border-[#E2E8F0] gap-x-6 gap-y-2 text-[13.5px] font-bold">
         <button
           onClick={() => setActiveTab('roster')}
           className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -76,6 +101,13 @@ export const StudentView: React.FC<StudentViewProps> = ({
           }`}
         >
           学生花名册与服务状态 ({students.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('rights')}
+          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'rights' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+        >
+          学生权益 ({studentRights.length})
         </button>
 
         <button
@@ -179,6 +211,16 @@ export const StudentView: React.FC<StudentViewProps> = ({
         </div>
       )}
 
+      {activeTab === 'rights' && (
+        <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs">
+          <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4"><div><h3 className="text-[15px] font-bold">学生权益</h3><p className="mt-1 text-[12px] text-[#64748B]">按学生查看服务包权益，并直接生成学生授权码。</p></div><button onClick={() => onGenerateAuthCode('浙江大学附属中学', '张敏老师', '王小明', '全科高量包')} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]">生成授权码</button></div>
+          <div className="overflow-x-auto custom-scrollbar"><table className="w-full min-w-[900px] text-left text-[13px]">
+            <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">授权码</th><th className="px-4 py-3">学生</th><th className="px-4 py-3">所属机构</th><th className="px-4 py-3">责任教师</th><th className="px-4 py-3">服务包权益</th><th className="px-4 py-3">到期时间</th><th className="px-4 py-3 text-center">状态</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
+            <tbody className="divide-y divide-[#E2E8F0]">{studentRights.length === 0 ? <tr><td colSpan={8} className="px-6 py-12 text-center text-[#64748B]">暂无学生权益记录</td></tr> : studentRights.map((right) => <tr key={right.id}><td className="px-4 py-3.5 font-mono font-bold text-[#16B45B]">{right.code}</td><td className="px-4 py-3.5 font-bold">{right.studentName}</td><td className="px-4 py-3.5">{right.institutionName}</td><td className="px-4 py-3.5">{right.teacherName}</td><td className="px-4 py-3.5 font-bold text-[#0E7D3E]">{right.packageName}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{right.expireAt}</td><td className="px-4 py-3.5 text-center"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${right.status === 'used' ? 'bg-green-100 text-green-700' : right.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{right.statusLabel}</span></td><td className="px-4 py-3.5 text-right">{right.status === 'pending' && <button onClick={() => onRevokeAuthCode(right.id)} className="text-[12px] font-bold text-red-500">作废</button>}</td></tr>)}</tbody>
+          </table></div>
+        </div>
+      )}
+
       {/* Tab 2: WeChat Rebind Requests */}
       {activeTab === 'rebind' && (
         <div className="space-y-4">
@@ -249,8 +291,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
       {/* Tab 3: Guardianship */}
       {activeTab === 'guardianship' && (
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-2xs overflow-hidden">
-          <table className="w-full text-left text-[13px]">
+        <div className="space-y-4">
+          <div className="overflow-x-auto rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs custom-scrollbar">
+          <table className="w-full min-w-[800px] text-left text-[13px]">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
               <tr>
                 <th className="py-3 px-4">家长姓名/手机</th>
@@ -292,6 +335,17 @@ export const StudentView: React.FC<StudentViewProps> = ({
               ))}
             </tbody>
           </table>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
+              <div><h3 className="text-[15px] font-bold">家长绑定码</h3><p className="mt-1 text-[12px] text-[#64748B]">用于建立家长与学生的监护关系，不开通学生服务。</p></div>
+              <button onClick={handleGenerateGuardianBindingCode} className="flex items-center gap-1 rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined text-[16px]">add_link</span>生成家长绑定码</button>
+            </div>
+            <div className="overflow-x-auto custom-scrollbar"><table className="w-full min-w-[760px] text-left text-[13px]">
+              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">家长绑定码</th><th className="px-4 py-3">目标学生</th><th className="px-4 py-3">所属机构</th><th className="px-4 py-3">生成时间</th><th className="px-4 py-3">到期时间</th><th className="px-4 py-3 text-center">状态</th></tr></thead>
+              <tbody className="divide-y divide-[#E2E8F0]">{guardianBindingCodes.length === 0 ? <tr><td colSpan={6} className="px-6 py-10 text-center text-[#64748B]">暂无家长绑定码</td></tr> : guardianBindingCodes.map((item) => <tr key={item.id}><td className="px-4 py-3.5 font-mono font-bold text-[#16B45B]">{item.code}</td><td className="px-4 py-3.5 font-bold">{item.studentName}</td><td className="px-4 py-3.5">{item.institutionName}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{item.createdAt}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{item.expireAt}</td><td className="px-4 py-3.5 text-center"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${item.status === 'bound' ? 'bg-green-100 text-green-700' : item.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{item.status === 'bound' ? '已绑定' : item.status === 'pending' ? '待绑定' : '已失效'}</span></td></tr>)}</tbody>
+            </table></div>
+          </div>
         </div>
       )}
 

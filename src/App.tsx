@@ -220,7 +220,7 @@ export default function App() {
     addAuditLog('作废未激活授权码', `${targetCode?.code || codeId}`, `作废机构【${targetCode?.institutionName}】的授权码，阻止后续激活。`, '额度授权码');
   };
 
-  const handleGenerateCodeForTest = (
+  const handleGenerateAuthCode = (
     institutionName: string,
     teacherName: string,
     studentName: string,
@@ -246,7 +246,7 @@ export default function App() {
     };
 
     setAuthCodes((prev) => [newCode, ...prev]);
-    addAuditLog('测试生成 12 位学生授权码', randomCode, `为学生【${studentName}】生成服务授权码，对应服务包【${packageName}】。`, '额度授权码');
+    addAuditLog('生成学生授权码', randomCode, `为学生【${studentName}】生成服务授权码，对应服务包【${packageName}】。`, '额度授权码');
   };
 
   // Question Bank Operations
@@ -324,7 +324,7 @@ export default function App() {
               onAddPackage={handleAddPackage}
               onUpdatePackage={handleUpdatePackage}
               onRevokeAuthCode={handleRevokeAuthCode}
-              onGenerateCodeForTest={handleGenerateCodeForTest}
+              onGenerateAuthCode={handleGenerateAuthCode}
               onAdjustQuota={handleAdjustQuota}
               onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
@@ -379,6 +379,9 @@ export default function App() {
             <StudentView
               students={students}
               guardianships={guardianships}
+              authCodes={authCodes}
+              onGenerateAuthCode={handleGenerateAuthCode}
+              onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
               onGenerateReport={handleGenerateReport}
             />

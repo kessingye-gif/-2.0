@@ -19,7 +19,7 @@ interface GoodsViewProps {
   onAddPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
   onUpdatePackage: (id: string, updates: Partial<ServicePackage>) => void;
   onRevokeAuthCode: (codeId: string) => void;
-  onGenerateCodeForTest: (
+  onGenerateAuthCode: (
     institutionName: string,
     teacherName: string,
     studentName: string,
@@ -56,7 +56,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onAddPackage,
   onUpdatePackage,
   onRevokeAuthCode,
-  onGenerateCodeForTest,
+  onGenerateAuthCode,
   onAdjustQuota,
   onAudit,
   onNotify,
@@ -262,7 +262,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
 
   const pageMeta = {
-    catalog: { eyebrow: '商品、额度与权益', title: '商品与权益管理', description: '从商品配置、机构额度入账到学生权益开通和流水追溯，统一在此闭环。' },
+    catalog: { eyebrow: '商品、额度与权益', title: '商品与权益管理', description: '统一管理服务包、AI 加油包、机构额度入账和权益流水。' },
     fulfillment: { eyebrow: '商业履约 · 学生开通', title: '开通与履约', description: '跟踪学生开通码的生成、激活、过期与作废状态。' },
     finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、AI 加油包购买与退款流水。' },
   }[mode];
@@ -272,12 +272,11 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         { id: 'packages' as const, label: '服务包' },
         { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
         { id: 'creditEntry' as const, label: '机构额度入账' },
-        { id: 'authCodes' as const, label: `学生权益开通 (${authCodes.length})` },
         { id: 'ledger' as const, label: '权益流水' },
         { id: 'addOnOrders' as const, label: '学生加油包订单' },
       ]
     : mode === 'fulfillment'
-      ? [{ id: 'authCodes' as const, label: `学生开通记录 (${authCodes.length})` }]
+      ? [{ id: 'authCodes' as const, label: `授权码记录 (${authCodes.length})` }]
       : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
 
   return (
@@ -493,11 +492,11 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
             </div>
 
             <button
-              onClick={() => onGenerateCodeForTest('浙江大学附属中学', '李老师', '张三小学生', '高三全科冲刺包')}
+              onClick={() => onGenerateAuthCode('浙江大学附属中学', '张敏老师', '王小明', '全科高量包')}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 cursor-pointer hover:bg-[#139B4E]"
             >
               <span className="material-symbols-outlined text-[16px]">key</span>
-              生成学生开通码
+              生成授权码
             </button>
           </div>
 

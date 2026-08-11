@@ -7,7 +7,7 @@ import {
   QuestionType,
 } from '../../types';
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
-import { formatEducationMetadata } from '../../utils/educationStage';
+import { formatEducationMetadata, getEducationStage } from '../../utils/educationStage';
 import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
 import { ContentPackageManager } from '../content/ContentPackageManager';
 
@@ -1562,13 +1562,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
           {treeViewMode === 'table' ? (
             <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
               <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse text-[13px]">
+                <table className="w-full min-w-[1180px] text-left border-collapse text-[13px]">
                   <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B]">
                     <tr>
-                      <th className="px-5 py-3.5 font-bold">一级模块 (Level 1)</th>
-                      <th className="px-5 py-3.5 font-bold">二级主题 (Level 2)</th>
-                      <th className="px-5 py-3.5 font-bold">三级考点 (Level 3)</th>
-                      <th className="px-5 py-3.5 font-bold">关联学科 / 学段 / 版本</th>
+                      <th className="px-5 py-3.5 font-bold">学科</th>
+                      <th className="px-5 py-3.5 font-bold">学段</th>
+                      <th className="px-5 py-3.5 font-bold">一级知识点</th>
+                      <th className="px-5 py-3.5 font-bold">二级知识点</th>
+                      <th className="px-5 py-3.5 font-bold">三级知识点</th>
+                      <th className="px-5 py-3.5 font-bold">教材版本</th>
                       <th className="px-5 py-3.5 font-bold">关联精选题</th>
                       <th className="px-5 py-3.5 font-bold text-right">快捷操作</th>
                     </tr>
@@ -1576,7 +1578,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <tbody className="divide-y divide-[#E2E8F0]">
                     {filteredFlatRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-[#64748B]">
+                        <td colSpan={8} className="px-6 py-12 text-center text-[#64748B]">
                           <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2 block">
                             search_off
                           </span>
@@ -1586,6 +1588,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     ) : (
                       filteredFlatRows.map((row) => (
                         <tr key={row.id} className="hover:bg-[#F8FAFC] transition-colors">
+                          <td className="px-5 py-3.5 font-bold">{row.subject}</td>
+                          <td className="px-5 py-3.5 whitespace-nowrap"><span className="rounded bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-bold text-[#475569]">{getEducationStage(row.grade)}</span></td>
                           <td className="px-5 py-3.5">
                             <div className="font-bold text-[#0F172A]">{row.l1Name}</div>
                           </td>
@@ -1596,9 +1600,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                             <div className="font-bold text-[#0F172A]">{row.l3Name}</div>
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
-                            <span className="px-2.5 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[11px]">
-                              {formatEducationMetadata(row)}
-                            </span>
+                            <span className="text-[#475569]">{row.textbook}</span>
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {row.l3Item ? (
@@ -2375,7 +2377,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行包含【学段/学科、知识考点】以及【题型（单选/多选/填空等）、难度、完整题干、选项列表、正确答案、解题解析】
+                    单表模式要求：每一行分别填写【学段、学科、一级知识点、二级知识点、三级知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析】
                   </p>
 
                   <input
@@ -2428,8 +2430,11 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
                     <thead className="bg-[#F1F5F9]">
                       <tr>
-                        <th className="p-2 border-r">学段/学科</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">知识考点 (归属层级)</th>
+                        <th className="p-2 border-r">学段</th>
+                        <th className="p-2 border-r">学科</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">一级知识点</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">二级知识点</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">三级知识点</th>
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
@@ -2442,13 +2447,12 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       {sampleSingleTableRows.map((row, idx) => (
                         <tr key={idx} className="hover:bg-[#F8FAFC]">
                           <td className="p-2 border-r whitespace-nowrap">
-                            <span className="font-bold text-[#0F172A]">{row.subject}</span>
-                            <span className="text-[#64748B] text-[10px] ml-1">({row.stage})</span>
+                            <span className="font-bold text-[#0F172A]">{row.stage}</span>
                           </td>
-                          <td className="p-2 border-r max-w-[200px] truncate" title={`${row.level1Name} > ${row.level2Name} > ${row.level3Name}`}>
-                            <div className="font-bold text-[#16B45B]">{row.level3Name}</div>
-                            <div className="text-[10px] text-[#94A3B8] truncate">{row.level1Name} &gt; {row.level2Name}</div>
-                          </td>
+                          <td className="p-2 border-r font-bold text-[#0F172A]">{row.subject}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level1Name}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level2Name}</td>
+                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.level3Name}</td>
                           <td className="p-2 border-r font-medium text-[#0F172A]">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               row.type === '多选题'
