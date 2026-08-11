@@ -34,6 +34,11 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
 
   return (
     <div className="space-y-5">
+      <div>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">商业履约 · 全链路留痕</p>
+        <h2 className="mt-1 text-[24px] font-bold tracking-tight text-[#0F172A]">数据与审计</h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">追溯机构额度、商品配置、学生开通和售后处理的所有关键变更。</p>
+      </div>
       {/* Overview Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
@@ -250,4 +255,3 @@ export const AuditLogView: React.FC<AuditLogViewProps> = ({ logs }) => {
     </div>
   );
 };
-

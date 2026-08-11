@@ -6,6 +6,7 @@ import { initialAuditLogs } from './mockData';
 import type { FulfillmentWorkItem } from './types';
 import { SystemView } from './components/views/SystemView';
 import { Toast } from './components/ui/Toast';
+import { AuditLogView } from './components/views/AuditLogView';
 
 const workItem: FulfillmentWorkItem = {
   id: 'low-credit-demo',
@@ -36,4 +37,10 @@ test('toast communicates success without a blocking browser dialog', () => {
   const markup = renderToStaticMarkup(createElement(Toast, { message: '已完成额度补发', tone: 'success', onClose: () => undefined }));
   assert.match(markup, /role="status"/);
   assert.match(markup, /已完成额度补发/);
+});
+
+test('audit workspace identifies itself as the final fulfillment trace', () => {
+  const markup = renderToStaticMarkup(createElement(AuditLogView, { logs: initialAuditLogs }));
+  assert.match(markup, /数据与审计/);
+  assert.match(markup, /全链路留痕/);
 });

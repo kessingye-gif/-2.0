@@ -35,7 +35,10 @@ export const deriveFulfillmentSnapshot = ({
 }: FulfillmentData): FulfillmentSnapshot => {
   const contracted = institutions.filter((item) => item.contractStatus === 'active' || item.contractStatus === 'expiring').length;
   const fundedOrders = orders.filter((item) => item.type === 'credit_inflow' && item.status === 'completed');
-  const configured = institutions.filter((item) => (item.availableServicePackageIds?.length ?? 0) > 0).length;
+  const configured = institutions.filter((item) =>
+    (item.contractStatus === 'active' || item.contractStatus === 'expiring')
+    && (item.availableServicePackageIds?.length ?? 0) > 0
+  ).length;
   const issued = authCodes.length;
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const servicing = students.filter((item) => item.serviceStatus === 'active').length;

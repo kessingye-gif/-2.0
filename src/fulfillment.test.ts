@@ -24,6 +24,7 @@ test('derives the seven commercial fulfillment stages from shared records', () =
   );
   assert.equal(snapshot.funnel.find((step) => step.id === 'activated')?.value, 1);
   assert.equal(snapshot.metrics.length, 5);
+  assert.ok(snapshot.funnel.every((step) => step.conversionRate === undefined || step.conversionRate <= 100));
 });
 
 test('global search returns a routable authorization-code result', () => {
