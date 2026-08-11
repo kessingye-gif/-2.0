@@ -21,7 +21,6 @@ export interface ClassRosterStudent {
   institutionName: string;
   teacherId: string;
   teacherName: string;
-  allocatedQuota: number; // 默认划拨初始 Token 点数
   serviceStatus: 'active' | 'none'; // 服务中 / 待配包
   servicePackageName?: string;
   createdAt: string;
@@ -50,11 +49,11 @@ const initialClasses: TeacherClassItem[] = [
 ];
 
 const initialClassRoster: ClassRosterStudent[] = [
-  { id: 'STU-001', name: '王小明', account: 'wangxm2026', phone: '13812345678', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-02' },
-  { id: 'STU-002', name: '李思思', account: 'lisisi2026', phone: '13987654321', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2025-09-02' },
-  { id: 'STU-101', name: '张伟', account: 'zhangwei2026', phone: '13700001111', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2025-09-05' },
-  { id: 'STU-102', name: '赵丽', account: 'zhaoli2026', phone: '13622223333', classId: 'CLS-02', className: '高一 (3) 班物理竞赛班', grade: '高一', subject: '物理', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-002', teacherName: '张华', allocatedQuota: 500, serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-06' },
-  { id: 'STU-103', name: '陈杰', account: 'chenjie2026', phone: '13544445555', classId: 'CLS-03', className: '中考化学培优 A 班', grade: '初三', subject: '化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', teacherId: 'TCH-003', teacherName: '陈红', allocatedQuota: 500, serviceStatus: 'none', createdAt: '2026-02-21' },
+  { id: 'STU-001', name: '王小明', account: 'wangxm2026', phone: '13812345678', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-02' },
+  { id: 'STU-002', name: '李思思', account: 'lisisi2026', phone: '13987654321', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', serviceStatus: 'none', createdAt: '2025-09-02' },
+  { id: 'STU-101', name: '张伟', account: 'zhangwei2026', phone: '13700001111', classId: 'CLS-01', className: '初三 (1) 班重点冲刺班', grade: '初三', subject: '数学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-001', teacherName: '李明', serviceStatus: 'none', createdAt: '2025-09-05' },
+  { id: 'STU-102', name: '赵丽', account: 'zhaoli2026', phone: '13622223333', classId: 'CLS-02', className: '高一 (3) 班物理竞赛班', grade: '高一', subject: '物理', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-002', teacherName: '张华', serviceStatus: 'active', servicePackageName: '单科高量包', createdAt: '2025-09-06' },
+  { id: 'STU-103', name: '陈杰', account: 'chenjie2026', phone: '13544445555', classId: 'CLS-03', className: '中考化学培优 A 班', grade: '初三', subject: '化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', teacherId: 'TCH-003', teacherName: '陈红', serviceStatus: 'none', createdAt: '2026-02-21' },
 ];
 
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
@@ -89,8 +88,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const [isImportStudentModalOpen, setIsImportStudentModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<TeacherClassItem | null>(null);
 
-  // Default Quota & Import State
-  const [defaultQuota, setDefaultQuota] = useState<number>(500);
+  // Import State
   const [importCount, setImportCount] = useState<number>(15);
 
   const handleBatchImportTeachers = (file: File) => {
@@ -119,9 +117,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const [rosterClass, setRosterClass] = useState<TeacherClassItem | null>(null);
   const [rosterSearch, setRosterSearch] = useState('');
 
-  // Single Student Quota Modal
-  const [studentQuotaModal, setStudentQuotaModal] = useState<ClassRosterStudent | null>(null);
-  const [studentQuotaInput, setStudentQuotaInput] = useState<number>(500);
 
   const [selectedClassSubjects, setSelectedClassSubjects] = useState<string[]>(['数学']);
 
@@ -244,7 +239,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     if (!selectedClass) return;
 
     const count = Math.max(1, importCount);
-    const quotaVal = Math.max(0, defaultQuota);
 
     const classSubjectsList = selectedClass.subject.includes('全科')
       ? ['语文', '数学', '英语', '物理', '化学', '生物']
@@ -272,7 +266,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         institutionName: selectedClass.institutionName,
         teacherId: selectedClass.headTeacherId,
         teacherName: selectedClass.headTeacherName,
-        allocatedQuota: quotaVal,
         serviceStatus: 'none',
         createdAt: new Date().toISOString().slice(0, 10),
       };
@@ -327,13 +320,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     setIsRosterModalOpen(true);
   };
 
-  const handleSaveStudentQuota = () => {
-    if (!studentQuotaModal) return;
-    setClassRoster((prev) =>
-      prev.map((s) => (s.id === studentQuotaModal.id ? { ...s, allocatedQuota: Math.max(0, studentQuotaInput) } : s))
-    );
-    setStudentQuotaModal(null);
-  };
 
   const handleRemoveStudentFromClass = (studentId: string) => {
     if (!rosterClass) return;
@@ -927,25 +913,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               </span>
             </div>
 
-            {/* Default Quota & Allocation Setting */}
             <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#0F172A] mb-1">
-                    默认每名学员划拨 Token 额度
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      type="number"
-                      value={defaultQuota}
-                      onChange={(e) => setDefaultQuota(Number(e.target.value))}
-                      placeholder="500"
-                      className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none font-mono font-bold focus:border-[#16B45B] bg-white"
-                    />
-                    <span className="absolute right-3 text-[12px] text-[#64748B] font-bold">点</span>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-[12px] font-bold text-[#0F172A] mb-1">
                     本次模拟导入学员人数
@@ -965,7 +934,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
               <div className="text-[11.5px] text-[#16B45B] bg-[#E8F7EE] p-2 rounded-lg font-medium flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px]">info</span>
-                <span>划拨规则：导入成功后，系统将为每位学员生成初始花名册，并自动配发 <strong>{defaultQuota} 点/人</strong> 初始额度，状态设为“待配包”。</span>
+                <span>导入只建立花名册和责任关系，学生服务需在“商品与权益”中另行开通。</span>
               </div>
             </div>
 
@@ -1018,14 +987,10 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             </div>
 
             {/* KPI Summary Strip */}
-            <div className="grid grid-cols-4 gap-3 bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
+            <div className="grid grid-cols-3 gap-3 bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
               <div>
                 <span className="text-[11px] text-[#64748B] block">班级总人数</span>
                 <strong className="text-[15px] font-mono text-[#0F172A]">{currentClassRoster.length} 人</strong>
-              </div>
-              <div>
-                <span className="text-[11px] text-[#64748B] block">人均默认划拨</span>
-                <strong className="text-[15px] font-mono text-[#16B45B]">{defaultQuota} 点</strong>
               </div>
               <div>
                 <span className="text-[11px] text-[#64748B] block">待配包学员</span>
@@ -1070,7 +1035,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <th className="py-2.5 px-4">学生姓名</th>
                     <th className="py-2.5 px-4">登录账号/手机号</th>
                     <th className="py-2.5 px-4">年级/挂载内容包</th>
-                    <th className="py-2.5 px-4 text-center">初始划拨额度</th>
                     <th className="py-2.5 px-4 text-center">服务包状态</th>
                     <th className="py-2.5 px-4 text-right">操作</th>
                   </tr>
@@ -1078,7 +1042,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 <tbody className="divide-y divide-[#E2E8F0]">
                   {currentClassRoster.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-[#94A3B8] font-bold">
+                      <td colSpan={5} className="py-8 text-center text-[#94A3B8] font-bold">
                         暂无该班级学员花名册，请点击右上角“批量导入更多学员”
                       </td>
                     </tr>
@@ -1094,11 +1058,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                           {s.grade} · {s.subject.includes('包') ? s.subject : `${s.subject}内容包`}
                         </td>
                         <td className="py-2.5 px-4 text-center">
-                          <span className="font-mono font-bold text-[#16B45B] bg-[#E8F7EE] px-2 py-0.5 rounded text-[11.5px]">
-                            {s.allocatedQuota} 点
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4 text-center">
                           {s.serviceStatus === 'active' ? (
                             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
                               服务中 ({s.servicePackageName || '标准包'})
@@ -1110,15 +1069,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                           )}
                         </td>
                         <td className="py-2.5 px-4 text-right space-x-2">
-                          <button
-                            onClick={() => {
-                              setStudentQuotaModal(s);
-                              setStudentQuotaInput(s.allocatedQuota);
-                            }}
-                            className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
-                          >
-                            微调额度
-                          </button>
                           <button
                             onClick={() => handleRemoveStudentFromClass(s.id)}
                             className="text-rose-500 hover:underline font-bold text-[12px] cursor-pointer"
@@ -1146,48 +1096,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         </div>
       )}
 
-      {/* Adjust Single Student Quota Modal */}
-      {studentQuotaModal && (
-        <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 border border-[#E2E8F0] shadow-xl space-y-3">
-            <h3 className="text-[15px] font-bold text-[#0F172A] border-b pb-2">
-              微调学员初始额度 - {studentQuotaModal.name}
-            </h3>
-
-            <p className="text-[12px] text-[#64748B]">
-              班级：<strong>{studentQuotaModal.className}</strong>
-            </p>
-
-            <div>
-              <label className="block text-[12px] font-bold text-[#475569] mb-1">重设初始划拨点数</label>
-              <div className="relative flex items-center">
-                <input
-                  type="number"
-                  value={studentQuotaInput}
-                  onChange={(e) => setStudentQuotaInput(Number(e.target.value))}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none font-mono font-bold focus:border-[#16B45B]"
-                />
-                <span className="absolute right-3 text-[12px] text-[#64748B] font-bold">点</span>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
-              <button
-                onClick={() => setStudentQuotaModal(null)}
-                className="px-3 py-1.5 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[12px] font-bold"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSaveStudentQuota}
-                className="px-3 py-1.5 bg-[#16B45B] text-white rounded-xl text-[12px] font-bold hover:bg-[#139B4E]"
-              >
-                保存额度
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
