@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Institution, RegionType, ServicePackage } from '../../types';
+import { AuthCode, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
+import { InstitutionCommercialSummary } from '../institutions/InstitutionCommercialSummary';
 
 interface InstitutionViewProps {
   institutions: Institution[];
   servicePackages: ServicePackage[];
+  authCodes: AuthCode[];
+  orders: OrderLedgerRecord[];
   onAddInstitution: (inst: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
@@ -13,6 +16,8 @@ interface InstitutionViewProps {
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
   institutions,
   servicePackages,
+  authCodes,
+  orders,
   onAddInstitution,
   onUpdateInstitution,
   onAdjustQuota,
@@ -279,6 +284,11 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
+      <div>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">商业履约 · 客户签约</p>
+        <h2 className="mt-1 text-[24px] font-bold text-[#0F172A]">客户与合同</h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">统一查看机构合同、采购额度与学生开通进度。</p>
+      </div>
       {/* Top Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
@@ -436,7 +446,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构与状态</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">负责人</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度健康度</th>
-                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">内容授权</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">合同与服务配置</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] text-right whitespace-nowrap">操作</th>
               </tr>
             </thead>
@@ -503,6 +513,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                               )}
                             </div>
                             <p className="mt-1 text-[11px] text-[#94A3B8] font-mono">{inst.code} · {inst.regionName}</p>
+                            <p className="mt-1 text-[10px] font-medium text-[#64748B]">合同 ¥{(inst.contractAmount ?? 0).toLocaleString('zh-CN')} · 至 {inst.contractExpireAt ?? '未设置'}</p>
                           </div>
                         </div>
                       </td>
@@ -898,6 +909,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               </div>
 
               <div className="space-y-6">
+                <InstitutionCommercialSummary institution={selectedInstitution} authCodes={authCodes} orders={orders} />
                 {/* Quota Card */}
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl space-y-3">
                   <div className="flex justify-between items-center">
