@@ -20,7 +20,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
     code: '',
     type: 'single_low' as PackageType,
     quotaCost: 50,
-    dailyAiLimit: 15,
+    includedAiUsage: 200000,
     durationDays: 365,
     description: '',
     status: 'active' as 'active' | 'inactive',
@@ -34,7 +34,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       code: `SP-${Date.now().toString().slice(-6)}`,
       type: 'single_low',
       quotaCost: 50,
-      dailyAiLimit: 15,
+      includedAiUsage: 200000,
       durationDays: 365,
       description: '',
       status: 'active',
@@ -50,7 +50,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
       code: pkg.code,
       type: pkg.type,
       quotaCost: pkg.quotaCost,
-      dailyAiLimit: pkg.dailyAiLimit,
+      includedAiUsage: pkg.includedAiUsage,
       durationDays: pkg.durationDays || 365,
       description: pkg.description,
       status: pkg.status,
@@ -75,7 +75,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
         type: form.type,
         typeName: typeNameMap[form.type],
         quotaCost: Number(form.quotaCost),
-        dailyAiLimit: Number(form.dailyAiLimit),
+        includedAiUsage: Number(form.includedAiUsage),
         durationDays: form.durationDays ? Number(form.durationDays) : null,
         description: form.description,
         status: form.status,
@@ -88,7 +88,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
         type: form.type,
         typeName: typeNameMap[form.type],
         quotaCost: Number(form.quotaCost),
-        dailyAiLimit: Number(form.dailyAiLimit),
+        includedAiUsage: Number(form.includedAiUsage),
         durationDays: form.durationDays ? Number(form.durationDays) : null,
         description: form.description,
         status: form.status,
@@ -108,7 +108,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
             服务包配置
           </span>
           <p className="text-[11.5px] text-[#64748B] mt-0.5">
-            配置机构点数消耗、学生每日 AI 用量上限和服务有效期
+            配置机构点数消耗、服务包包含的基础 AI 用量和服务有效期
           </p>
         </div>
 
@@ -177,9 +177,9 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-[#64748B]">每日 AI 限制:</span>
+                    <span className="text-[#64748B]">包含 AI 用量:</span>
                     <span className="font-bold text-[#16B45B] font-mono text-[14px]">
-                      {pkg.dailyAiLimit} 次/天
+                      {(pkg.includedAiUsage / 10000).toLocaleString()}万
                     </span>
                   </div>
 
@@ -298,14 +298,14 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
 
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                    每日 AI 限制 (次/天)
+                    包含 AI 用量
                   </label>
                   <input
                     type="number"
                     min={1}
                     required
-                    value={form.dailyAiLimit}
-                    onChange={(e) => setForm({ ...form, dailyAiLimit: Number(e.target.value) })}
+                    value={form.includedAiUsage}
+                    onChange={(e) => setForm({ ...form, includedAiUsage: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] font-mono outline-none focus:border-[#16B45B]"
                   />
                 </div>

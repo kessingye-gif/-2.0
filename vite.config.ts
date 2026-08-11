@@ -5,7 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: process.env.GITHUB_ACTIONS ? '/houtai/' : '/',
+    base: process.env.GITHUB_ACTIONS ? '/-2.0/' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

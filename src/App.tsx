@@ -202,7 +202,7 @@ export default function App() {
       id: `PKG-${Date.now().toString().slice(-3)}`,
     };
     setPackages((prev) => [...prev, newPkg]);
-    addAuditLog('新建服务包', `${newPkg.name} (${newPkg.code})`, `配置每日 AI 限制 ${newPkg.dailyAiLimit}次/天，采购消耗 ${newPkg.quotaCost}点。`, '服务包管理');
+    addAuditLog('新建服务包', `${newPkg.name} (${newPkg.code})`, `包含 AI 用量 ${newPkg.includedAiUsage.toLocaleString()}，采购消耗 ${newPkg.quotaCost}点。`, '服务包管理');
   };
 
   const handleUpdatePackage = (id: string, updates: Partial<ServicePackage>) => {

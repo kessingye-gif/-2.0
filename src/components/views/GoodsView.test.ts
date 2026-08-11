@@ -35,7 +35,9 @@ test('服务包只表达点数和 AI 权益，不绑定内容包', () => {
   const markup = renderMode('catalog');
   assert.doesNotMatch(markup, /激活时任选|激活后包含|覆盖 \d+ 个内容包|内容包包含模式/);
   assert.match(markup, /消耗采购点数/);
-  assert.match(markup, /每日 AI 上限/);
+  assert.match(markup, /包含 AI 用量/);
+  assert.match(markup, /20万 AI 用量/);
+  assert.doesNotMatch(markup, /每日 AI 上限|次\/天/);
 });
 
 test('fulfillment mode opens on the authorization-code lifecycle', () => {

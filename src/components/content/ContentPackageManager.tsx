@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { StageSelect } from '../masterData/MasterDataSelects';
 
 export interface ContentSubjectSummary {
   id: string;
@@ -111,9 +112,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
           <span className="material-symbols-outlined absolute left-3 top-2 text-[18px] text-[#94A3B8]">search</span>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索内容包名称或代码" className="w-full rounded-xl border border-[#E2E8F0] py-2 pl-9 pr-3 text-[13px] outline-none focus:border-[#16B45B]" />
         </div>
-        <select value={stage} onChange={(event) => setStage(event.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
-          <option value="">全部学段</option><option value="初中">初中</option><option value="高中">高中</option>
-        </select>
+        <StageSelect value={stage} onChange={setStage} valueMode="name" emptyLabel="全部学段" className="w-auto min-w-32 font-bold" />
         <span className="text-[12px] text-[#64748B]">共 <strong className="text-[#0F172A]">{filtered.length}</strong> 个内容包</span>
       </div>
 

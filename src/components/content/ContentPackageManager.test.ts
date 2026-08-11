@@ -3,16 +3,19 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ContentPackageManager, validateContentPackageDraft } from './ContentPackageManager';
+import { MasterDataProvider } from '../../masterData/MasterDataContext';
 
 const subjects = [
   { id: 'SUB-01', name: '初中数学', stage: '初中', textbook: '人教版', kpCount: 156, questionCount: 1280 },
 ];
 
 test('内容包列表提供可追溯详情和明确新增流程', () => {
-  const markup = renderToStaticMarkup(createElement(ContentPackageManager, {
-    subjects,
-    onOpenResource: () => undefined,
-  }));
+  const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
+    createElement(ContentPackageManager, {
+      subjects,
+      onOpenResource: () => undefined,
+    })
+  ));
   assert.match(markup, /内容包/);
   assert.match(markup, /查看详情/);
   assert.match(markup, /新增内容包/);

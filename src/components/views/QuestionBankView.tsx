@@ -10,6 +10,8 @@ import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplit
 import { formatEducationMetadata, getEducationStage } from '../../utils/educationStage';
 import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
 import { ContentPackageManager } from '../content/ContentPackageManager';
+import { useMasterData } from '../../masterData/MasterDataContext';
+import { StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
 
 export interface SubjectItem {
   id: string;
@@ -148,6 +150,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   onBatchImportQuestions,
   onAddKnowledgePoint,
 }) => {
+  const { state: masterDataState, getActiveTextbooks } = useMasterData();
   const location = useLocation();
   const navigate = useNavigate();
   const contentRoute = getContentRouteState(location.pathname);
@@ -188,6 +191,28 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   // Subjects Management State
   const [subjects, setSubjects] = useState<SubjectItem[]>(initialSubjects);
+  const sharedSubjects = useMemo<SubjectItem[]>(() => {
+    const activeStages = masterDataState.stages.filter((item) => item.status === 'active');
+    return masterDataState.subjects
+      .filter((item) => item.status === 'active')
+      .flatMap((subject) => (subject.stageIds.length ? subject.stageIds : activeStages.map((stage) => stage.id)).map((stageId) => {
+        const stage = activeStages.find((item) => item.id === stageId);
+        if (!stage) return null;
+        const existing = subjects.find((item) => item.stage === stage.name && item.name.includes(subject.name));
+        const textbook = getActiveTextbooks(stageId)[0]?.name ?? existing?.textbook ?? '未配置';
+        return {
+          id: existing?.id ?? `${subject.id}-${stageId}`,
+          code: existing?.code ?? `${subject.code}-${stage.code}`,
+          name: subject.name,
+          stage: stage.name,
+          textbook,
+          kpCount: existing?.kpCount ?? 0,
+          questionCount: existing?.questionCount ?? 0,
+          status: 'active' as const,
+          sortOrder: subject.sortOrder,
+        };
+      }).filter((item): item is SubjectItem => item !== null));
+  }, [getActiveTextbooks, masterDataState, subjects]);
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<SubjectItem | null>(null);
   const [subjectSearchTerm, setSubjectSearchTerm] = useState('');
@@ -857,7 +882,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
           <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({contentPackages.length})</button>
         </div>
         <ContentPackageManager
-          subjects={subjects}
+          subjects={sharedSubjects}
           onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
         />
       </div>
@@ -1977,16 +2002,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">学科</label>
-                  <select
+                  <SubjectSelect
                     value={qForm.subject}
-                    onChange={(e) => setQForm({ ...qForm, subject: e.target.value })}
+                    onChange={(subject) => setQForm({ ...qForm, subject })}
+                    valueMode="name"
+                    emptyLabel="请选择学科"
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px] outline-none cursor-pointer"
-                  >
-                    <option value="数学">数学</option>
-                    <option value="物理">物理</option>
-                    <option value="化学">化学</option>
-                    <option value="生物">生物</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -2279,16 +2301,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">学科</label>
-                <select
+                <SubjectSelect
                   value={kpForm.subject}
-                  onChange={(e) => setKpForm({ ...kpForm, subject: e.target.value })}
+                  onChange={(subject) => setKpForm({ ...kpForm, subject })}
+                  valueMode="name"
+                  emptyLabel="请选择学科"
                   className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none cursor-pointer"
-                >
-                  <option value="数学">数学</option>
-                  <option value="物理">物理</option>
-                  <option value="化学">化学</option>
-                  <option value="生物">生物</option>
-                </select>
+                />
               </div>
 
               <div className="pt-3 flex justify-end gap-3 border-t border-[#E2E8F0]">
@@ -2748,24 +2767,22 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">适用学段</label>
-                  <select
+                  <StageSelect
                     value={subjectForm.stage}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, stage: e.target.value })}
+                    onChange={(stage) => setSubjectForm({ ...subjectForm, stage })}
+                    valueMode="name"
+                    emptyLabel="请选择学段"
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
-                  >
-                    <option value="小学">小学</option>
-                    <option value="初中">初中</option>
-                    <option value="高中">高中</option>
-                  </select>
+                  />
                 </div>
 
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">默认教材</label>
-                  <input
-                    type="text"
+                  <TextbookSelect
                     value={subjectForm.textbook}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, textbook: e.target.value })}
-                    placeholder="如：人教版"
+                    onChange={(textbook) => setSubjectForm({ ...subjectForm, textbook })}
+                    valueMode="name"
+                    emptyLabel="请选择教材"
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]"
                   />
                 </div>

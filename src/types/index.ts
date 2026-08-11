@@ -111,7 +111,7 @@ export interface ServicePackage {
   type: PackageType;
   typeName: string; // 单科低量
   quotaCost: number; // 扣减教师采购额度 e.g. 50
-  dailyAiLimit: number; // 每日 AI 次数 e.g. 20
+  includedAiUsage: number; // 服务包包含的基础 AI 用量
   durationDays: number | null; // 365 或 null(长期)
   description: string;
   status: 'active' | 'inactive'; // 可购买 / 已下架

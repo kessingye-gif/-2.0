@@ -96,7 +96,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     code: '',
     type: 'single_low' as PackageType,
     quotaCost: 50,
-    dailyAiLimit: 15,
+    includedAiUsage: 200000,
     durationDays: 365,
     description: '',
     status: 'active' as 'active' | 'inactive',
@@ -119,7 +119,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       code: `SP-${Date.now().toString().slice(-6)}`,
       type: 'single_low',
       quotaCost: 50,
-      dailyAiLimit: 15,
+      includedAiUsage: 200000,
       durationDays: 365,
       description: '',
       status: 'active',
@@ -134,7 +134,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       code: pkg.code,
       type: pkg.type,
       quotaCost: pkg.quotaCost,
-      dailyAiLimit: pkg.dailyAiLimit,
+      includedAiUsage: pkg.includedAiUsage,
       durationDays: pkg.durationDays || 365,
       description: pkg.description,
       status: pkg.status,
@@ -157,7 +157,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         type: pkgForm.type,
         typeName: typeNameMap[pkgForm.type],
         quotaCost: Number(pkgForm.quotaCost),
-        dailyAiLimit: Number(pkgForm.dailyAiLimit),
+        includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
         status: pkgForm.status,
@@ -169,7 +169,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         type: pkgForm.type,
         typeName: typeNameMap[pkgForm.type],
         quotaCost: Number(pkgForm.quotaCost),
-        dailyAiLimit: Number(pkgForm.dailyAiLimit),
+        includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
         status: pkgForm.status,
@@ -340,8 +340,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <strong className="text-[#0F172A] text-[14px] font-mono">{pkg.quotaCost} 点</strong>
                   </div>
                   <div>
-                    <span className="text-[#64748B] block">每日 AI 上限</span>
-                    <strong className="text-[#16B45B] text-[14px] font-mono">{pkg.dailyAiLimit} 次/天</strong>
+                    <span className="text-[#64748B] block">包含 AI 用量</span>
+                    <strong className="text-[#16B45B] text-[14px] font-mono">{(pkg.includedAiUsage / 10000).toLocaleString()}万 AI 用量</strong>
                   </div>
                   <div>
                     <span className="text-[#64748B] block">服务有效期</span>
@@ -829,12 +829,12 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">每日 AI 上限 (次)</label>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">包含 AI 用量</label>
                   <input
                     type="number"
                     required
-                    value={pkgForm.dailyAiLimit}
-                    onChange={(e) => setPkgForm({ ...pkgForm, dailyAiLimit: Number(e.target.value) })}
+                    value={pkgForm.includedAiUsage}
+                    onChange={(e) => setPkgForm({ ...pkgForm, includedAiUsage: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>

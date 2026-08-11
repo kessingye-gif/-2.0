@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TeacherItem, TeacherClassItem, Institution, TeacherPermission, StudentItem } from '../../types';
+import { useMasterData } from '../../masterData/MasterDataContext';
+import { GradeSelect } from '../masterData/MasterDataSelects';
 
 interface TeacherClassViewProps {
   institutions: Institution[];
@@ -40,8 +42,6 @@ const initialTeachers: TeacherItem[] = [
   { id: 'TCH-003', name: '陈红', account: 'chenhong_tch', phone: '13733334444', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', studentCount: 28, allocatedQuota: 3000, remainingQuota: 800, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2026-02-15' },
 ];
 
-const ALL_SUBJECTS = ['语文', '数学', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];
-
 const initialClasses: TeacherClassItem[] = [
   { id: 'CLS-01', name: '初三 (1) 班全科重点冲刺班', code: 'CLS-CS-101', grade: '初三', subject: '全科', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-001', headTeacherName: '李明', studentCount: 42, createdAt: '2025-09-01' },
   { id: 'CLS-02', name: '高一 (3) 班理化竞赛班', code: 'CLS-GY-303', grade: '高一', subject: '数学, 物理, 化学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-002', headTeacherName: '张华', studentCount: 35, createdAt: '2025-09-05' },
@@ -59,6 +59,8 @@ const initialClassRoster: ClassRosterStudent[] = [
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
 
 export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, onAddStudents, initialTab = 'teachers' }) => {
+  const { getActiveSubjects } = useMasterData();
+  const allSubjects = getActiveSubjects().map((item) => item.name);
   const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>(initialTab);
 
   // Teachers State
@@ -214,7 +216,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     const inst = institutions.find((i) => i.id === classForm.institutionId);
     const tch = teachers.find((t) => t.id === classForm.headTeacherId);
 
-    const subjectDisplay = selectedClassSubjects.length === ALL_SUBJECTS.length || selectedClassSubjects.includes('全科')
+    const subjectDisplay = selectedClassSubjects.length === allSubjects.length || selectedClassSubjects.includes('全科')
       ? '全科'
       : selectedClassSubjects.join(', ') || '数学';
 
@@ -764,15 +766,13 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">年级</label>
-                <select
+                <GradeSelect
                   value={classForm.grade}
-                  onChange={(e) => setClassForm({ ...classForm, grade: e.target.value })}
+                  onChange={(grade) => setClassForm({ ...classForm, grade })}
+                  valueMode="name"
+                  emptyLabel="请选择年级"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
-                >
-                  {['初一', '初二', '初三', '高一', '高二', '高三'].map((g) => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -781,7 +781,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     班级挂载内容包 (支持单选/多选/全包)
                   </label>
                   <span className="text-[11px] font-bold text-[#16B45B]">
-                    {selectedClassSubjects.length === ALL_SUBJECTS.length || selectedClassSubjects.includes('全科')
+                    {selectedClassSubjects.length === allSubjects.length || selectedClassSubjects.includes('全科')
                       ? '已选：全科内容包'
                       : `已选 ${selectedClassSubjects.length} 个学科内容包 (${selectedClassSubjects.join(', ')})`}
                   </span>
@@ -791,9 +791,9 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedClassSubjects([...ALL_SUBJECTS])}
+                    onClick={() => setSelectedClassSubjects([...allSubjects])}
                     className={`px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer transition-colors ${
-                      selectedClassSubjects.length === ALL_SUBJECTS.length
+                      selectedClassSubjects.length === allSubjects.length
                         ? 'bg-[#16B45B] text-white shadow-2xs'
                         : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
                     }`}
@@ -802,21 +802,21 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedClassSubjects(['数学', '物理', '化学', '生物'])}
+                    onClick={() => setSelectedClassSubjects(allSubjects.filter((item) => ['数学', '物理', '化学', '生物'].includes(item)))}
                     className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
                   >
                     理科内容包
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedClassSubjects(['语文', '英语', '历史', '地理', '政治'])}
+                    onClick={() => setSelectedClassSubjects(allSubjects.filter((item) => ['语文', '英语', '历史', '地理', '政治'].includes(item)))}
                     className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
                   >
                     文科内容包
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedClassSubjects(['语文', '数学', '英语'])}
+                    onClick={() => setSelectedClassSubjects(allSubjects.filter((item) => ['语文', '数学', '英语'].includes(item)))}
                     className="px-2 py-1 rounded-lg text-[11.5px] font-bold cursor-pointer bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
                   >
                     主科内容包
@@ -825,7 +825,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
                 {/* Individual Subject Chips */}
                 <div className="grid grid-cols-3 gap-1.5 p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl max-h-40 overflow-y-auto">
-                  {ALL_SUBJECTS.map((sub) => {
+                  {allSubjects.map((sub) => {
                     const isSelected = selectedClassSubjects.includes(sub);
                     return (
                       <button

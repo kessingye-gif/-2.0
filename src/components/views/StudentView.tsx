@@ -10,6 +10,7 @@ import {
 import { DiagnosticsView } from './DiagnosticsView';
 import { createGuardianBindingCode, deriveStudentRights } from '../../utils/studentCodeManagement';
 import { filterStudents, getStudentFilterOptions } from '../../utils/studentFilters';
+import { useMasterData } from '../../masterData/MasterDataContext';
 
 interface StudentViewProps {
   students: StudentItem[];
@@ -35,6 +36,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
   onUpdateGuardianshipStatus,
   onGenerateReport,
 }) => {
+  const { getActiveGrades } = useMasterData();
   const [activeTab, setActiveTab] = useState<'roster' | 'rights' | 'rebind' | 'guardianship' | 'diagnostics'>('roster');
 
   // Roster Filters
@@ -63,6 +65,12 @@ export const StudentView: React.FC<StudentViewProps> = ({
   // Filtered Roster
   const organizationFilters = { institution: institutionFilter, teacher: teacherFilter, grade: gradeFilter };
   const filterOptions = useMemo(() => getStudentFilterOptions(students, organizationFilters), [students, institutionFilter, teacherFilter, gradeFilter]);
+  const gradeOptions = useMemo(() => {
+    const available = new Set(filterOptions.grades);
+    const configured = getActiveGrades().map((item) => item.name).filter((name) => available.has(name));
+    const unconfigured = filterOptions.grades.filter((name) => !configured.includes(name));
+    return [...configured, ...unconfigured];
+  }, [filterOptions.grades, getActiveGrades]);
   const filteredStudents = useMemo(() => filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter }), [students, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, gradeFilter]);
   const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || gradeFilter);
 
@@ -149,7 +157,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
               />
               <select value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
               <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-              <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部年级</option>{filterOptions.grades.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+              <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
               <select
                 value={serviceStatusFilter}
                 onChange={(e) => setServiceStatusFilter(e.target.value)}

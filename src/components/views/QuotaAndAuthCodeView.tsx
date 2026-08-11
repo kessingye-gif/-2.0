@@ -323,10 +323,10 @@ export const QuotaAndAuthCodeView: React.FC<QuotaAndAuthCodeViewProps> = ({
                   onChange={(e) => setTestForm({ ...testForm, packageName: e.target.value })}
                   className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none cursor-pointer focus:border-[#16B45B]"
                 >
-                  <option value="单科低量包">单科低量包 (扣减50点，15次/天)</option>
-                  <option value="单科高量包">单科高量包 (扣减120点，50次/天)</option>
-                  <option value="全科低量包">全科低量包 (扣减180点，30次/天)</option>
-                  <option value="全科高量包">全科高量包 (扣减350点，100次/天)</option>
+                  <option value="单科低量包">单科低量包 (扣减50点，含20万 AI 用量)</option>
+                  <option value="单科高量包">单科高量包 (扣减120点，含100万 AI 用量)</option>
+                  <option value="全科低量包">全科低量包 (扣减180点，含200万 AI 用量)</option>
+                  <option value="全科高量包">全科高量包 (扣减350点，含500万 AI 用量)</option>
                 </select>
               </div>
 

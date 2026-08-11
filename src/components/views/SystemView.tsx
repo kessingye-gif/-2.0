@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, AiUsageCompensation } from '../../types';
 import { AuditLogView } from './AuditLogView';
-import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowledgeTypeRegistry';
+import { MasterDataManager } from '../masterData/MasterDataManager';
 
 interface SystemViewProps {
   auditLogs: AuditLogItem[];
@@ -50,8 +50,6 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
 
   // AI usage compensation state
   const [compensations, setCompensations] = useState<AiUsageCompensation[]>(initialCompensations);
-  const [knowledgeTypes, setKnowledgeTypes] = useState(defaultKnowledgeTypes);
-  const [newKnowledgeTypeName, setNewKnowledgeTypeName] = useState('');
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);
   const [compForm, setCompForm] = useState({
     studentId: 'STU-001',
@@ -255,28 +253,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
 
       {/* Tab 3: Master Data */}
       {activeTab === 'masterData' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {[['学科', '数学、语文、英语、物理、化学、生物'], ['学段与年级', '小学、初中、高中'], ['教材版本', '人教版、浙教版、苏教版、北师大版']].map(([title, value]) => (
-              <div key={title} className="rounded-xl border border-[#E2E8F0] bg-white p-4"><p className="text-[12px] text-[#64748B]">{title}</p><p className="mt-2 text-[13px] font-medium text-[#0F172A]">{value}</p></div>
-            ))}
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
-              <div><h3 className="text-[15px] font-semibold text-[#0F172A]">知识类型</h3><p className="mt-1 text-[12px] text-[#64748B]">内容中心和导入模板统一使用这里启用的类型</p></div>
-              <div className="flex gap-2"><input value={newKnowledgeTypeName} onChange={(event) => setNewKnowledgeTypeName(event.target.value)} placeholder="输入新类型名称" className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] outline-none focus:border-[#0E7D3E]" /><button disabled={!newKnowledgeTypeName.trim()} onClick={() => { const name = newKnowledgeTypeName.trim(); if (!name) return; setKnowledgeTypes((items) => [...items, { id: `KT-${Date.now()}`, name, applicableSubjects: '全学科', status: 'active', usageCount: 0 }]); setNewKnowledgeTypeName(''); }} className="rounded-lg bg-[#0E7D3E] px-4 py-2 text-[12px] font-semibold text-white disabled:bg-[#CBD5E1]">新增类型</button></div>
-            </div>
-            <table className="w-full text-left text-[13px]">
-              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">类型名称</th><th className="px-4 py-3">适用学科</th><th className="px-4 py-3">状态</th><th className="px-4 py-3">使用知识点</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
-              <tbody className="divide-y divide-[#EEF2F6]">
-                {knowledgeTypes.map((item) => (
-                  <tr key={item.id}><td className="px-4 py-3.5 font-medium text-[#0F172A]">{item.name}</td><td className="px-4 py-3.5 text-[#64748B]">{item.applicableSubjects}</td><td className={`px-4 py-3.5 ${item.status === 'active' ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}`}>{item.status === 'active' ? '已启用' : '已停用'}</td><td className="px-4 py-3.5 tabular-nums">{item.usageCount}</td><td className="px-4 py-3.5 text-right"><button onClick={() => setKnowledgeTypes((items) => items.map((type) => type.id === item.id ? { ...type, status: type.status === 'active' ? 'inactive' : 'active' } : type))} className="mr-4 font-medium text-[#0E7D3E]">{item.status === 'active' ? '停用' : '启用'}</button><button disabled={!canDeleteKnowledgeType(item)} onClick={() => setKnowledgeTypes((items) => items.filter((type) => type.id !== item.id))} title={canDeleteKnowledgeType(item) ? '删除' : '已被知识点使用，只能停用'} className="font-medium text-[#DC2626] disabled:cursor-not-allowed disabled:text-[#CBD5E1]">删除</button></td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <MasterDataManager />
       )}
 
       {/* Tab 4: Audit Logs */}
