@@ -1,50 +1,41 @@
 import React, { useState } from 'react';
-import { AuditLogItem, AiModelConfig, TokenCompensation, TokenTopUpPack } from '../../types';
+import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, AiUsageCompensation } from '../../types';
 import { AuditLogView } from './AuditLogView';
-import { getTokenRefundEligibility } from '../../utils/tokenRefund';
 import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowledgeTypeRegistry';
 
 interface SystemViewProps {
   auditLogs: AuditLogItem[];
   mode: 'exceptions' | 'settings';
+  workItems?: FulfillmentWorkItem[];
+  onResolveWorkItem?: (id: string, resolution: string) => void;
+  onNotify?: (message: string, tone?: 'success' | 'warning' | 'error') => void;
 }
 
 const initialAiModels: AiModelConfig[] = [
-  { id: 'MOD-01', name: 'Gemini 1.5 Flash (推理高响应)', provider: 'Google AI Studio', capability: '文本解析', tokenMultiplier: 1.0, isDefault: true, status: 'active', updatedAt: '2026-08-01' },
-  { id: 'MOD-02', name: 'Gemini 1.5 Pro (深度学习分析)', provider: 'Google AI Studio', capability: '多模态识图', tokenMultiplier: 1.5, isDefault: false, status: 'active', updatedAt: '2026-08-01' },
-  { id: 'MOD-03', name: 'TTS 智能提问与口语练习', provider: 'Native Audio Synthesizer', capability: '语音合成', tokenMultiplier: 2.0, isDefault: false, status: 'active', updatedAt: '2026-07-20' },
+  { id: 'MOD-01', name: 'Gemini 1.5 Flash (推理高响应)', provider: 'Google AI Studio', capability: '文本解析', usageMultiplier: 1.0, isDefault: true, status: 'active', updatedAt: '2026-08-01' },
+  { id: 'MOD-02', name: 'Gemini 1.5 Pro (深度学习分析)', provider: 'Google AI Studio', capability: '多模态识图', usageMultiplier: 1.5, isDefault: false, status: 'active', updatedAt: '2026-08-01' },
+  { id: 'MOD-03', name: 'TTS 智能提问与口语练习', provider: 'Native Audio Synthesizer', capability: '语音合成', usageMultiplier: 2.0, isDefault: false, status: 'active', updatedAt: '2026-07-20' },
 ];
 
-const initialCompensations: TokenCompensation[] = [
-  { id: 'COMP-101', studentId: 'STU-001', studentName: '张伟强', institutionName: '浙江大学附属中学', tokenAmount: 50000, reason: '7月30日线上网络超时导致题目AI诊断中断补偿', operatorName: '超级管理员', timestamp: '2026-07-31 10:00' },
-  { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', tokenAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
+const initialCompensations: AiUsageCompensation[] = [
+  { id: 'COMP-101', studentId: 'STU-001', studentName: '张伟强', institutionName: '浙江大学附属中学', usageAmount: 50000, reason: '7月30日线上网络超时导致题目AI诊断中断补偿', operatorName: '超级管理员', timestamp: '2026-07-31 10:00' },
+  { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', usageAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
 ];
 
-const initialStudentTokenPacks: TokenTopUpPack[] = [
-  { id: 'TP-01', code: 'TP-20W', name: '轻量加油包', tokenAmount: 200000, price: 9.9, status: 'active', description: '适合临时补充', createdAt: '2026-08-01' },
-  { id: 'TP-02', code: 'TP-100W', name: '标准加油包', tokenAmount: 1000000, price: 39.9, status: 'active', description: '学生端推荐', createdAt: '2026-08-01' },
-  { id: 'TP-03', code: 'TP-300W', name: '畅用加油包', tokenAmount: 3000000, price: 99, status: 'inactive', description: '适合高频使用', createdAt: '2026-08-01' },
-];
+type SystemTab = 'aiRules' | 'masterData' | 'compensation' | 'auditLogs' | 'exceptionReversal';
 
-const initialRefundOrders = [
-  { id: 'PAY-20260808-0192', student: '张伟强', channel: '微信支付', amount: 39.9, grantedToken: 1000000, remainingToken: 1000000, status: 'paid' as const },
-  { id: 'PAY-20260808-0186', student: '李思思', channel: '支付宝', amount: 9.9, grantedToken: 200000, remainingToken: 185200, status: 'paid' as const },
-  { id: 'PAY-20260807-0163', student: '王浩然', channel: '微信支付', amount: 99, grantedToken: 3000000, remainingToken: 3000000, status: 'refunded' as const },
-];
-
-type SystemTab = 'aiRules' | 'masterData' | 'tokenPacks' | 'compensation' | 'auditLogs' | 'exceptionReversal';
-
-export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
+export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workItems = [], onResolveWorkItem, onNotify }) => {
   const [activeTab, setActiveTab] = useState<SystemTab>(mode === 'settings' ? 'aiRules' : 'compensation');
   const tabs: { id: SystemTab; label: string }[] = mode === 'settings'
     ? [
         { id: 'aiRules', label: 'AI 模型' },
         { id: 'masterData', label: '基础数据' },
-        { id: 'tokenPacks', label: 'Token 加油包' },
+        { id: 'auditLogs', label: '操作审计' },
+        { id: 'exceptionReversal', label: '异常处理' },
       ]
     : [
         { id: 'compensation', label: '额度补发' },
-        { id: 'exceptionReversal', label: '支付退款' },
+        { id: 'exceptionReversal', label: '异常处理' },
       ];
 
   // AI Models State
@@ -54,13 +45,11 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
     name: '',
     provider: 'Google AI Studio',
     capability: '文本解析' as '文本解析' | '多模态识图' | '语音合成',
-    tokenMultiplier: 1.0,
+    usageMultiplier: 1.0,
   });
 
-  // Token Compensations State
-  const [compensations, setCompensations] = useState<TokenCompensation[]>(initialCompensations);
-  const [tokenPacks, setTokenPacks] = useState<TokenTopUpPack[]>(initialStudentTokenPacks);
-  const [refundOrders, setRefundOrders] = useState(initialRefundOrders);
+  // AI usage compensation state
+  const [compensations, setCompensations] = useState<AiUsageCompensation[]>(initialCompensations);
   const [knowledgeTypes, setKnowledgeTypes] = useState(defaultKnowledgeTypes);
   const [newKnowledgeTypeName, setNewKnowledgeTypeName] = useState('');
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);
@@ -68,7 +57,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
     studentId: 'STU-001',
     studentName: '张伟强',
     institutionName: '浙江大学附属中学',
-    tokenAmount: 50000,
+    usageAmount: 50000,
     reason: '',
   });
 
@@ -80,7 +69,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
       name: modelForm.name,
       provider: modelForm.provider,
       capability: modelForm.capability,
-      tokenMultiplier: Number(modelForm.tokenMultiplier),
+      usageMultiplier: Number(modelForm.usageMultiplier),
       isDefault: false,
       status: 'active',
       updatedAt: new Date().toISOString().slice(0, 10),
@@ -91,29 +80,52 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
 
   const handleSaveCompensation = (e: React.FormEvent) => {
     e.preventDefault();
-    const newC: TokenCompensation = {
+    const newC: AiUsageCompensation = {
       id: `COMP-${Date.now().toString().slice(-3)}`,
       studentId: compForm.studentId,
       studentName: compForm.studentName,
       institutionName: compForm.institutionName,
-      tokenAmount: Number(compForm.tokenAmount),
-      reason: compForm.reason || '运营补发 Token 额度',
+      usageAmount: Number(compForm.usageAmount),
+      reason: compForm.reason || '运营补发 AI 用量',
       operatorName: '超级管理员',
       timestamp: new Date().toLocaleString().slice(0, 16),
     };
     setCompensations((prev) => [newC, ...prev]);
     setIsCompModalOpen(false);
-    alert(`成功向学生【${compForm.studentName}】补发非付费 ${compForm.tokenAmount} Token 算力额度！`);
+    onNotify?.(`已向学生【${compForm.studentName}】补发 ${Number(compForm.usageAmount).toLocaleString('zh-CN')} AI 用量`);
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[13px] text-[#64748B]">{mode === 'settings' ? '系统' : '运营'}</p>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">{mode === 'settings' ? '系统与基础配置' : '商业履约 · 问题闭环'}</p>
         <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">
-          {mode === 'settings' ? '平台设置' : '异常处理'}
+          {mode === 'settings' ? '平台设置' : '售后与异常'}
         </h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">{mode === 'settings' ? '管理 AI 模型、基础数据和学生加油包。' : '处理会影响开通、续费和退款的履约待办，并留下审计记录。'}</p>
       </div>
+
+      {mode === 'exceptions' && (
+        <section className="overflow-hidden rounded-xl border border-[#DDE7E1] bg-white">
+          <div className="flex items-center justify-between border-b border-[#EEF2F0] px-5 py-4">
+            <div><h3 className="text-[14px] font-bold text-[#0F172A]">履约待办</h3><p className="mt-0.5 text-[11px] text-[#94A3B8]">处理后会同步更新驾驶舱和审计动态</p></div>
+            <span className="rounded-full bg-[#FFF7ED] px-2.5 py-1 text-[10px] font-semibold text-[#B45309]">{workItems.length} 项待处理</span>
+          </div>
+          {workItems.length === 0 ? (
+            <div className="px-5 py-10 text-center text-[12px] text-[#94A3B8]">当前没有未处理的商业履约异常</div>
+          ) : (
+            <div className="divide-y divide-[#EEF2F0]">
+              {workItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-4 px-5 py-4">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.severity === 'high' ? 'bg-[#EF4444]' : 'bg-[#F59E0B]'}`} />
+                  <div className="min-w-0 flex-1"><p className="text-[12.5px] font-semibold text-[#0F172A]">{item.title} · {item.institutionName}</p><p className="mt-1 text-[11px] text-[#64748B]">{item.description}</p></div>
+                  <button type="button" onClick={() => onResolveWorkItem?.(item.id, item.type === 'low_credit' ? '已联系机构并发起续费' : '已通知责任教师跟进激活')} className="rounded-lg bg-[#0E7D3E] px-3 py-2 text-[11px] font-semibold text-white hover:bg-[#0B6A35]">标记已处理</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">
@@ -130,16 +142,16 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
         ))}
       </div>
 
-      {/* Tab 1: AI Model & Token Rules */}
+      {/* AI model usage rules */}
       {activeTab === 'aiRules' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              针对不同 AI 模型与请求能力类型配置全局 Token 扣减倍率系数
+              针对不同 AI 模型与请求能力类型配置全局 AI 用量倍率
             </span>
             <button
               onClick={() => {
-                setModelForm({ name: '', provider: 'Google AI Studio', capability: '文本解析', tokenMultiplier: 1.0 });
+                setModelForm({ name: '', provider: 'Google AI Studio', capability: '文本解析', usageMultiplier: 1.0 });
                 setIsModelModalOpen(true);
               }}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
@@ -156,7 +168,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
                   <th className="py-3 px-4">AI 模型名称</th>
                   <th className="py-3 px-4">能力类型</th>
                   <th className="py-3 px-4">技术服务商</th>
-                  <th className="py-3 px-4 text-center">Token 换算倍率</th>
+                  <th className="py-3 px-4 text-center">AI 用量倍率</th>
                   <th className="py-3 px-4 text-center">默认模型</th>
                   <th className="py-3 px-4 text-center">状态</th>
                 </tr>
@@ -172,7 +184,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
                     </td>
                     <td className="py-3 px-4">{m.provider}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B] text-[14px]">
-                      {m.tokenMultiplier}x
+                      {m.usageMultiplier}x
                     </td>
                     <td className="py-3 px-4 text-center">
                       {m.isDefault ? (
@@ -192,19 +204,19 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
         </div>
       )}
 
-      {/* Tab 2: Non-paid Token Compensation */}
+      {/* Non-paid AI usage compensation */}
       {activeTab === 'compensation' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              针对技术网络故障、退款纠纷或特邀体验，直接向指定学生补发非付费算力 Token 额度
+              针对技术网络故障、退款纠纷或特邀体验，向指定学生补发非付费 AI 用量
             </span>
             <button
               onClick={() => setIsCompModalOpen(true)}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              补发 Token 额度
+              补发 AI 用量
             </button>
           </div>
 
@@ -215,7 +227,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
                   <th className="py-3 px-4">补偿编号</th>
                   <th className="py-3 px-4">受补学生</th>
                   <th className="py-3 px-4">所属机构</th>
-                  <th className="py-3 px-4 text-right">补发 Token 数量</th>
+                  <th className="py-3 px-4 text-right">补发 AI 用量</th>
                   <th className="py-3 px-4">补发事由说明</th>
                   <th className="py-3 px-4">经办人</th>
                   <th className="py-3 px-4">时间</th>
@@ -228,7 +240,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
                     <td className="py-3 px-4 font-bold">{c.studentName}</td>
                     <td className="py-3 px-4">{c.institutionName}</td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-[#16B45B] text-[14px]">
-                      +{c.tokenAmount.toLocaleString()} Token
+                      +{c.usageAmount.toLocaleString()} AI 用量
                     </td>
                     <td className="py-3 px-4 text-[12px] text-[#64748B]">{c.reason}</td>
                     <td className="py-3 px-4 font-bold">{c.operatorName}</td>
@@ -267,61 +279,15 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
         </div>
       )}
 
-      {activeTab === 'tokenPacks' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-[#E2E8F0] bg-white px-5 py-4">
-            <div>
-              <h3 className="text-[15px] font-semibold text-[#0F172A]">学生端 Token 加油包</h3>
-              <p className="mt-1 text-[12px] text-[#64748B]">学生通过微信或支付宝直接购买</p>
-            </div>
-            <button className="rounded-lg bg-[#0E7D3E] px-4 py-2 text-[12px] font-semibold text-white">新增加油包</button>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-            <table className="w-full text-left text-[13px]">
-              <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]">
-                <tr><th className="px-4 py-3">名称</th><th className="px-4 py-3">Token</th><th className="px-4 py-3">售价</th><th className="px-4 py-3">学生端状态</th><th className="px-4 py-3 text-right">操作</th></tr>
-              </thead>
-              <tbody className="divide-y divide-[#EEF2F6]">
-                {tokenPacks.map((pack) => (
-                  <tr key={pack.id}>
-                    <td className="px-4 py-3.5"><div className="font-medium text-[#0F172A]">{pack.name}</div><div className="text-[11px] text-[#94A3B8]">{pack.code}</div></td>
-                    <td className="px-4 py-3.5 font-medium tabular-nums">{pack.tokenAmount.toLocaleString()}</td>
-                    <td className="px-4 py-3.5 font-medium tabular-nums">¥{pack.price}</td>
-                    <td className="px-4 py-3.5"><span className={pack.status === 'active' ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}>{pack.status === 'active' ? '已上架' : '已下架'}</span></td>
-                    <td className="px-4 py-3.5 text-right"><button onClick={() => setTokenPacks((items) => items.map((item) => item.id === pack.id ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' } : item))} className="font-medium text-[#0E7D3E]">{pack.status === 'active' ? '下架' : '上架'}</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Tab 4: Audit Logs */}
       {activeTab === 'auditLogs' && <AuditLogView logs={auditLogs} />}
 
       {/* Tab 5: Exception Reversal */}
       {activeTab === 'exceptionReversal' && (
-        <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-          <div className="border-b border-[#E2E8F0] px-5 py-4">
-            <h3 className="text-[15px] font-semibold text-[#0F172A]">学生加油包退款</h3>
-            <p className="mt-1 text-[12px] text-[#64748B]">仅 Token 完全未使用时支持原路全额退款</p>
-          </div>
-          <table className="w-full text-left text-[13px]">
-            <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">支付订单</th><th className="px-4 py-3">学生</th><th className="px-4 py-3">支付方式</th><th className="px-4 py-3">金额</th><th className="px-4 py-3">Token 使用情况</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
-            <tbody className="divide-y divide-[#EEF2F6]">
-              {refundOrders.map((order) => {
-                const eligibility = getTokenRefundEligibility(order);
-                return (
-                  <tr key={order.id}>
-                    <td className="px-4 py-3.5 font-mono text-[12px]">{order.id}</td><td className="px-4 py-3.5 font-medium">{order.student}</td><td className="px-4 py-3.5">{order.channel}</td><td className="px-4 py-3.5 tabular-nums">¥{order.amount}</td>
-                    <td className="px-4 py-3.5"><div>{order.remainingToken.toLocaleString()} / {order.grantedToken.toLocaleString()}</div><div className={`text-[11px] ${eligibility.allowed ? 'text-[#0E7D3E]' : 'text-[#94A3B8]'}`}>{eligibility.reason}</div></td>
-                    <td className="px-4 py-3.5 text-right"><button disabled={!eligibility.allowed} onClick={() => setRefundOrders((items) => items.map((item) => item.id === order.id ? { ...item, status: 'refunded' as const } : item))} className="rounded-lg border border-[#E2E8F0] px-3 py-1.5 text-[12px] font-medium text-[#0E7D3E] disabled:cursor-not-allowed disabled:text-[#CBD5E1]">全额退款</button></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="rounded-xl border border-[#E2E8F0] bg-white px-6 py-10 text-center">
+          <span className="material-symbols-outlined text-[34px] text-[#94A3B8]">rule</span>
+          <h3 className="mt-2 text-[15px] font-semibold text-[#0F172A]">异常处理</h3>
+          <p className="mx-auto mt-2 max-w-xl text-[12px] leading-5 text-[#64748B]">正常订单退款请在“商品与权益 → 学生加油包订单”直接处理。这里仅承接已使用、支付差错等需要人工审核的异常事项。</p>
         </div>
       )}
 
@@ -329,7 +295,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
       {isCompModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">补发非付费 Token 额度</h3>
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">补发非付费 AI 用量</h3>
             <form onSubmit={handleSaveCompensation} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">受补学生姓名</label>
@@ -354,12 +320,12 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">补偿 Token 数量</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">补偿 AI 用量</label>
                 <input
                   type="number"
                   required
-                  value={compForm.tokenAmount}
-                  onChange={(e) => setCompForm({ ...compForm, tokenAmount: Number(e.target.value) })}
+                  value={compForm.usageAmount}
+                  onChange={(e) => setCompForm({ ...compForm, usageAmount: Number(e.target.value) })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                 />
               </div>
@@ -433,8 +399,8 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
                     type="number"
                     step="0.1"
                     required
-                    value={modelForm.tokenMultiplier}
-                    onChange={(e) => setModelForm({ ...modelForm, tokenMultiplier: Number(e.target.value) })}
+                    value={modelForm.usageMultiplier}
+                    onChange={(e) => setModelForm({ ...modelForm, usageMultiplier: Number(e.target.value) })}
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>

@@ -33,8 +33,73 @@ export interface Institution {
   teacherCount: number; // 124
   studentCount: number; // 2150
   status: 'active' | 'inactive'; // 已启用 / 已停用
+  contractAmount?: number;
+  contractStatus?: 'draft' | 'active' | 'expiring' | 'expired';
+  contractExpireAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type FulfillmentStageId =
+  | 'contracted'
+  | 'funded'
+  | 'configured'
+  | 'issued'
+  | 'activated'
+  | 'servicing'
+  | 'renewal';
+
+export interface FulfillmentMetric {
+  id: 'contractAmount' | 'fundedAmount' | 'activatedStudents' | 'revenue' | 'refundAmount';
+  label: string;
+  value: number;
+  displayValue: string;
+  tone?: 'default' | 'positive' | 'warning';
+}
+
+export interface FulfillmentFunnelStep {
+  id: FulfillmentStageId;
+  label: string;
+  value: number;
+  displayValue: string;
+  conversionRate?: number;
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
+}
+
+export interface FulfillmentWorkItem {
+  id: string;
+  type: 'low_credit' | 'code_expiring' | 'payment_pending' | 'activation_error' | 'refund_review';
+  title: string;
+  description: string;
+  institutionName: string;
+  severity: 'high' | 'medium' | 'low';
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
+}
+
+export interface FulfillmentEvent {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'success' | 'warning' | 'neutral';
+}
+
+export interface FulfillmentSnapshot {
+  metrics: FulfillmentMetric[];
+  funnel: FulfillmentFunnelStep[];
+  workItems: FulfillmentWorkItem[];
+  recentEvents: FulfillmentEvent[];
+  healthyInstitutionCount: number;
+  warningInstitutionCount: number;
+  exceptionInstitutionCount: number;
+}
+
+export interface GlobalSearchResult {
+  id: string;
+  type: 'institution' | 'student' | 'authCode' | 'order';
+  title: string;
+  subtitle: string;
+  targetTab: 'institutions' | 'goods' | 'students' | 'system';
 }
 
 export type PackageType = 'single_low' | 'single_high' | 'all_low' | 'all_high';
@@ -51,8 +116,6 @@ export interface ServicePackage {
   description: string;
   status: 'active' | 'inactive'; // 可购买 / 已下架
   subjectRequirement: 'single' | 'all';
-  contentPackageMode?: 'single' | 'multiple'; // 'single' (激活时任选1个内容包) | 'multiple' (包含/可选多个内容包)
-  includedContentPackages?: string[]; // 绑定的内容包名称列表，如 ['人教版初中数学全套内容包', '人教版初中物理精选内容包']
 }
 
 export type AuthCodeStatus = 'pending' | 'used' | 'revoked' | 'expired';
@@ -118,11 +181,11 @@ export interface QuestionItem {
   createdAt: string;
 }
 
-export interface TokenTopUpPack {
+export interface AiUsagePack {
   id: string;
   name: string;
   code: string;
-  tokenAmount: number; // e.g. 1000000 Token
+  usageAmount: number;
   price: number; // e.g. 500 元
   status: 'active' | 'inactive';
   description: string;
@@ -147,7 +210,7 @@ export interface OrderLedgerRecord {
   orderNo: string;
   institutionId: string;
   institutionName: string;
-  type: 'credit_inflow' | 'package_redeem' | 'token_pack_buy' | 'refund' | 'reversal';
+  type: 'credit_inflow' | 'package_redeem' | 'ai_usage_pack_buy' | 'refund' | 'reversal';
   typeName: string;
   paymentAmount: number;
   creditChange: number;
@@ -215,18 +278,18 @@ export interface AiModelConfig {
   name: string; // e.g. Gemini 1.5 Pro
   provider: string; // e.g. Google AI
   capability: '文本解析' | '多模态识图' | '语音合成';
-  tokenMultiplier: number; // e.g. 1.0, 1.5, 2.0
+  usageMultiplier: number;
   isDefault: boolean;
   status: 'active' | 'inactive';
   updatedAt: string;
 }
 
-export interface TokenCompensation {
+export interface AiUsageCompensation {
   id: string;
   studentId: string;
   studentName: string;
   institutionName: string;
-  tokenAmount: number;
+  usageAmount: number;
   reason: string;
   operatorName: string;
   timestamp: string;
@@ -267,6 +330,17 @@ export interface ParentGuardianship {
   status: GuardianshipStatus;
   createdAt: string;
   expireAt?: string;
+}
+
+export interface GuardianBindingCode {
+  id: string;
+  code: string;
+  studentId: string;
+  studentName: string;
+  institutionName: string;
+  createdAt: string;
+  expireAt: string;
+  status: 'pending' | 'bound' | 'expired';
 }
 
 export interface AuditLogItem {

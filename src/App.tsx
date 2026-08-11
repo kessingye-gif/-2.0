@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { NavTab, Sidebar } from './components/layout/Sidebar';
-import { resolveLegacyView } from './navigation';
+import React, { useMemo, useState } from 'react';
+import { Sidebar } from './components/layout/Sidebar';
+import type { NavTab } from './navigation';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { getPlatformRoute, getPlatformRouteId } from './router/platformRoutes';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
@@ -8,8 +10,10 @@ import { GoodsView } from './components/views/GoodsView';
 import { QuestionBankView } from './components/views/QuestionBankView';
 import { DashboardView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
-import { AuditLogView } from './components/views/AuditLogView';
+import { TeacherClassView } from './components/views/TeacherClassView';
+import { StudentView } from './components/views/StudentView';
 import { HelpModal } from './components/modals/HelpModal';
+import { Toast } from './components/ui/Toast';
 
 import {
   initialPlatformStats,
@@ -18,10 +22,13 @@ import {
   initialAuthCodes,
   initialKnowledgePoints,
   initialQuestions,
-  initialTeachers,
   initialStudents,
   initialAuditLogs,
+  initialOrderLedger,
+  initialParentGuardianships,
 } from './mockData';
+import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
+import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
 
 import {
   Institution,
@@ -31,10 +38,14 @@ import {
   QuestionItem,
   AuditLogItem,
   CurrentUser,
+  OrderLedgerRecord,
 } from './types';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = getPlatformRouteId(location.pathname);
+  const setCurrentTab = (tab: NavTab) => navigate(getPlatformRoute(tab).path);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Authentication & Current User State
@@ -56,6 +67,27 @@ export default function App() {
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
+  const [guardianships, setGuardianships] = useState(initialParentGuardianships);
+  const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
+  const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
+
+  const searchResults = useMemo(
+    () => buildGlobalSearchResults(searchQuery, { institutions, authCodes, students, orders }),
+    [searchQuery, institutions, authCodes, students, orders],
+  );
+  const fulfillmentSnapshot = useMemo(() => {
+    const snapshot = deriveFulfillmentSnapshot({ institutions, authCodes, students, orders, auditLogs });
+    return { ...snapshot, workItems: snapshot.workItems.filter((item) => !resolvedWorkItemIds.includes(item.id)) };
+  },
+    [institutions, authCodes, students, orders, auditLogs, resolvedWorkItemIds],
+  );
+  const dashboardSnapshot = useMemo(() => derivePlatformDashboardSnapshot({ institutions, authCodes, students, orders, auditLogs }), [institutions, authCodes, students, orders, auditLogs]);
+
+  const handleSelectSearchResult = (tab: NavTab) => {
+    setCurrentTab(tab);
+    setSearchQuery('');
+  };
 
   // Floating Help Modal State
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -87,6 +119,27 @@ export default function App() {
       timestamp: new Date().toLocaleString('zh-CN', { hour12: false }),
     };
     setAuditLogs((prev) => [newLog, ...prev]);
+  };
+
+  const handleResolveWorkItem = (id: string, resolution: string) => {
+    const item = fulfillmentSnapshot.workItems.find((workItem) => workItem.id === id);
+    if (!item) return;
+    setResolvedWorkItemIds((current) => [...current, id]);
+    addAuditLog('关闭履约异常', item.institutionName, resolution, '系统设置');
+    setToast({ message: `已处理：${item.title}`, tone: 'success' });
+  };
+
+  const handleNotify = (message: string, tone: 'success' | 'warning' | 'error' = 'success') => setToast({ message, tone });
+
+  const handleUpdateGuardianshipStatus = (id: string, status: (typeof guardianships)[number]['status']) => {
+    setGuardianships((current) => current.map((item) => (item.id === id ? { ...item, status } : item)));
+    addAuditLog('更新监护关系', id, `监护关系状态更新为：${status}`, '系统设置');
+  };
+
+  const handleGenerateReport = (studentId: string, subject: string, startDate: string, endDate: string) => {
+    const student = students.find((item) => item.id === studentId);
+    addAuditLog('生成学生学习报告', student?.name ?? studentId, `${subject} · ${startDate} 至 ${endDate}`, '诊断管理');
+    handleNotify(`已生成${student?.name ?? '学生'}的${subject}学习报告`);
   };
 
   // Institution Operations
@@ -167,7 +220,7 @@ export default function App() {
     addAuditLog('作废未激活授权码', `${targetCode?.code || codeId}`, `作废机构【${targetCode?.institutionName}】的授权码，阻止后续激活。`, '额度授权码');
   };
 
-  const handleGenerateCodeForTest = (
+  const handleGenerateAuthCode = (
     institutionName: string,
     teacherName: string,
     studentName: string,
@@ -193,7 +246,7 @@ export default function App() {
     };
 
     setAuthCodes((prev) => [newCode, ...prev]);
-    addAuditLog('测试生成 12 位学生授权码', randomCode, `为学生【${studentName}】生成服务授权码，对应服务包【${packageName}】。`, '额度授权码');
+    addAuditLog('生成学生授权码', randomCode, `为学生【${studentName}】生成服务授权码，对应服务包【${packageName}】。`, '额度授权码');
   };
 
   // Question Bank Operations
@@ -232,12 +285,14 @@ export default function App() {
     return <LoginView institutions={institutions} onLogin={handleLogin} />;
   }
 
-  const currentView = resolveLegacyView(currentTab);
+  if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
+
+  const currentView = currentTab === 'content' ? 'questionBank' : currentTab;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
       {/* Fixed Left Sidebar */}
-      <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <Sidebar />
 
       {/* Main Container Column */}
       <div className="flex-1 flex flex-col h-screen min-w-0 pl-[220px]">
@@ -249,29 +304,30 @@ export default function App() {
           onLogout={handleLogout}
           onOpenNotifications={() => alert('通知面板：全平台无待处理崩溃报错，目前 5 家机构额度告急已预警。')}
           onOpenSettings={() => setIsHelpModalOpen(true)}
+          searchResults={searchResults}
+          onSelectSearchResult={handleSelectSearchResult}
         />
 
         {/* Scrollable Main Content Area */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
-            <DashboardView
-              stats={stats}
-              institutions={institutions}
-              auditLogs={auditLogs}
-              onNavigateToTab={setCurrentTab}
-            />
+            <DashboardView snapshot={dashboardSnapshot} />
           )}
 
           {currentView === 'goods' && (
             <GoodsView
+              key={currentTab}
+              mode="catalog"
               packages={packages}
               authCodes={authCodes}
               institutions={institutions}
               onAddPackage={handleAddPackage}
               onUpdatePackage={handleUpdatePackage}
               onRevokeAuthCode={handleRevokeAuthCode}
-              onGenerateCodeForTest={handleGenerateCodeForTest}
+              onGenerateAuthCode={handleGenerateAuthCode}
               onAdjustQuota={handleAdjustQuota}
+              onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
+              onNotify={handleNotify}
             />
           )}
 
@@ -290,6 +346,8 @@ export default function App() {
             <InstitutionView
               institutions={institutions}
               servicePackages={packages}
+              authCodes={authCodes}
+              orders={orders}
               onAddInstitution={handleAddInstitution}
               onUpdateInstitution={handleUpdateInstitution}
               onAdjustQuota={handleAdjustQuota}
@@ -297,18 +355,54 @@ export default function App() {
             />
           )}
 
-          {(currentView === 'exceptions' || currentView === 'settings') && (
-            <SystemView key={currentView} auditLogs={auditLogs} mode={currentView} />
+          {currentView === 'teachers' && (
+            <TeacherClassView
+              key="teachers"
+              institutions={institutions}
+              students={students}
+              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              initialTab="teachers"
+            />
           )}
 
-          {currentView === 'auditLogs' && (
-            <AuditLogView logs={auditLogs} />
+          {currentView === 'classes' && (
+            <TeacherClassView
+              key="classes"
+              institutions={institutions}
+              students={students}
+              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              initialTab="classes"
+            />
+          )}
+
+          {currentView === 'students' && (
+            <StudentView
+              students={students}
+              guardianships={guardianships}
+              authCodes={authCodes}
+              onGenerateAuthCode={handleGenerateAuthCode}
+              onRevokeAuthCode={handleRevokeAuthCode}
+              onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
+              onGenerateReport={handleGenerateReport}
+            />
+          )}
+
+          {currentView === 'system' && (
+            <SystemView
+              key={currentView}
+              auditLogs={auditLogs}
+              mode="settings"
+              workItems={fulfillmentSnapshot.workItems}
+              onResolveWorkItem={handleResolveWorkItem}
+              onNotify={handleNotify}
+            />
           )}
         </main>
       </div>
 
       {/* System Help Floating Modal */}
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </div>
   );
 }

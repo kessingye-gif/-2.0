@@ -1,26 +1,18 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { navGroups, resolveLegacyView } from './navigation';
+import { navGroups } from './navigation';
 
-test('总部导航只展示任务式一级入口', () => {
+test('后台导航包含驾驶舱和七个正式业务模块', () => {
+  const items = navGroups.flatMap((group) => group.items);
+
   assert.deepEqual(
-    navGroups.flatMap((group) => group.items.map((item) => item.label)),
-    ['运营工作台', '机构运营', '内容中心', '开通监管', '异常处理', '平台设置', '操作审计'],
+    items.map((item) => item.label),
+    ['经营驾驶舱', '商品与权益', '内容管理', '机构管理', '教师管理', '班级管理', '学生管理', '系统管理'],
   );
+  assert.equal(items.some((item) => /\u5408\u540c|\u7b7e\u7ea6/.test(item.label)), false);
+  items.forEach((item) => assert.match(item.path, /^\/platform\//));
 });
 
-test('任务入口映射到现有业务视图', () => {
-  assert.equal(resolveLegacyView('supervision'), 'goods');
-  assert.equal(resolveLegacyView('exceptions'), 'exceptions');
-  assert.equal(resolveLegacyView('settings'), 'settings');
-  assert.notEqual(resolveLegacyView('exceptions'), resolveLegacyView('settings'));
-});
-
-test('工作台突出三个高频任务并移除冗余说明', () => {
-  const source = readFileSync(new URL('./components/views/DashboardView.tsx', import.meta.url), 'utf8');
-  assert.match(source, /新增机构并分配额度/);
-  assert.match(source, /导入知识点和题目/);
-  assert.match(source, /处理异常/);
-  assert.doesNotMatch(source, /点击直达业务模块进行快速处理/);
+test('驾驶舱不与七个业务模块混为一组', () => {
+  assert.deepEqual(navGroups.map((group) => group.title ?? null), [null, '业务模块', '系统']);
 });

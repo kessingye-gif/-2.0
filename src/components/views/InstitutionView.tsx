@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Institution, RegionType, ServicePackage } from '../../types';
+import { AuthCode, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
 
 interface InstitutionViewProps {
   institutions: Institution[];
   servicePackages: ServicePackage[];
+  authCodes: AuthCode[];
+  orders: OrderLedgerRecord[];
   onAddInstitution: (inst: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
@@ -13,6 +15,8 @@ interface InstitutionViewProps {
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
   institutions,
   servicePackages,
+  authCodes,
+  orders,
   onAddInstitution,
   onUpdateInstitution,
   onAdjustQuota,
@@ -69,8 +73,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   };
 
   const contentPackageOptions = useMemo(
-    () => [...new Set(servicePackages.flatMap((pkg) => pkg.includedContentPackages || []))],
-    [servicePackages]
+    () => [...new Set(institutions.flatMap((institution) => institution.availableContentPackages || []))],
+    [institutions]
   );
 
   const handleOpenScopeConfig = (institution: Institution) => {
@@ -279,6 +283,11 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
+      <div>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">组织与权限</p>
+        <h2 className="mt-1 text-[24px] font-bold text-[#0F172A]">机构管理</h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">维护机构账号、可用额度及内容范围；教师和学生在各自模块管理。</p>
+      </div>
       {/* Top Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
@@ -436,7 +445,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构与状态</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">负责人</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度健康度</th>
-                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">内容授权</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">内容与服务范围</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] text-right whitespace-nowrap">操作</th>
               </tr>
             </thead>
@@ -936,7 +945,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                         <span className="material-symbols-outlined text-[18px] text-[#16B45B]">deployed_code</span>
                         机构可用范围
                       </h4>
-                      <p className="mt-1 text-[11px] text-[#64748B]">内容包范围决定可访问与维护的内容；服务包范围决定可兑换的商品。</p>
+                      <p className="mt-1 text-[11px] text-[#64748B]">内容包决定机构可使用的教学内容；服务包决定机构可采购的点数与 AI 权益。两组权限分别配置。</p>
                     </div>
                     <button
                       type="button"
@@ -979,7 +988,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
                       <div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-[12px] font-bold text-[#0F172A]">可兑换服务包</span>
+                          <span className="text-[12px] font-bold text-[#0F172A]">可采购服务包</span>
                           <span className="text-[11px] text-[#64748B]">{scopeForm.servicePackageIds.length} 个已选</span>
                         </div>
                         <div className="mt-2 grid grid-cols-1 gap-1.5">

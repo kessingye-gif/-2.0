@@ -1,15 +1,8 @@
 import React from 'react';
-import { NavTab, navGroups } from '../../navigation';
+import { NavLink } from 'react-router-dom';
+import { navGroups } from '../../navigation';
 
-export type { NavTab } from '../../navigation';
-
-interface SidebarProps {
-  currentTab: NavTab;
-  onSelectTab: (tab: NavTab) => void;
-  unreadCount?: number;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => {
+export const Sidebar: React.FC = () => {
   return (
     <aside className="fixed left-0 top-0 h-screen w-[220px] bg-white border-r border-[#E2E8F0] flex flex-col py-5 z-50 select-none">
       {/* Brand Header */}
@@ -41,34 +34,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onSelectTab }) => 
           <div key={groupIdx} className="space-y-1">
             {group.title && <div className="px-3 text-[11px] font-medium text-[#94A3B8] mb-2">{group.title}</div>}
             {group.items.map((item) => {
-              const isActive = currentTab === item.id;
               return (
-                <button
+                <NavLink
                   key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-[14px] font-medium text-left cursor-pointer group ${
+                  to={item.path}
+                  className={({ isActive }) => `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-[14px] font-medium text-left cursor-pointer group ${
                     isActive
                       ? 'bg-[#EAF7EF] text-[#0E7D3E] font-semibold'
                       : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                   }`}
                 >
-                  <span className={`material-symbols-outlined text-[19px] transition-colors ${
-                    isActive ? 'text-[#16B45B]' : 'text-[#64748B] group-hover:text-[#16B45B]'
-                  }`}>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[19px] text-[#64748B] transition-colors group-hover:text-[#16B45B]">
                     {item.icon}
                   </span>
                   
                   <span className="flex-1 truncate">{item.label}</span>
 
-                  {item.badge && (
-                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${
-                      isActive ? 'bg-[#16B45B] text-white' : 'bg-[#F1F5F9] text-[#64748B]'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-
-                </button>
+                </NavLink>
               );
             })}
           </div>
