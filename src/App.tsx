@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { NavTab, Sidebar } from './components/layout/Sidebar';
-import { resolveLegacyView } from './navigation';
+import { Sidebar } from './components/layout/Sidebar';
+import type { NavTab } from './navigation';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { getPlatformRoute, getPlatformRouteId } from './router/platformRoutes';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
@@ -38,7 +40,10 @@ import {
 } from './types';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<NavTab>('dashboard');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = getPlatformRouteId(location.pathname);
+  const setCurrentTab = (tab: NavTab) => navigate(getPlatformRoute(tab).path);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Authentication & Current User State
@@ -265,12 +270,20 @@ export default function App() {
     return <LoginView institutions={institutions} onLogin={handleLogin} />;
   }
 
-  const currentView = resolveLegacyView(currentTab);
+  if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
+
+  const currentView = currentTab === 'institutions' ? 'institutions'
+    : currentTab === 'content' ? 'questionBank'
+      : currentTab === 'activations' ? 'goods'
+        : currentTab === 'afterSales' ? 'exceptions'
+          : currentTab === 'audit' ? 'auditLogs'
+            : currentTab === 'settings' ? 'settings'
+              : 'dashboard';
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
       {/* Fixed Left Sidebar */}
-      <Sidebar currentTab={currentTab} onSelectTab={setCurrentTab} />
+      <Sidebar />
 
       {/* Main Container Column */}
       <div className="flex-1 flex flex-col h-screen min-w-0 pl-[220px]">
@@ -298,7 +311,7 @@ export default function App() {
           {currentView === 'goods' && (
             <GoodsView
               key={currentTab}
-              mode={currentTab === 'catalog' ? 'catalog' : currentTab === 'fulfillment' ? 'fulfillment' : 'finance'}
+              mode="fulfillment"
               packages={packages}
               authCodes={authCodes}
               institutions={institutions}
