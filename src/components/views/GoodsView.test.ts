@@ -11,6 +11,8 @@ const handlers = {
   onRevokeAuthCode: () => undefined,
   onGenerateCodeForTest: () => undefined,
   onAdjustQuota: () => undefined,
+  onAudit: () => undefined,
+  onNotify: () => undefined,
 };
 
 const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance') => renderToStaticMarkup(createElement(GoodsView, {
@@ -23,9 +25,9 @@ const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance') => renderToStat
 
 test('catalog mode opens on service products instead of orders', () => {
   const markup = renderMode('catalog');
-  assert.match(markup, /商品与定价/);
+  assert.match(markup, /商品与权益管理/);
   assert.match(markup, /新增服务包/);
-  assert.doesNotMatch(markup, /学生 Token 加油包订单/);
+  assert.doesNotMatch(markup, /学生加油包订单.*申请退款/);
 });
 
 test('fulfillment mode opens on the authorization-code lifecycle', () => {

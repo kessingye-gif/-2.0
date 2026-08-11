@@ -326,6 +326,8 @@ export default function App() {
               onRevokeAuthCode={handleRevokeAuthCode}
               onGenerateCodeForTest={handleGenerateCodeForTest}
               onAdjustQuota={handleAdjustQuota}
+              onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
+              onNotify={handleNotify}
             />
           )}
 
