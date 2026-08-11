@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavTab, Sidebar } from './components/layout/Sidebar';
 import { resolveLegacyView } from './navigation';
 import { Header } from './components/layout/Header';
@@ -21,7 +21,9 @@ import {
   initialTeachers,
   initialStudents,
   initialAuditLogs,
+  initialOrderLedger,
 } from './mockData';
+import { buildGlobalSearchResults } from './fulfillment';
 
 import {
   Institution,
@@ -31,6 +33,7 @@ import {
   QuestionItem,
   AuditLogItem,
   CurrentUser,
+  OrderLedgerRecord,
 } from './types';
 
 export default function App() {
@@ -56,6 +59,17 @@ export default function App() {
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
+  const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
+
+  const searchResults = useMemo(
+    () => buildGlobalSearchResults(searchQuery, { institutions, authCodes, students, orders }),
+    [searchQuery, institutions, authCodes, students, orders],
+  );
+
+  const handleSelectSearchResult = (tab: NavTab) => {
+    setCurrentTab(tab);
+    setSearchQuery('');
+  };
 
   // Floating Help Modal State
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -249,6 +263,8 @@ export default function App() {
           onLogout={handleLogout}
           onOpenNotifications={() => alert('通知面板：全平台无待处理崩溃报错，目前 5 家机构额度告急已预警。')}
           onOpenSettings={() => setIsHelpModalOpen(true)}
+          searchResults={searchResults}
+          onSelectSearchResult={handleSelectSearchResult}
         />
 
         {/* Scrollable Main Content Area */}

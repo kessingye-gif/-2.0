@@ -10,9 +10,9 @@ interface DashboardViewProps {
 }
 
 const actions: { label: string; hint: string; icon: string; tab: NavTab; primary?: boolean }[] = [
-  { label: '新增机构并分配额度', hint: '机构开户', icon: 'add_business', tab: 'institutions', primary: true },
-  { label: '导入知识点和题目', hint: '内容入库', icon: 'upload_file', tab: 'content' },
-  { label: '处理异常', hint: '补发、扣回与作废', icon: 'error', tab: 'exceptions' },
+  { label: '新增机构并配置合同', hint: '客户签约', icon: 'add_business', tab: 'customers', primary: true },
+  { label: '配置服务包', hint: '商品定价', icon: 'sell', tab: 'catalog' },
+  { label: '处理售后异常', hint: '补发、扣回与退款', icon: 'support_agent', tab: 'afterSales' },
 ];
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ stats, institutions, auditLogs, onNavigateToTab }) => {
@@ -80,7 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ stats, institution
               <h3 className="text-[15px] font-semibold text-[#0F172A]">需要关注</h3>
               {riskInstitutions.length > 0 && <span className="rounded-full bg-[#FFF7ED] px-2 py-0.5 text-[11px] font-medium text-[#B45309]">{riskInstitutions.length}</span>}
             </div>
-            <button onClick={() => onNavigateToTab('institutions')} className="text-[12px] font-medium text-[#0E7D3E]">全部机构</button>
+            <button onClick={() => onNavigateToTab('customers')} className="text-[12px] font-medium text-[#0E7D3E]">全部机构</button>
           </div>
 
           {riskInstitutions.length === 0 ? (
@@ -90,7 +90,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ stats, institution
               {riskInstitutions.map((institution) => {
                 const percent = institution.totalQuota > 0 ? Math.round((institution.remainingQuota / institution.totalQuota) * 100) : 0;
                 return (
-                  <button key={institution.id} onClick={() => onNavigateToTab('institutions')} className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-[#F8FAFC]">
+                  <button key={institution.id} onClick={() => onNavigateToTab('customers')} className="flex w-full items-center gap-4 px-5 py-3.5 text-left hover:bg-[#F8FAFC]">
                     <span className={`h-2 w-2 rounded-full ${institution.status === 'inactive' ? 'bg-[#EF4444]' : 'bg-[#F59E0B]'}`} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-medium text-[#0F172A]">{institution.name}</span>

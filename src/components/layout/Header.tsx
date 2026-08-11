@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CurrentUser } from '../../types';
+import type { GlobalSearchResult } from '../../types';
+import type { NavTab } from '../../navigation';
+import { GlobalSearchPanel } from './GlobalSearchPanel';
 
 interface HeaderProps {
   currentUser: CurrentUser;
@@ -8,6 +11,8 @@ interface HeaderProps {
   onLogout: () => void;
   onOpenNotifications?: () => void;
   onOpenSettings?: () => void;
+  searchResults?: GlobalSearchResult[];
+  onSelectSearchResult?: (tab: NavTab) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenNotifications,
   onOpenSettings,
+  searchResults = [],
+  onSelectSearchResult,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -44,8 +51,11 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg py-1.5 pl-9 pr-3 text-[13px] text-[#0F172A] placeholder:text-[#94A3B8] focus:bg-white focus:border-[#16B45B] focus:ring-2 focus:ring-[#16B45B]/15 transition-all outline-none"
-            placeholder="搜索机构、学生、授权码"
+            placeholder="搜索机构、学生、开通码或订单"
           />
+          {onSelectSearchResult && (
+            <GlobalSearchPanel query={searchQuery} results={searchResults} onSelect={onSelectSearchResult} />
+          )}
         </div>
       </div>
 
