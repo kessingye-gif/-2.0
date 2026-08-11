@@ -12,7 +12,7 @@
 
 - Do not introduce contract, signing, or payment-collection workflow concepts.
 - Do not invent dashboard values that cannot be derived from `src/mockData.ts`.
-- Platform pages may inspect teacher, class, student, activation, and learning summaries but do not perform their daily management.
+- Super administrators inherit institution-admin and teacher capabilities. Teacher import, teacher quota allocation, class/student management, and learning-detail actions live under institution detail rather than separate platform top-level navigation.
 - Institution content-center pages and teacher pages are out of scope for this phase.
 - Use semantic links for navigation and preserve filter state in URL query parameters.
 - Every primary action must have a real handler and visible success or failure feedback.
@@ -234,7 +234,7 @@ Use `ownerType`, `ownerId`, optional `institutionId`, and optional `teacherId`. 
 
 - [ ] **Step 4: Add explicit platform content and institution detail pages**
 
-Do not build institution-side content pages. Reuse existing content tables inside a platform-only wrapper, update wording to `平台题库` and `平台知识点`, and ensure the institution detail does not expose teacher quota allocation or student editing actions.
+Do not build institution-side content pages. Reuse existing content tables inside a platform-only wrapper and update wording to `平台题库` and `平台知识点`. Institution detail reuses teacher, class, student, quota-allocation, and learning modules with an explicit institution scope; super-administrator actions record actor, acting scope, target institution, action, and reason.
 
 - [ ] **Step 5: Run focused tests, all tests, and type check**
 
