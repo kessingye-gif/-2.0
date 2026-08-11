@@ -1,38 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import {
-  initialAuditLogs,
-  initialAuthCodes,
-  initialInstitutions,
-  initialOrderLedger,
-  initialStudents,
-} from '../../mockData';
-import { deriveFulfillmentSnapshot } from '../../fulfillment';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
+import { derivePlatformDashboardSnapshot } from '../../dashboardSnapshot';
+import { initialAuditLogs, initialAuthCodes, initialInstitutions, initialOrderLedger, initialStudents } from '../../mockData';
 import { DashboardView } from './DashboardView';
 
-test('renders the commercial cockpit with all seven clickable stages', () => {
-  const snapshot = deriveFulfillmentSnapshot({
-    institutions: initialInstitutions,
-    authCodes: initialAuthCodes,
-    students: initialStudents,
-    orders: initialOrderLedger,
-    auditLogs: initialAuditLogs,
-  });
-
-  const markup = renderToStaticMarkup(createElement(DashboardView, { snapshot, onNavigateToTab: () => undefined }));
-
-  assert.match(markup, /商业履约驾驶舱/);
-  assert.match(markup, /今日待办/);
-  snapshot.funnel.forEach((step) => assert.match(markup, new RegExp(`<button[^>]*>[\\s\\S]*?${step.label}`)));
-});
-
-test('renders zero-valued funnel stages instead of hiding them', () => {
-  const snapshot = deriveFulfillmentSnapshot({ institutions: [], authCodes: [], students: [], orders: [], auditLogs: [] });
-  const markup = renderToStaticMarkup(createElement(DashboardView, { snapshot, onNavigateToTab: () => undefined }));
-
-  assert.match(markup, /机构签约/);
-  assert.match(markup, /0 家/);
-  assert.match(markup, /续费 \/ 退款/);
+test('驾驶舱展示四类有来源且可下钻的数据', () => {
+  const snapshot = derivePlatformDashboardSnapshot({ institutions: initialInstitutions, authCodes: initialAuthCodes, students: initialStudents, orders: initialOrderLedger, auditLogs: initialAuditLogs });
+  const markup = renderToStaticMarkup(createElement(MemoryRouter, {}, createElement(DashboardView, { snapshot })));
+  ['机构与额度', '学生与开通', '学习与使用', '待办与异常', '数据更新于', '数据来源'].forEach((text) => assert.match(markup, new RegExp(text)));
+  assert.equal(/商业履约驾驶舱|七段履约漏斗|签约|合同|回款/.test(markup), false);
+  assert.match(markup, /href="\/platform\/institutions\?quota=low"/);
 });

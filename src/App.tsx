@@ -27,6 +27,7 @@ import {
   initialOrderLedger,
 } from './mockData';
 import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
+import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
 
 import {
   Institution,
@@ -79,6 +80,7 @@ export default function App() {
   },
     [institutions, authCodes, students, orders, auditLogs, resolvedWorkItemIds],
   );
+  const dashboardSnapshot = useMemo(() => derivePlatformDashboardSnapshot({ institutions, authCodes, students, orders, auditLogs }), [institutions, authCodes, students, orders, auditLogs]);
 
   const handleSelectSearchResult = (tab: NavTab) => {
     setCurrentTab(tab);
@@ -302,10 +304,7 @@ export default function App() {
         {/* Scrollable Main Content Area */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
-            <DashboardView
-              snapshot={fulfillmentSnapshot}
-              onNavigateToTab={setCurrentTab}
-            />
+            <DashboardView snapshot={dashboardSnapshot} />
           )}
 
           {currentView === 'goods' && (
