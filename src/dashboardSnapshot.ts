@@ -88,7 +88,7 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
     ],
     workItems: [
       ...(lowQuota.length ? [{ id: 'low-quota', title: '机构额度过低', description: '进入机构列表查看并追加额度', count: lowQuota.length, targetPath: '/platform/institutions?quota=low', tone: 'warning' as const }] : []),
-      ...(unconfigured.length ? [{ id: 'unconfigured', title: '机构未配置服务范围', description: '进入机构详情配置内容包和服务包', count: unconfigured.length, targetPath: '/platform/institutions?scope=missing', tone: 'danger' as const }] : []),
+      ...(unconfigured.length ? [{ id: 'unconfigured', title: '机构未配置使用范围', description: '进入机构详情，分别配置内容包范围和服务包范围', count: unconfigured.length, targetPath: '/platform/institutions?scope=missing', tone: 'danger' as const }] : []),
       ...(pending ? [{ id: 'pending-activation', title: '学生待激活', description: '查看对应机构、老师、学生和权益记录', count: pending, targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' as const }] : []),
     ],
   };
