@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   KnowledgePointNode,
   QuestionItem,
@@ -7,6 +8,7 @@ import {
 } from '../../types';
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
 import { formatEducationMetadata } from '../../utils/educationStage';
+import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
 
 export interface SubjectItem {
   id: string;
@@ -145,7 +147,26 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   onBatchImportQuestions,
   onAddKnowledgePoint,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'subjects' | 'contentPackages' | 'questions' | 'tree'>('subjects');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const contentRoute = getContentRouteState(location.pathname);
+  useEffect(() => {
+    if (location.pathname === '/platform/content') {
+      navigate(getContentRoutePath('resources', 'subjects'), { replace: true });
+    }
+  }, [location.pathname, navigate]);
+  const activeSubTab: 'subjects' | 'contentPackages' | 'questions' | 'tree' = contentRoute.section === 'packages'
+    ? 'contentPackages'
+    : contentRoute.resource === 'knowledge-points'
+      ? 'tree'
+      : contentRoute.resource;
+  const setActiveSubTab = (tab: 'subjects' | 'contentPackages' | 'questions' | 'tree') => {
+    if (tab === 'contentPackages') {
+      navigate(getContentRoutePath('packages'));
+      return;
+    }
+    navigate(getContentRoutePath('resources', tab === 'tree' ? 'knowledge-points' : tab));
+  };
 
   // Content Packages Management State
   const [contentPackages, setContentPackages] = useState<ContentPackageItem[]>(initialContentPackages);
@@ -829,9 +850,30 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs w-fit">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('subjects')}
+          className={`rounded-lg px-4 py-2 text-[13px] font-bold transition-colors cursor-pointer ${
+            contentRoute.section === 'resources' ? 'bg-[#EAF7EF] text-[#0E7D3E]' : 'text-[#64748B] hover:bg-[#F8FAFC]'
+          }`}
+        >
+          内容资源
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('contentPackages')}
+          className={`rounded-lg px-4 py-2 text-[13px] font-bold transition-colors cursor-pointer ${
+            contentRoute.section === 'packages' ? 'bg-[#EAF7EF] text-[#0E7D3E]' : 'text-[#64748B] hover:bg-[#F8FAFC]'
+          }`}
+        >
+          内容包 ({contentPackages.length})
+        </button>
+      </div>
+
       {/* Sub Navigation Tabs & Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
-        <div className="flex gap-6">
+        <div className={`flex gap-6 ${contentRoute.section === 'packages' ? 'hidden' : ''}`}>
           <button
             onClick={() => setActiveSubTab('questions')}
             className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -865,16 +907,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             学科管理 ({subjects.length})
           </button>
 
-          <button
-            onClick={() => setActiveSubTab('contentPackages')}
-            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSubTab === 'contentPackages'
-                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            内容包管理 ({contentPackages.length})
-          </button>
         </div>
 
         <div className="flex items-center gap-2 mb-1">
