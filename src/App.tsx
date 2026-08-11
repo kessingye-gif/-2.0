@@ -23,7 +23,7 @@ import {
   initialAuditLogs,
   initialOrderLedger,
 } from './mockData';
-import { buildGlobalSearchResults } from './fulfillment';
+import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
 
 import {
   Institution,
@@ -64,6 +64,10 @@ export default function App() {
   const searchResults = useMemo(
     () => buildGlobalSearchResults(searchQuery, { institutions, authCodes, students, orders }),
     [searchQuery, institutions, authCodes, students, orders],
+  );
+  const fulfillmentSnapshot = useMemo(
+    () => deriveFulfillmentSnapshot({ institutions, authCodes, students, orders, auditLogs }),
+    [institutions, authCodes, students, orders, auditLogs],
   );
 
   const handleSelectSearchResult = (tab: NavTab) => {
@@ -271,9 +275,7 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
             <DashboardView
-              stats={stats}
-              institutions={institutions}
-              auditLogs={auditLogs}
+              snapshot={fulfillmentSnapshot}
               onNavigateToTab={setCurrentTab}
             />
           )}
