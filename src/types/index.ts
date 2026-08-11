@@ -33,8 +33,73 @@ export interface Institution {
   teacherCount: number; // 124
   studentCount: number; // 2150
   status: 'active' | 'inactive'; // 已启用 / 已停用
+  contractAmount?: number;
+  contractStatus?: 'draft' | 'active' | 'expiring' | 'expired';
+  contractExpireAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type FulfillmentStageId =
+  | 'contracted'
+  | 'funded'
+  | 'configured'
+  | 'issued'
+  | 'activated'
+  | 'servicing'
+  | 'renewal';
+
+export interface FulfillmentMetric {
+  id: 'contractAmount' | 'fundedAmount' | 'activatedStudents' | 'revenue' | 'refundAmount';
+  label: string;
+  value: number;
+  displayValue: string;
+  tone?: 'default' | 'positive' | 'warning';
+}
+
+export interface FulfillmentFunnelStep {
+  id: FulfillmentStageId;
+  label: string;
+  value: number;
+  displayValue: string;
+  conversionRate?: number;
+  targetTab: 'customers' | 'catalog' | 'fulfillment' | 'finance' | 'afterSales';
+}
+
+export interface FulfillmentWorkItem {
+  id: string;
+  type: 'low_credit' | 'code_expiring' | 'payment_pending' | 'activation_error' | 'refund_review';
+  title: string;
+  description: string;
+  institutionName: string;
+  severity: 'high' | 'medium' | 'low';
+  targetTab: 'customers' | 'fulfillment' | 'finance' | 'afterSales';
+}
+
+export interface FulfillmentEvent {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'success' | 'warning' | 'neutral';
+}
+
+export interface FulfillmentSnapshot {
+  metrics: FulfillmentMetric[];
+  funnel: FulfillmentFunnelStep[];
+  workItems: FulfillmentWorkItem[];
+  recentEvents: FulfillmentEvent[];
+  healthyInstitutionCount: number;
+  warningInstitutionCount: number;
+  exceptionInstitutionCount: number;
+}
+
+export interface GlobalSearchResult {
+  id: string;
+  type: 'institution' | 'student' | 'authCode' | 'order';
+  title: string;
+  subtitle: string;
+  targetTab: 'customers' | 'fulfillment' | 'finance';
 }
 
 export type PackageType = 'single_low' | 'single_high' | 'all_low' | 'all_high';
