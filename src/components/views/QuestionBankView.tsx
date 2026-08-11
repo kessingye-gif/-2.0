@@ -9,6 +9,7 @@ import {
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
 import { formatEducationMetadata } from '../../utils/educationStage';
 import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
+import { ContentPackageManager } from '../content/ContentPackageManager';
 
 export interface SubjectItem {
   id: string;
@@ -848,24 +849,35 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     );
   };
 
+  if (contentRoute.section === 'packages') {
+    return (
+      <div className="space-y-4">
+        <div className="flex w-fit items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs">
+          <button type="button" onClick={() => navigate(getContentRoutePath('resources', 'subjects'))} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer">内容资源</button>
+          <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({contentPackages.length})</button>
+        </div>
+        <ContentPackageManager
+          subjects={subjects}
+          onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs w-fit">
         <button
           type="button"
           onClick={() => setActiveSubTab('subjects')}
-          className={`rounded-lg px-4 py-2 text-[13px] font-bold transition-colors cursor-pointer ${
-            contentRoute.section === 'resources' ? 'bg-[#EAF7EF] text-[#0E7D3E]' : 'text-[#64748B] hover:bg-[#F8FAFC]'
-          }`}
+          className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E] cursor-pointer"
         >
           内容资源
         </button>
         <button
           type="button"
           onClick={() => setActiveSubTab('contentPackages')}
-          className={`rounded-lg px-4 py-2 text-[13px] font-bold transition-colors cursor-pointer ${
-            contentRoute.section === 'packages' ? 'bg-[#EAF7EF] text-[#0E7D3E]' : 'text-[#64748B] hover:bg-[#F8FAFC]'
-          }`}
+          className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
         >
           内容包 ({contentPackages.length})
         </button>
@@ -873,7 +885,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
       {/* Sub Navigation Tabs & Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
-        <div className={`flex gap-6 ${contentRoute.section === 'packages' ? 'hidden' : ''}`}>
+        <div className="flex gap-6">
           <button
             onClick={() => setActiveSubTab('questions')}
             className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
