@@ -116,8 +116,6 @@ export interface ServicePackage {
   description: string;
   status: 'active' | 'inactive'; // 可购买 / 已下架
   subjectRequirement: 'single' | 'all';
-  contentPackageMode?: 'single' | 'multiple'; // 'single' (激活时任选1个内容包) | 'multiple' (包含/可选多个内容包)
-  includedContentPackages?: string[]; // 绑定的内容包名称列表，如 ['人教版初中数学全套内容包', '人教版初中物理精选内容包']
 }
 
 export type AuthCodeStatus = 'pending' | 'used' | 'revoked' | 'expired';

@@ -30,6 +30,13 @@ test('catalog mode opens on service products instead of orders', () => {
   assert.doesNotMatch(markup, /学生加油包订单.*申请退款/);
 });
 
+test('服务包只表达点数和 AI 权益，不绑定内容包', () => {
+  const markup = renderMode('catalog');
+  assert.doesNotMatch(markup, /激活时任选|激活后包含|覆盖 \d+ 个内容包|内容包包含模式/);
+  assert.match(markup, /消耗采购点数/);
+  assert.match(markup, /每日 AI 上限/);
+});
+
 test('fulfillment mode opens on the authorization-code lifecycle', () => {
   const markup = renderMode('fulfillment');
   assert.match(markup, /开通与履约/);

@@ -73,8 +73,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   };
 
   const contentPackageOptions = useMemo(
-    () => [...new Set(servicePackages.flatMap((pkg) => pkg.includedContentPackages || []))],
-    [servicePackages]
+    () => [...new Set(institutions.flatMap((institution) => institution.availableContentPackages || []))],
+    [institutions]
   );
 
   const handleOpenScopeConfig = (institution: Institution) => {
