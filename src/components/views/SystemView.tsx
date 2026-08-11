@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AuditLogItem, AiModelConfig, TokenCompensation, TokenTopUpPack } from '../../types';
+import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, TokenCompensation, TokenTopUpPack } from '../../types';
 import { AuditLogView } from './AuditLogView';
 import { getTokenRefundEligibility } from '../../utils/tokenRefund';
 import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowledgeTypeRegistry';
@@ -7,6 +7,9 @@ import { canDeleteKnowledgeType, defaultKnowledgeTypes } from '../../utils/knowl
 interface SystemViewProps {
   auditLogs: AuditLogItem[];
   mode: 'exceptions' | 'settings';
+  workItems?: FulfillmentWorkItem[];
+  onResolveWorkItem?: (id: string, resolution: string) => void;
+  onNotify?: (message: string, tone?: 'success' | 'warning' | 'error') => void;
 }
 
 const initialAiModels: AiModelConfig[] = [
@@ -34,7 +37,7 @@ const initialRefundOrders = [
 
 type SystemTab = 'aiRules' | 'masterData' | 'tokenPacks' | 'compensation' | 'auditLogs' | 'exceptionReversal';
 
-export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
+export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workItems = [], onResolveWorkItem, onNotify }) => {
   const [activeTab, setActiveTab] = useState<SystemTab>(mode === 'settings' ? 'aiRules' : 'compensation');
   const tabs: { id: SystemTab; label: string }[] = mode === 'settings'
     ? [
@@ -103,17 +106,40 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode }) => {
     };
     setCompensations((prev) => [newC, ...prev]);
     setIsCompModalOpen(false);
-    alert(`成功向学生【${compForm.studentName}】补发非付费 ${compForm.tokenAmount} Token 算力额度！`);
+    onNotify?.(`已向学生【${compForm.studentName}】补发 ${Number(compForm.tokenAmount).toLocaleString('zh-CN')} Token 额度`);
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[13px] text-[#64748B]">{mode === 'settings' ? '系统' : '运营'}</p>
+        <p className="text-[12px] font-medium text-[#0E7D3E]">{mode === 'settings' ? '系统与基础配置' : '商业履约 · 问题闭环'}</p>
         <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">
-          {mode === 'settings' ? '平台设置' : '异常处理'}
+          {mode === 'settings' ? '平台设置' : '售后与异常'}
         </h2>
+        <p className="mt-1 text-[12px] text-[#64748B]">{mode === 'settings' ? '管理 AI 模型、基础数据和学生加油包。' : '处理会影响开通、续费和退款的履约待办，并留下审计记录。'}</p>
       </div>
+
+      {mode === 'exceptions' && (
+        <section className="overflow-hidden rounded-xl border border-[#DDE7E1] bg-white">
+          <div className="flex items-center justify-between border-b border-[#EEF2F0] px-5 py-4">
+            <div><h3 className="text-[14px] font-bold text-[#0F172A]">履约待办</h3><p className="mt-0.5 text-[11px] text-[#94A3B8]">处理后会同步更新驾驶舱和审计动态</p></div>
+            <span className="rounded-full bg-[#FFF7ED] px-2.5 py-1 text-[10px] font-semibold text-[#B45309]">{workItems.length} 项待处理</span>
+          </div>
+          {workItems.length === 0 ? (
+            <div className="px-5 py-10 text-center text-[12px] text-[#94A3B8]">当前没有未处理的商业履约异常</div>
+          ) : (
+            <div className="divide-y divide-[#EEF2F0]">
+              {workItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-4 px-5 py-4">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${item.severity === 'high' ? 'bg-[#EF4444]' : 'bg-[#F59E0B]'}`} />
+                  <div className="min-w-0 flex-1"><p className="text-[12.5px] font-semibold text-[#0F172A]">{item.title} · {item.institutionName}</p><p className="mt-1 text-[11px] text-[#64748B]">{item.description}</p></div>
+                  <button type="button" onClick={() => onResolveWorkItem?.(item.id, item.type === 'low_credit' ? '已联系机构并发起续费' : '已通知责任教师跟进激活')} className="rounded-lg bg-[#0E7D3E] px-3 py-2 text-[11px] font-semibold text-white hover:bg-[#0B6A35]">标记已处理</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">

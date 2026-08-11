@@ -10,6 +10,7 @@ import { DashboardView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { HelpModal } from './components/modals/HelpModal';
+import { Toast } from './components/ui/Toast';
 
 import {
   initialPlatformStats,
@@ -60,14 +61,18 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
   const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
+  const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
 
   const searchResults = useMemo(
     () => buildGlobalSearchResults(searchQuery, { institutions, authCodes, students, orders }),
     [searchQuery, institutions, authCodes, students, orders],
   );
-  const fulfillmentSnapshot = useMemo(
-    () => deriveFulfillmentSnapshot({ institutions, authCodes, students, orders, auditLogs }),
-    [institutions, authCodes, students, orders, auditLogs],
+  const fulfillmentSnapshot = useMemo(() => {
+    const snapshot = deriveFulfillmentSnapshot({ institutions, authCodes, students, orders, auditLogs });
+    return { ...snapshot, workItems: snapshot.workItems.filter((item) => !resolvedWorkItemIds.includes(item.id)) };
+  },
+    [institutions, authCodes, students, orders, auditLogs, resolvedWorkItemIds],
   );
 
   const handleSelectSearchResult = (tab: NavTab) => {
@@ -106,6 +111,16 @@ export default function App() {
     };
     setAuditLogs((prev) => [newLog, ...prev]);
   };
+
+  const handleResolveWorkItem = (id: string, resolution: string) => {
+    const item = fulfillmentSnapshot.workItems.find((workItem) => workItem.id === id);
+    if (!item) return;
+    setResolvedWorkItemIds((current) => [...current, id]);
+    addAuditLog('关闭履约异常', item.institutionName, resolution, '系统设置');
+    setToast({ message: `已处理：${item.title}`, tone: 'success' });
+  };
+
+  const handleNotify = (message: string, tone: 'success' | 'warning' | 'error' = 'success') => setToast({ message, tone });
 
   // Institution Operations
   const handleAddInstitution = (instData: Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -320,7 +335,14 @@ export default function App() {
           )}
 
           {(currentView === 'exceptions' || currentView === 'settings') && (
-            <SystemView key={currentView} auditLogs={auditLogs} mode={currentView} />
+            <SystemView
+              key={currentView}
+              auditLogs={auditLogs}
+              mode={currentView}
+              workItems={currentView === 'exceptions' ? fulfillmentSnapshot.workItems : []}
+              onResolveWorkItem={handleResolveWorkItem}
+              onNotify={handleNotify}
+            />
           )}
 
           {currentView === 'auditLogs' && (
@@ -331,6 +353,7 @@ export default function App() {
 
       {/* System Help Floating Modal */}
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+      {toast && <Toast message={toast.message} tone={toast.tone} onClose={() => setToast(null)} />}
     </div>
   );
 }
