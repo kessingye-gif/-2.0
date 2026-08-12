@@ -5,13 +5,16 @@ import {
   QuestionItem,
   QuestionDifficulty,
   QuestionType,
+  ContentPackageItem,
 } from '../../types';
+import { initialContentPackages } from '../../mockData';
 import { SingleTableRowInput, splitSingleTableData } from '../../utils/dataSplitter';
 import { formatEducationMetadata, getEducationStage } from '../../utils/educationStage';
 import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
 import { ContentPackageManager } from '../content/ContentPackageManager';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import { StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
+import { filterQuestions } from '../../utils/questionFilters';
 
 export interface SubjectItem {
   id: string;
@@ -34,27 +37,6 @@ const initialSubjects: SubjectItem[] = [
   { id: 'SUB-06', code: 'MATH-GZ', name: '高中数学', stage: '高中', textbook: '人教版A版', kpCount: 210, questionCount: 1850, status: 'active', sortOrder: 6 },
   { id: 'SUB-07', code: 'PHYS-GZ', name: '高中物理', stage: '高中', textbook: '人教版', kpCount: 140, questionCount: 1120, status: 'active', sortOrder: 7 },
   { id: 'SUB-08', code: 'CHEM-GZ', name: '高中化学', stage: '高中', textbook: '人教版', kpCount: 120, questionCount: 980, status: 'active', sortOrder: 8 },
-];
-
-export interface ContentPackageItem {
-  id: string;
-  code: string;
-  name: string;
-  subjectId: string;
-  subject: string;
-  stage: string;
-  kpCount: number;
-  questionCount: number;
-  status: 'active' | 'inactive';
-  description: string;
-}
-
-const initialContentPackages: ContentPackageItem[] = [
-  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', subject: '初中数学', stage: '初中', kpCount: 156, questionCount: 1280, status: 'active', description: '引用初中数学下已发布的知识点与题目' },
-  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '引用初中物理下已发布的知识点与题目' },
-  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '引用初中化学下已发布的知识点与题目' },
-  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '引用高中数学下已发布的知识点与题目' },
-  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '引用初中英语下已发布的知识点与题目' },
 ];
 
 interface QuestionBankViewProps {
@@ -156,15 +138,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const contentRoute = getContentRouteState(location.pathname);
   useEffect(() => {
     if (location.pathname === '/platform/content') {
-      navigate(getContentRoutePath('resources', 'subjects'), { replace: true });
+      navigate(getContentRoutePath('resources', 'knowledge-points'), { replace: true });
     }
   }, [location.pathname, navigate]);
-  const activeSubTab: 'subjects' | 'contentPackages' | 'questions' | 'tree' = contentRoute.section === 'packages'
+  const activeSubTab: 'contentPackages' | 'questions' | 'tree' = contentRoute.section === 'packages'
     ? 'contentPackages'
     : contentRoute.resource === 'knowledge-points'
       ? 'tree'
       : contentRoute.resource;
-  const setActiveSubTab = (tab: 'subjects' | 'contentPackages' | 'questions' | 'tree') => {
+  const setActiveSubTab = (tab: 'contentPackages' | 'questions' | 'tree') => {
     if (tab === 'contentPackages') {
       navigate(getContentRoutePath('packages'));
       return;
@@ -232,6 +214,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [difficultyFilter, setDifficultyFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedKnowledgePointId, setSelectedKnowledgePointId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
@@ -362,9 +345,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       rows.push({
         id: l3.id,
         l1Code: l1?.code || '-',
-        l1Name: l1?.name || '一级模块',
+        l1Name: l1?.name || '未命名章',
         l2Code: l2?.code || '-',
-        l2Name: l2?.name || '二级主题',
+        l2Name: l2?.name || '未命名节',
         l3Code: l3.code,
         l3Name: l3.name,
         l3Item: l3,
@@ -389,7 +372,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         l2Code: l2.code,
         l2Name: l2.name,
         l3Code: '-',
-        l3Name: '暂无关联三级考点',
+        l3Name: '暂无关联知识点',
         l2Item: l2,
         l1Item: l1,
         subject: l2.subject,
@@ -406,9 +389,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         l1Code: l1.code,
         l1Name: l1.name,
         l2Code: '-',
-        l2Name: '暂无关联二级主题',
+        l2Name: '暂无关联节',
         l3Code: '-',
-        l3Name: '暂无关联三级考点',
+        l3Name: '暂无关联知识点',
         l1Item: l1,
         subject: l1.subject,
         grade: l1.grade,
@@ -626,7 +609,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   // Filtered Questions
   const filteredQuestions = useMemo(() => {
-    return questions.filter((q) => {
+    return filterQuestions(questions, { searchTerm, knowledgePointId: selectedKnowledgePointId }).filter((q) => {
       const matchesSubject = !subjectFilter || q.subject === subjectFilter;
       const matchesDifficulty = !difficultyFilter || q.difficulty === difficultyFilter;
       const matchesType =
@@ -634,20 +617,20 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         q.type === typeFilter ||
         (typeFilter === '选择题' && isChoiceType(q.type)) ||
         (typeFilter === '单选题' && (q.type === '单选题' || q.type === '选择题'));
-      const matchesSearch =
-        !searchTerm ||
-        q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-      return matchesSubject && matchesDifficulty && matchesType && matchesSearch;
+      return matchesSubject && matchesDifficulty && matchesType;
     });
-  }, [questions, subjectFilter, difficultyFilter, typeFilter, searchTerm]);
+  }, [questions, subjectFilter, difficultyFilter, typeFilter, searchTerm, selectedKnowledgePointId]);
+
+  const handleViewBoundQuestions = (knowledgePointId: string) => {
+    setSearchTerm('');
+    setSelectedKnowledgePointId(knowledgePointId);
+    setActiveSubTab('questions');
+  };
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [subjectFilter, difficultyFilter, typeFilter, searchTerm, pageSize]);
+  }, [subjectFilter, difficultyFilter, typeFilter, searchTerm, selectedKnowledgePointId, pageSize]);
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
@@ -705,8 +688,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     const kp1 = knowledgePoints.find((kp) => kp.id === kp2?.parentId);
 
     const pathName = kp3
-      ? `${qForm.subject} > ${kp2?.name || '考点'} > ${kp3.name}`
-      : `${qForm.subject} > 知识考点`;
+      ? `${qForm.subject} > ${kp2?.name || '节'} > ${kp3.name}`
+      : `${qForm.subject} > 知识点`;
 
     const finalTitle = qForm.title.trim() || qForm.content.slice(0, 30).trim() || '精选试题';
 
@@ -859,7 +842,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     });
 
     setKpImportNotice(
-      `成功批量导入考点！从 Excel 解析并自动关联：新增/构建 3 个一级章节、3 个二级专题以及 3 个三级考点，层级完整度 100%！`
+      `成功批量导入内容层级！从 Excel 解析并自动关联：新增/构建 3 个章、3 个节和 3 个知识点，层级完整度 100%！`
     );
   };
 
@@ -870,7 +853,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     
     onBatchImportQuestions(splitResult);
     setImportNotice(
-      `成功导入！从 1 张单表中提取 ${splitResult.stats.totalRows} 行数据，后台自动解耦新增了 ${splitResult.stats.kpCreatedCount} 个知识考点节点，以及 ${splitResult.stats.questionCreatedCount} 道精选题，外键 ID 关联全部就绪！`
+      `成功导入！从 1 张单表中提取 ${splitResult.stats.totalRows} 行数据，后台自动解耦新增了 ${splitResult.stats.kpCreatedCount} 个章、节或知识点节点，以及 ${splitResult.stats.questionCreatedCount} 道精选题，关联全部就绪！`
     );
   };
 
@@ -878,7 +861,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     return (
       <div className="space-y-4">
         <div className="flex w-fit items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs">
-          <button type="button" onClick={() => navigate(getContentRoutePath('resources', 'subjects'))} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer">内容资源</button>
+          <button type="button" onClick={() => navigate(getContentRoutePath('resources', 'knowledge-points'))} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer">内容资源</button>
           <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({contentPackages.length})</button>
         </div>
         <ContentPackageManager
@@ -894,7 +877,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs w-fit">
         <button
           type="button"
-          onClick={() => setActiveSubTab('subjects')}
+          onClick={() => setActiveSubTab('tree')}
           className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E] cursor-pointer"
         >
           内容资源
@@ -933,17 +916,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             知识点 ({knowledgePoints.length})
           </button>
 
-          <button
-            onClick={() => setActiveSubTab('subjects')}
-            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSubTab === 'subjects'
-                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            学科管理 ({subjects.length})
-          </button>
-
         </div>
 
         <div className="flex items-center gap-2 mb-1">
@@ -954,14 +926,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               <span>新增内容包</span>
-            </button>
-          ) : activeSubTab === 'subjects' ? (
-            <button
-              onClick={handleOpenAddSubject}
-              className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>新增学科</span>
             </button>
           ) : activeSubTab === 'tree' ? (
             <>
@@ -1006,7 +970,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
-                <span>新增考点节点</span>
+                <span>新增章 / 节 / 知识点</span>
               </button>
             </>
           ) : (
@@ -1157,120 +1121,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             </div>
           </div>
         </div>
-      ) : activeSubTab === 'subjects' ? (
-        <div className="space-y-4">
-          {/* Subject Filters Bar */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
-            <div className="flex items-center gap-3 flex-1 min-w-[280px]">
-              <div className="relative flex-1">
-                <span className="material-symbols-outlined absolute left-3 top-2 text-[#94A3B8] text-[18px]">search</span>
-                <input
-                  type="text"
-                  value={subjectSearchTerm}
-                  onChange={(e) => setSubjectSearchTerm(e.target.value)}
-                  placeholder="搜索学科名称或代码..."
-                  className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
-                />
-              </div>
-
-              <div className="w-36">
-                <select
-                  value={subjectStageFilter}
-                  onChange={(e) => setSubjectStageFilter(e.target.value)}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none cursor-pointer font-bold focus:border-[#16B45B]"
-                >
-                  <option value="">全部学段</option>
-                  <option value="小学">小学</option>
-                  <option value="初中">初中</option>
-                  <option value="高中">高中</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="text-[12px] text-[#64748B]">
-              共 <strong className="text-[#0F172A]">{filteredSubjects.length}</strong> 个学科
-            </div>
-          </div>
-
-          {/* Subject Table */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px]">
-                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
-                  <tr>
-                    <th className="py-3 px-4">学科名称</th>
-                    <th className="py-3 px-4">学科代码</th>
-                    <th className="py-3 px-4">适用学段</th>
-                    <th className="py-3 px-4">默认教材</th>
-                    <th className="py-3 px-4 text-center">包含知识点</th>
-                    <th className="py-3 px-4 text-center">包含试题</th>
-                    <th className="py-3 px-4 text-center">状态</th>
-                    <th className="py-3 px-4 text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8F0] text-[#334155]">
-                  {filteredSubjects.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
-                        <span className="material-symbols-outlined text-[36px] block mb-1">find_in_page</span>
-                        暂无相关学科数据
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredSubjects.map((sub) => (
-                      <tr key={sub.id} className="hover:bg-[#F8FAFC] transition-colors">
-                        <td className="py-3 px-4 font-bold text-[#0F172A] flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-[16px]">menu_book</span>
-                          </div>
-                          <span>{sub.name}</span>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[12px] text-[#64748B]">{sub.code}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded bg-[#F1F5F9] text-[#475569] font-bold text-[12px]">
-                            {sub.stage}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">{sub.textbook}</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{sub.kpCount}</td>
-                        <td className="py-3 px-4 text-center font-mono font-bold text-[#16B45B]">{sub.questionCount}</td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSubjectStatus(sub.id)}
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                              sub.status === 'active'
-                                ? 'bg-[#E8F7EE] text-[#16B45B]'
-                                : 'bg-[#F1F5F9] text-[#94A3B8]'
-                            }`}
-                          >
-                            {sub.status === 'active' ? '已启用' : '已停用'}
-                          </button>
-                        </td>
-                        <td className="py-3 px-4 text-right space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditSubject(sub)}
-                            className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
-                          >
-                            编辑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteSubject(sub.id)}
-                            className="text-[#EF4444] hover:underline font-bold text-[12px] cursor-pointer"
-                          >
-                            删除
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       ) : activeSubTab === 'questions' ? (
         <div className="space-y-4">
           {/* Question Filters */}
@@ -1327,12 +1177,22 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSelectedKnowledgePointId('');
+                  setSearchTerm(e.target.value);
+                }}
                 placeholder="搜索题干、解题解析或题目编号..."
                 className="w-full border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
               />
             </div>
           </div>
+
+          {selectedKnowledgePointId && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#BBE7CC] bg-[#F0FBF4] px-4 py-2.5 text-[12px]">
+              <span className="text-[#0E7D3E]">正在查看知识点：<strong>{knowledgePoints.find((item) => item.id === selectedKnowledgePointId)?.name || selectedKnowledgePointId}</strong> 的关联题目</span>
+              <button type="button" onClick={() => setSelectedKnowledgePointId('')} className="font-bold text-[#16B45B] hover:underline">查看全部题目</button>
+            </div>
+          )}
 
           {/* Questions List */}
           <div className="space-y-4">
@@ -1429,10 +1289,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <div className="text-[11.5px] text-[#64748B] flex items-center justify-between font-mono pt-1">
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px] text-[#16B45B]">link</span>
-                      关联考点：<strong className="text-[#0F172A]">{q.knowledgePointPathName}</strong>
+                      关联知识点：<strong className="text-[#0F172A]">{q.knowledgePointPathName}</strong>
                     </div>
                     <div className="text-[10.5px] text-[#94A3B8]">
-                      考点 ID: <span className="font-bold text-[#16B45B]">{q.knowledgePointLevel3Id}</span>
+                      知识点 ID: <span className="font-bold text-[#16B45B]">{q.knowledgePointLevel3Id}</span>
                     </div>
                   </div>
                 </div>
@@ -1522,7 +1382,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   type="text"
                   value={treeSearchTerm}
                   onChange={(e) => setTreeSearchTerm(e.target.value)}
-                  placeholder="搜索知识考点名称、编码 (如 KP-MATH-301) 或关联章节..."
+                  placeholder="搜索章、节、知识点名称或编码..."
                   className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-3 py-1.5 text-[13px] outline-none focus:border-[#16B45B]"
                 />
               </div>
@@ -1546,7 +1406,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             <div className="flex flex-wrap items-center gap-3 text-[12px]">
               <div className="flex items-center gap-2 font-mono">
                 <span className="bg-[#E8F7EE] text-[#0E7D3E] border border-[#16B45B]/20 px-2.5 py-1 rounded-lg font-bold">
-                  三级考点: {knowledgePoints.filter(kp => kp.level === 3).length} 个
+                  知识点: {knowledgePoints.filter(kp => kp.level === 3).length} 个
                 </span>
                 <span className="bg-[#FFFBEB] text-[#D97706] border border-[#F5B700]/30 px-2.5 py-1 rounded-lg font-bold">
                   待补充试题: {noQuestionPoints.length} 个
@@ -1592,9 +1452,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     <tr>
                       <th className="px-5 py-3.5 font-bold">学科</th>
                       <th className="px-5 py-3.5 font-bold">学段</th>
-                      <th className="px-5 py-3.5 font-bold">一级知识点</th>
-                      <th className="px-5 py-3.5 font-bold">二级知识点</th>
-                      <th className="px-5 py-3.5 font-bold">三级知识点</th>
+                      <th className="px-5 py-3.5 font-bold">章</th>
+                      <th className="px-5 py-3.5 font-bold">节</th>
+                      <th className="px-5 py-3.5 font-bold">知识点</th>
                       <th className="px-5 py-3.5 font-bold">教材版本</th>
                       <th className="px-5 py-3.5 font-bold">关联精选题</th>
                       <th className="px-5 py-3.5 font-bold text-right">快捷操作</th>
@@ -1607,7 +1467,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           <span className="material-symbols-outlined text-[48px] text-gray-300 mb-2 block">
                             search_off
                           </span>
-                          <p>没有匹配的知识考点节点</p>
+                          <p>没有匹配的章、节或知识点</p>
                         </td>
                       </tr>
                     ) : (
@@ -1629,15 +1489,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           </td>
                           <td className="px-5 py-3.5 whitespace-nowrap">
                             {row.l3Item ? (
-                              <span
+                              <button
+                                type="button"
+                                onClick={() => row.l3Item && row.boundCount > 0 && handleViewBoundQuestions(row.l3Item.id)}
                                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono ${
                                   row.boundCount > 0
-                                    ? 'bg-[#E8F7EE] text-[#16B45B]'
+                                    ? 'bg-[#E8F7EE] text-[#16B45B] cursor-pointer hover:bg-[#D6F2E1]'
                                     : 'bg-[#FFFBEB] text-[#D97706]'
                                 }`}
                               >
                                 {row.boundCount > 0 ? `已绑定 ${row.boundCount} 道` : '0 道 (待补充)'}
-                              </span>
+                              </button>
                             ) : (
                               <span className="text-[11px] text-[#94A3B8] font-mono">-</span>
                             )}
@@ -1675,10 +1537,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                               {row.boundCount > 0 && row.l3Item && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setActiveSubTab('questions');
-                                    setSearchTerm(row.l3Name);
-                                  }}
+                                  onClick={() => handleViewBoundQuestions(row.l3Item!.id)}
                                   className="text-[#2563EB] hover:underline cursor-pointer"
                                 >
                                   查看题目
@@ -1720,7 +1579,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     <span className="material-symbols-outlined text-[36px] text-gray-300 block mb-1">
                       search_off
                     </span>
-                    <p className="text-[13px]">没有匹配的知识考点节点</p>
+                    <p className="text-[13px]">没有匹配的章、节或知识点</p>
                   </div>
                 );
               }
@@ -1765,7 +1624,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         </span>
 
                         <span className="text-[11px] text-[#94A3B8] font-mono ml-2">
-                          (下含 {l2Children.length} 个二级主题)
+                          (下含 {l2Children.length} 节)
                         </span>
                       </div>
 
@@ -1788,7 +1647,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           className="text-[12px] font-bold text-[#16B45B] hover:underline cursor-pointer flex items-center gap-0.5"
                         >
                           <span className="material-symbols-outlined text-[14px]">add</span>
-                          新增二级主题
+                          新增节
                         </button>
                       </div>
                     </div>
@@ -1798,7 +1657,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <div className="p-3 space-y-2.5 bg-white">
                         {l2Children.length === 0 ? (
                           <div className="text-[12px] text-[#94A3B8] p-2 pl-8 italic">
-                            暂无关联二级主题，点击上方按钮新增
+                            暂无节，点击上方按钮新增
                           </div>
                         ) : (
                           l2Children.map((l2) => {
@@ -1840,7 +1699,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                     </span>
 
                                     <span className="text-[11px] text-[#94A3B8] font-mono">
-                                      ({l3Children.length} 个考点)
+                                      ({l3Children.length} 个知识点)
                                     </span>
                                   </div>
 
@@ -1862,7 +1721,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                     className="text-[11.5px] font-bold text-[#16B45B] hover:underline cursor-pointer flex items-center gap-0.5"
                                   >
                                     <span className="material-symbols-outlined text-[14px]">add</span>
-                                    新增三级考点
+                                    新增知识点
                                   </button>
                                 </div>
 
@@ -1871,7 +1730,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                   <div className="p-2 space-y-2 bg-[#F8FAFC]/30">
                                     {l3Children.length === 0 ? (
                                       <div className="text-[12px] text-[#94A3B8] p-2 pl-6 italic">
-                                        暂无关联三级考点，点击“新增三级考点”录入
+                                        暂无知识点，点击“新增知识点”录入
                                       </div>
                                     ) : (
                                       l3Children.map((l3) => {
@@ -1897,16 +1756,18 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                             </div>
 
                                             <div className="flex items-center gap-3">
-                                              <span
+                                              <button
+                                                type="button"
+                                                onClick={() => boundQuestions.length > 0 && handleViewBoundQuestions(l3.id)}
                                                 className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono ${
                                                   boundQuestions.length > 0
-                                                    ? 'bg-[#E8F7EE] text-[#16B45B]'
+                                                    ? 'bg-[#E8F7EE] text-[#16B45B] cursor-pointer hover:bg-[#D6F2E1]'
                                                     : 'bg-[#FFFBEB] text-[#D97706]'
                                                 }`}
                                               >
                                                 已绑定 {boundQuestions.length} 道精选题
                                                 {boundQuestions.length === 0 && ' (待补充)'}
-                                              </span>
+                                              </button>
 
                                               <button
                                                 type="button"
@@ -1937,10 +1798,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                               {boundQuestions.length > 0 && (
                                                 <button
                                                   type="button"
-                                                  onClick={() => {
-                                                    setActiveSubTab('questions');
-                                                    setSearchTerm(l3.name);
-                                                  }}
+                                                  onClick={() => handleViewBoundQuestions(l3.id)}
                                                   className="text-[11.5px] font-bold text-[#2563EB] hover:underline cursor-pointer"
                                                 >
                                                   查看题目
@@ -2045,7 +1903,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                  关联三级考点 <span className="text-red-500">*</span>
+                  关联知识点 <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={qForm.knowledgePointLevel3Id}
@@ -2263,7 +2121,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
             <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
               <h3 className="text-[17px] font-bold text-[#0F172A]">
-                新增知识考点节点
+                新增章 / 节 / 知识点
               </h3>
               <button
                 onClick={() => setIsKpModalOpen(false)}
@@ -2281,14 +2139,14 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   onChange={(e) => setKpForm({ ...kpForm, level: Number(e.target.value) as 1 | 2 | 3 })}
                   className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none cursor-pointer"
                 >
-                  <option value={1}>一级知识领域/章节</option>
-                  <option value={2}>二级核心专题</option>
-                  <option value={3}>三级考点 (可直接绑定试题)</option>
+                  <option value={1}>章</option>
+                  <option value={2}>节</option>
+                  <option value={3}>知识点（可直接绑定试题）</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">考点节点名称</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">{kpForm.level === 1 ? '章名称' : kpForm.level === 2 ? '节名称' : '知识点名称'}</label>
                 <input
                   type="text"
                   required
@@ -2322,7 +2180,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   type="submit"
                   className="px-5 py-2 bg-[#16B45B] text-white rounded-lg text-[14px] font-bold hover:bg-[#139B4E] cursor-pointer shadow-2xs"
                 >
-                  保存考点
+                  保存
                 </button>
               </div>
             </form>
@@ -2341,7 +2199,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   单表同行上传 ➔ 后台自动拆分存为两张关联表
                 </h3>
                 <p className="text-[12px] text-[#64748B] mt-0.5">
-                  上传者在 Excel 中只需维护一行数据（知识点+试题同行），后台存储时自动解耦为【知识考点表】与【精选题库表】
+                  上传者在 Excel 中只需维护一行数据（知识点+试题同行），后台存储时自动解耦为【知识点表】与【精选题库表】
                 </p>
               </div>
               <button
@@ -2396,7 +2254,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行分别填写【学段、学科、一级知识点、二级知识点、三级知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析】
+                    单表模式要求：每一行分别填写【学段、学科、章、节、知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析】
                   </p>
 
                   <input
@@ -2451,9 +2309,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <tr>
                         <th className="p-2 border-r">学段</th>
                         <th className="p-2 border-r">学科</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">一级知识点</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">二级知识点</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">三级知识点</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">章</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">节</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">知识点</th>
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
@@ -2519,13 +2377,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   {/* Table A */}
                   <div className="border border-[#16B45B]/40 bg-[#E8F7EE]/30 p-3 rounded-xl space-y-2">
                     <div className="font-bold text-[#0E7D3E] flex items-center justify-between">
-                      <span>1. 知识考点表 (knowledgePoints)</span>
+                      <span>1. 知识点表 (knowledgePoints)</span>
                       <span className="text-[10px] bg-[#16B45B] text-white px-2 py-0.5 rounded">考点结构</span>
                     </div>
                     <ul className="space-y-1 text-[11.5px] text-[#334155]">
                       <li>• <strong>ID:</strong> <code className="text-[#16B45B]">KP-MATH-301 ~ 304</code></li>
                       <li>• <strong>考点名称:</strong> 行程问题与追及方程 / 无理数判定 / 直角三角形...</li>
-                      <li>• <strong>所属层级:</strong> 三级考点 (Level 3)</li>
+                      <li>• <strong>所属层级:</strong> 知识点（第三级）</li>
                       <li>• <strong>绑定路径:</strong> 初中 &gt; 数学 &gt; 数与代数 / 图形与几何...</li>
                     </ul>
                   </div>
@@ -2540,7 +2398,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                       <li>• <strong>支持全类题型:</strong> 单选题、多选题、填空题、解答题、判断题、综合题等</li>
                       <li>• <strong>选择题选项:</strong> Excel 中写入 <code className="text-[#16B45B]">A. ... | B. ...</code> 自动解析提取为选项数组</li>
                       <li>• <strong>填空/解答题规范:</strong> 选项列留空或写 <code className="text-[#64748B]">-</code>；填空题在题干中写 <code className="text-[#16B45B]">___</code>，解答题在【解题解析】中写入分步解答与计分点</li>
-                      <li>• <strong>关系关联:</strong> 自动以 <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id</code> 映射绑定三级考点</li>
+                      <li>• <strong>关系关联:</strong> 自动以 <code className="font-bold text-[#16B45B]">knowledgePointLevel3Id</code> 映射绑定知识点</li>
                     </ul>
                   </div>
                 </div>
@@ -2549,7 +2407,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
             <div className="pt-4 mt-4 flex justify-between items-center border-t border-[#E2E8F0]">
               <span className="text-[11px] text-[#64748B]">
-                说明：通过此解耦方式，既降低了前台人员录入难度，又保证了后台题目与知识考点的关系化查询处理。
+                说明：通过此解耦方式，既降低了前台人员录入难度，又保证了后台题目与知识点的关系化查询处理。
               </span>
               <button
                 onClick={() => setIsBatchImportOpen(false)}
@@ -2570,10 +2428,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <div>
                 <h3 className="text-[18px] font-bold text-[#0F172A] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#16B45B]">account_tree</span>
-                  批量导入三级知识考点树
+                  批量导入章、节与知识点
                 </h3>
                 <p className="text-[12px] text-[#64748B] mt-0.5">
-                  通过 Excel 表格按【学科 ➔ 一级章节 ➔ 二级专题 ➔ 三级考点】标准结构批量建立架构树
+                  通过 Excel 表格按【学科 ➔ 章 ➔ 节 ➔ 知识点】标准结构批量建立目录
                 </p>
               </div>
               <button
@@ -2607,7 +2465,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
-                三级考点表结构规范说明
+                章、节、知识点表结构规范说明
               </button>
             </div>
 
@@ -2626,9 +2484,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <div className="w-14 h-14 bg-[#E8F7EE] rounded-2xl flex items-center justify-center mx-auto text-[#16B45B] mb-3 group-hover:scale-105 transition-transform">
                     <span className="material-symbols-outlined text-[32px]">folder_zip</span>
                   </div>
-                  <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识考点结构表至此处</p>
+                  <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识点结构表至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    规范包含：【学科、学段年级、教材版本、一级章节编码/名称、二级专题编码/名称、三级考点编码/名称】
+                    规范包含：【学科、学段年级、教材版本、章编码/名称、节编码/名称、知识点编码/名称】
                   </p>
 
                   <input
@@ -2653,9 +2511,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 {/* Quick Test Import */}
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl flex items-center justify-between">
                   <div>
-                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科三级考点树批量导入</h5>
+                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科章、节、知识点批量导入</h5>
                     <p className="text-[12px] text-[#64748B] mt-0.5">
-                      模拟解析包含数学、物理、化学 3 组完整的“一级章节 ➔ 二级专题 ➔ 三级考点”数据
+                      模拟解析包含数学、物理、化学 3 组完整的“章 ➔ 节 ➔ 知识点”数据
                     </p>
                   </div>
                   <button
@@ -2670,7 +2528,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               /* Specification View */
               <div className="space-y-4 text-[12.5px]">
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
-                  标准 3 级知识考点表列名要求（遵照需求文档 9.0 规范）：
+                  标准章、节、知识点表列名要求（遵照需求文档 9.0 规范）：
                 </div>
                 <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white">
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
@@ -2679,7 +2537,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         <th className="p-2 border-r">所属学科</th>
                         <th className="p-2 border-r">一级编码及名称</th>
                         <th className="p-2 border-r">二级编码及名称</th>
-                        <th className="p-2 border-r">三级考点编码及名称</th>
+                        <th className="p-2 border-r">知识点编码及名称</th>
                         <th className="p-2 border-r">适用年级</th>
                         <th className="p-2">教材版本</th>
                       </tr>
@@ -2705,7 +2563,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </table>
                 </div>
                 <p className="text-[11.5px] text-[#64748B]">
-                  三级考点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验上级节点父子关系。
+                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验章、节、知识点的父子关系。
                 </p>
               </div>
             )}

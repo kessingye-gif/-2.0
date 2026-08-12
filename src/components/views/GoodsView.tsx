@@ -7,9 +7,12 @@ import {
   OrderLedgerRecord,
   Institution,
   PackageType,
+  ContentPackageItem,
+  CooperationPlan,
 } from '../../types';
 import { StudentAddOnOrdersPanel } from '../goods/StudentAddOnOrdersPanel';
 import type { RefundAuditEvent } from '../../domain/studentAddOnOrder';
+import { CooperationPlanPanel } from '../cooperation/CooperationPlanPanel';
 
 interface GoodsViewProps {
   mode: 'catalog' | 'fulfillment' | 'finance';
@@ -19,15 +22,15 @@ interface GoodsViewProps {
   onAddPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
   onUpdatePackage: (id: string, updates: Partial<ServicePackage>) => void;
   onRevokeAuthCode: (codeId: string) => void;
-  onGenerateAuthCode: (
-    institutionName: string,
-    teacherName: string,
-    studentName: string,
-    packageName: string
-  ) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
   onAudit: (event: RefundAuditEvent) => void;
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
+  creditInstitutionId?: string;
+  contentPackages?: ContentPackageItem[];
+  cooperationPlans?: CooperationPlan[];
+  onAddCooperationPlan?: (plan: CooperationPlan) => void;
+  onUpdateCooperationPlan?: (id: string, changes: Partial<CooperationPlan>) => void;
+  initialCatalogTab?: 'packages' | 'aiUsagePacks';
 }
 
 const initialAiUsagePacks: AiUsagePack[] = [
@@ -56,18 +59,24 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onAddPackage,
   onUpdatePackage,
   onRevokeAuthCode,
-  onGenerateAuthCode,
   onAdjustQuota,
   onAudit,
   onNotify,
+  creditInstitutionId,
+  contentPackages = [],
+  cooperationPlans = [],
+  onAddCooperationPlan,
+  onUpdateCooperationPlan,
+  initialCatalogTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<'packages' | 'aiUsagePacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'addOnOrders'>(
-    mode === 'catalog' ? 'packages' : mode === 'fulfillment' ? 'authCodes' : 'creditEntry',
+  const [activeTab, setActiveTab] = useState<'cooperationPlans' | 'packages' | 'aiUsagePacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'addOnOrders'>(
+    creditInstitutionId ? 'creditEntry' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'creditEntry',
   );
 
   // AI usage packs state
   const [aiUsagePacks, setAiUsagePacks] = useState<AiUsagePack[]>(initialAiUsagePacks);
   const [isAiUsageModalOpen, setIsAiUsageModalOpen] = useState(false);
+  const [editingAiUsagePack, setEditingAiUsagePack] = useState<AiUsagePack | null>(null);
   const [aiUsageForm, setAiUsageForm] = useState({
     name: '',
     code: '',
@@ -78,9 +87,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
   // Credit Entry State
   const [creditEntries, setCreditEntries] = useState<CreditEntryRecord[]>(initialCreditEntries);
-  const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+  const [isCreditModalOpen, setIsCreditModalOpen] = useState(Boolean(creditInstitutionId));
   const [creditForm, setCreditForm] = useState({
-    institutionId: institutions[0]?.id || '',
+    institutionId: creditInstitutionId || institutions[0]?.id || '',
     paymentAmount: 10000,
     allocatedCredits: 10000,
     entryDate: new Date().toISOString().slice(0, 10),
@@ -179,8 +188,44 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     setIsPkgModalOpen(false);
   };
 
-  const handleAddAiUsagePack = (e: React.FormEvent) => {
+  const handleOpenAddAiUsagePack = () => {
+    setEditingAiUsagePack(null);
+    setAiUsageForm({
+      name: '',
+      code: `AUP-${Date.now().toString().slice(-4)}`,
+      usageAmount: 1000000,
+      price: 500,
+      description: '',
+    });
+    setIsAiUsageModalOpen(true);
+  };
+
+  const handleOpenEditAiUsagePack = (pack: AiUsagePack) => {
+    setEditingAiUsagePack(pack);
+    setAiUsageForm({
+      name: pack.name,
+      code: pack.code,
+      usageAmount: pack.usageAmount,
+      price: pack.price,
+      description: pack.description,
+    });
+    setIsAiUsageModalOpen(true);
+  };
+
+  const handleSaveAiUsagePack = (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingAiUsagePack) {
+      setAiUsagePacks((prev) => prev.map((pack) => pack.id === editingAiUsagePack.id ? {
+        ...pack,
+        name: aiUsageForm.name,
+        usageAmount: Number(aiUsageForm.usageAmount),
+        price: Number(aiUsageForm.price),
+        description: aiUsageForm.description,
+      } : pack));
+      onNotify('AI 加油包已更新', 'success');
+      setIsAiUsageModalOpen(false);
+      return;
+    }
     const newPack: AiUsagePack = {
       id: `AUP-${Date.now().toString().slice(-4)}`,
       code: aiUsageForm.code || `AUP-${Date.now().toString().slice(-4)}`,
@@ -192,7 +237,20 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       createdAt: new Date().toISOString().slice(0, 10),
     };
     setAiUsagePacks((prev) => [newPack, ...prev]);
+    onNotify('AI 加油包已创建并上架', 'success');
     setIsAiUsageModalOpen(false);
+  };
+
+  const handleToggleAiUsagePack = (pack: AiUsagePack) => {
+    const nextStatus = pack.status === 'active' ? 'inactive' : 'active';
+    setAiUsagePacks((prev) => prev.map((item) => item.id === pack.id ? { ...item, status: nextStatus } : item));
+    onNotify(nextStatus === 'active' ? 'AI 加油包已重新上架' : 'AI 加油包已下架，历史订单不受影响', nextStatus === 'active' ? 'success' : 'warning');
+  };
+
+  const handleToggleServicePackage = (pkg: ServicePackage) => {
+    const nextStatus = pkg.status === 'active' ? 'inactive' : 'active';
+    onUpdatePackage(pkg.id, { status: nextStatus });
+    onNotify(nextStatus === 'active' ? '服务包已启用' : '服务包已停用，历史权益不受影响', nextStatus === 'active' ? 'success' : 'warning');
   };
 
   const handleAddCreditEntry = (e: React.FormEvent) => {
@@ -261,16 +319,11 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     });
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
 
-  const pageMeta = {
-    catalog: { eyebrow: '商品、额度与权益', title: '商品与权益管理', description: '统一管理服务包、AI 加油包、机构额度入账和权益流水。' },
-    fulfillment: { eyebrow: '商业履约 · 学生开通', title: '开通与履约', description: '跟踪学生开通码的生成、激活、过期与作废状态。' },
-    finance: { eyebrow: '商业履约 · 资金结算', title: '订单与资金', description: '统一查看机构入账、服务兑换、AI 加油包购买与退款流水。' },
-  }[mode];
-
   const tabs = mode === 'catalog'
-    ? [
+      ? [
         { id: 'packages' as const, label: '服务包' },
         { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
+        { id: 'cooperationPlans' as const, label: `授权模板 (${cooperationPlans.length})` },
         { id: 'creditEntry' as const, label: '机构额度入账' },
         { id: 'ledger' as const, label: '权益流水' },
         { id: 'addOnOrders' as const, label: '学生加油包订单' },
@@ -280,12 +333,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[12px] font-medium text-[#0E7D3E]">{pageMeta.eyebrow}</p>
-        <h2 className="mt-1 text-[24px] font-bold tracking-tight text-[#0F172A]">{pageMeta.title}</h2>
-        <p className="mt-1 text-[12px] text-[#64748B]">{pageMeta.description}</p>
-      </div>
+    <div className="space-y-4">
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-semibold">
         {tabs.map((tab) => (
@@ -299,12 +347,16 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         <StudentAddOnOrdersPanel onAudit={onAudit} onNotify={onNotify} />
       )}
 
+      {activeTab === 'cooperationPlans' && onAddCooperationPlan && onUpdateCooperationPlan && (
+        <CooperationPlanPanel plans={cooperationPlans} contentPackages={contentPackages} servicePackages={packages} onAddPlan={onAddCooperationPlan} onUpdatePlan={onUpdateCooperationPlan} />
+      )}
+
       {/* Tab 1: Service Packages */}
       {activeTab === 'packages' && (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              服务包对应学员实际消费的 AI 功能额度与服务有效期，支持单科/全科及高低量配置
+              停用后不再用于新合作方案和新办理，不影响已生效的学生权益和历史记录
             </span>
             <button
               onClick={handleOpenAddPkg}
@@ -326,12 +378,15 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <h3 className="text-[16px] font-bold text-[#0F172A] mt-1.5">{pkg.name}</h3>
                     <p className="text-[11px] font-mono text-[#94A3B8]">{pkg.code}</p>
                   </div>
-                  <button
-                    onClick={() => handleOpenEditPkg(pkg)}
-                    className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
-                  >
-                    编辑
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => handleOpenEditPkg(pkg)} className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer">编辑</button>
+                    <button
+                      onClick={() => handleToggleServicePackage(pkg)}
+                      className={`font-bold text-[12px] cursor-pointer hover:underline ${pkg.status === 'active' ? 'text-[#DC2626]' : 'text-[#16B45B]'}`}
+                    >
+                      {pkg.status === 'active' ? '停用' : '启用'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="bg-[#F8FAFC] rounded-xl p-3 grid grid-cols-2 gap-2 text-[12px]">
@@ -367,19 +422,10 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
             <span className="text-[13px] text-[#64748B]">
-              AI 加油包用于补充学生端 AI 用量，与机构点数和学生权益分别记账
+              下架后不再对新购买开放，已购买的 AI 用量和历史订单继续保留
             </span>
             <button
-              onClick={() => {
-                setAiUsageForm({
-                  name: '',
-                  code: `TP-${Date.now().toString().slice(-4)}`,
-                  usageAmount: 1000000,
-                  price: 500,
-                  description: '',
-                });
-                setIsAiUsageModalOpen(true);
-              }}
+              onClick={handleOpenAddAiUsagePack}
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
@@ -394,7 +440,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
                     <span className="material-symbols-outlined text-[20px]">bolt</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${pack.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-[#F1F5F9] text-[#64748B]'}`}>
                     {pack.status === 'active' ? '已上架' : '已停用'}
                   </span>
                 </div>
@@ -413,6 +459,15 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <span className="text-[11px] text-[#64748B] block">统一售价</span>
                     <span className="text-[18px] font-extrabold text-[#16B45B] font-mono">¥{pack.price}</span>
                   </div>
+                </div>
+                <div className="border-t border-[#E2E8F0] pt-3 flex justify-end gap-3">
+                  <button onClick={() => handleOpenEditAiUsagePack(pack)} className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer">编辑</button>
+                  <button
+                    onClick={() => handleToggleAiUsagePack(pack)}
+                    className={`hover:underline font-bold text-[12px] cursor-pointer ${pack.status === 'active' ? 'text-[#DC2626]' : 'text-[#16B45B]'}`}
+                  >
+                    {pack.status === 'active' ? '下架' : '重新上架'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -470,7 +525,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       {/* Tab 4: Auth Codes */}
       {activeTab === 'authCodes' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-3 flex-1 min-w-[280px]">
               <input
                 type="text"
@@ -491,13 +546,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               </select>
             </div>
 
-            <button
-              onClick={() => onGenerateAuthCode('浙江大学附属中学', '张敏老师', '王小明', '全科高量包')}
-              className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 cursor-pointer hover:bg-[#139B4E]"
-            >
-              <span className="material-symbols-outlined text-[16px]">key</span>
-              生成授权码
-            </button>
+            <span className="text-[12px] text-[#64748B]">授权码由学生服务办理自动生成，此处仅查询生命周期记录。</span>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -714,8 +763,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       {isAiUsageModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">新建 AI 加油包</h3>
-            <form onSubmit={handleAddAiUsagePack} className="space-y-4">
+            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">{editingAiUsagePack ? '编辑 AI 加油包' : '新建 AI 加油包'}</h3>
+            <form onSubmit={handleSaveAiUsagePack} className="space-y-4">
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">加油包名称</label>
                 <input
@@ -773,7 +822,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   type="submit"
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
                 >
-                  保存并上架
+                  {editingAiUsagePack ? '保存修改' : '保存并上架'}
                 </button>
               </div>
             </form>

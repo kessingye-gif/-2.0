@@ -1,4 +1,4 @@
-export type ContentResourceTab = 'subjects' | 'knowledge-points' | 'questions';
+export type ContentResourceTab = 'knowledge-points' | 'questions';
 
 export type ContentRouteState =
   | { section: 'resources'; resource: ContentResourceTab }
@@ -12,7 +12,7 @@ export const getContentRouteState = (pathname: string): ContentRouteState => {
   const resource = pathname.split('/').filter(Boolean).at(-1);
   return {
     section: 'resources',
-    resource: resource === 'knowledge-points' || resource === 'questions' ? resource : 'subjects',
+    resource: resource === 'questions' ? resource : 'knowledge-points',
   };
 };
 
@@ -21,5 +21,5 @@ export function getContentRoutePath(section: 'resources', resource: ContentResou
 export function getContentRoutePath(section: ContentRouteState['section'], resource?: ContentResourceTab): string {
   return section === 'packages'
     ? '/platform/content/packages'
-    : `/platform/content/resources/${resource ?? 'subjects'}`;
+    : `/platform/content/resources/${resource ?? 'knowledge-points'}`;
 }

@@ -6,38 +6,52 @@ import {
   GuardianshipStatus,
   AuthCode,
   GuardianBindingCode,
+  StudentServiceRight,
+  ServicePackage,
+  ServiceFulfillmentResult,
+  TeacherItem,
 } from '../../types';
 import { DiagnosticsView } from './DiagnosticsView';
-import { createGuardianBindingCode, deriveStudentRights } from '../../utils/studentCodeManagement';
+import { deriveStudentRights } from '../../utils/studentCodeManagement';
 import { filterStudents, getStudentFilterOptions } from '../../utils/studentFilters';
 import { useMasterData } from '../../masterData/MasterDataContext';
+import { DialogShell } from '../ui/FormPrimitives';
+import { ServiceFulfillmentPanel } from '../fulfillment/ServiceFulfillmentPanel';
+import { mergeStudentServiceRights } from '../../domain/studentRights';
 
 interface StudentViewProps {
   students: StudentItem[];
   guardianships: ParentGuardianship[];
   authCodes: AuthCode[];
-  onGenerateAuthCode: (institutionName: string, teacherName: string, studentName: string, packageName: string) => void;
+  guardianBindingCodes: GuardianBindingCode[];
+  serviceRights: StudentServiceRight[];
+  packages: ServicePackage[];
+  teachers: TeacherItem[];
+  onFulfillService: (result: ServiceFulfillmentResult) => void;
   onRevokeAuthCode: (codeId: string) => void;
   onUpdateGuardianshipStatus: (id: string, status: GuardianshipStatus) => void;
   onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void;
+  initialTab?: 'roster' | 'diagnostics';
 }
 
-const initialRebindRequests: WeChatRebindRequest[] = [
-  { id: 'REBIND-01', studentId: 'STU-001', studentName: '张伟强', institutionName: '浙江大学附属中学', phone: '13800112233', applyReason: '学生原微信账号丢失，更换家长手机实名新微信号', proofDocument: '学校开具的学生身份证明公章扫描件.pdf', status: 'pending', applicant: '李明 (班主任)', applyTime: '2026-08-04 15:20' },
-  { id: 'REBIND-02', studentId: 'STU-004', studentName: '刘洋洋', institutionName: '上海青葱教育培训中心', phone: '13911223344', applyReason: '监护人微信号变更，请求重新解绑原微信', proofDocument: '户口本与家长身份证图片.png', status: 'pending', applicant: '陈红 (教师)', applyTime: '2026-08-05 10:10' },
-];
+const hiddenRebindRequests: WeChatRebindRequest[] = [];
 
 export const StudentView: React.FC<StudentViewProps> = ({
   students,
   guardianships,
   authCodes,
-  onGenerateAuthCode,
+  guardianBindingCodes,
+  serviceRights,
+  packages,
+  teachers,
+  onFulfillService,
   onRevokeAuthCode,
   onUpdateGuardianshipStatus,
   onGenerateReport,
+  initialTab = 'roster',
 }) => {
   const { getActiveGrades } = useMasterData();
-  const [activeTab, setActiveTab] = useState<'roster' | 'rights' | 'rebind' | 'guardianship' | 'diagnostics'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'diagnostics'>(initialTab);
 
   // Roster Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,22 +59,15 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [institutionFilter, setInstitutionFilter] = useState('');
   const [teacherFilter, setTeacherFilter] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
-
-  // Rebind Requests
-  const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(initialRebindRequests);
-  const [guardianBindingCodes, setGuardianBindingCodes] = useState<GuardianBindingCode[]>(() =>
-    guardianships.filter((item) => item.status === 'active').map((item, index) => ({
-      id: `GBC-SEED-${index + 1}`,
-      code: `JB-2026-${String(8101 + index).padStart(4, '0')}`,
-      studentId: item.studentId,
-      studentName: item.studentName,
-      institutionName: item.institutionName,
-      createdAt: item.createdAt,
-      expireAt: item.expireAt || '长期有效',
-      status: 'bound',
-    }))
-  );
+  const [serviceStudent, setServiceStudent] = useState<StudentItem | null>(null);
+  const [detailStudent, setDetailStudent] = useState<StudentItem | null>(null);
+  const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(hiddenRebindRequests);
   const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
+  const mergedServiceRights = useMemo(() => mergeStudentServiceRights(serviceRights, authCodes, packages), [serviceRights, authCodes, packages]);
+
+  const handleReviewRebind = (id: string, isApproved: boolean) => {
+    setRebindRequests((current) => current.map((item) => item.id === id ? { ...item, status: isApproved ? 'approved' : 'rejected' } : item));
+  };
 
   // Filtered Roster
   const organizationFilters = { institution: institutionFilter, teacher: teacherFilter, grade: gradeFilter };
@@ -74,27 +81,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const filteredStudents = useMemo(() => filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter }), [students, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, gradeFilter]);
   const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || gradeFilter);
 
-  // Handlers for Rebind Requests
-  const handleReviewRebind = (id: string, isApproved: boolean) => {
-    setRebindRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: isApproved ? 'approved' : 'rejected',
-              reviewTime: new Date().toLocaleString().slice(0, 16),
-              reviewer: '超级管理员',
-            }
-          : r
-      )
-    );
-    alert(isApproved ? '已批准微信重新绑定申请！原微信号已安全解绑，学生可凭新账号重新扫码关联。' : '已拒绝解绑申请。');
-  };
-
-  const handleGenerateGuardianBindingCode = () => {
-    if (students[0]) setGuardianBindingCodes((current) => [createGuardianBindingCode(students[0]), ...current]);
-  };
-
   return (
     <div className="space-y-6">
       {/* Navigation Sub-Tabs */}
@@ -105,32 +91,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          学生花名册与服务状态 ({students.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('rights')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'rights' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
-        >
-          学生权益 ({studentRights.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('rebind')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'rebind' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          微信重新绑定审核 ({rebindRequests.filter((r) => r.status === 'pending').length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('guardianship')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'guardianship' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          家长监护关系 ({guardianships.length})
+          学生列表 ({students.length})
         </button>
 
         <button
@@ -139,7 +100,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
             activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
           }`}
         >
-          学情概览与诊断报告
+          学情报告
         </button>
       </div>
 
@@ -182,13 +143,22 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   <th className="py-3 px-4">负责教师</th>
                   <th className="py-3 px-4">年级/开通内容包</th>
                   <th className="py-3 px-4 text-center">服务包状态</th>
+                  <th className="py-3 px-4 text-center">家长关系</th>
                   <th className="py-3 px-4 text-center">到期时间</th>
+                  <th className="py-3 px-4 text-right">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {filteredStudents.length === 0 ? <tr><td colSpan={7} className="px-6 py-12 text-center text-[#64748B]">当前筛选条件下暂无学生</td></tr> : filteredStudents.map((stu) => (
+                {filteredStudents.length === 0 ? <tr><td colSpan={9} className="px-6 py-12 text-center text-[#64748B]">当前筛选条件下暂无学生</td></tr> : filteredStudents.map((stu) => {
+                  const guardian = guardianships.find((item) => item.studentId === stu.id);
+                  const bindingCode = guardianBindingCodes.find((item) => item.studentId === stu.id);
+                  const guardianStatus = guardian?.status === 'active' ? '已绑定' : bindingCode?.status === 'pending' || guardian?.status === 'pending' ? '待绑定' : '未绑定';
+                  const latestRight = mergedServiceRights.find((item) => item.studentId === stu.id);
+                  const serviceStatus = latestRight?.status ?? (stu.serviceStatus === 'none' ? 'pending' : stu.serviceStatus);
+                  const serviceStatusLabel = { pending: latestRight ? '待激活' : '待办理', active: '服务中', expired: '已到期', revoked: '已撤销' }[serviceStatus];
+                  return (
                   <tr key={stu.id} className="hover:bg-[#F8FAFC]">
-                    <td className="py-3 px-4 font-bold text-[#0F172A]">{stu.name}</td>
+                    <td className="py-3 px-4"><button onClick={() => setDetailStudent(stu)} className="font-bold text-[#0F172A] hover:text-[#16B45B]">{stu.name}</button></td>
                     <td className="py-3 px-4 font-mono text-[12px]">
                       <div>{stu.account}</div>
                       <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">微信已绑</span>
@@ -203,34 +173,51 @@ export const StudentView: React.FC<StudentViewProps> = ({
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        stu.serviceStatus === 'active' ? 'bg-green-100 text-green-700' : stu.serviceStatus === 'expired' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        serviceStatus === 'active' ? 'bg-green-100 text-green-700' : serviceStatus === 'expired' || serviceStatus === 'revoked' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {stu.serviceStatus === 'active' ? '服务中' : stu.serviceStatus === 'expired' ? '已到期' : '待激活配包'}
+                        {serviceStatusLabel}
                       </span>
                     </td>
+                    <td className="py-3 px-4 text-center"><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${guardianStatus === '已绑定' ? 'bg-green-100 text-green-700' : guardianStatus === '待绑定' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{guardianStatus}</span></td>
                     <td className="py-3 px-4 text-center text-[#64748B] font-mono text-[12px]">
-                      {stu.serviceExpireAt || '待定'}
+                      {latestRight?.serviceExpireAt || stu.serviceExpireAt || (serviceStatus === 'pending' ? '激活后计算' : '待定')}
                     </td>
+                    <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button><button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">办理服务</button></div></td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {activeTab === 'rights' && (
-        <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs">
-          <div className="flex items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4"><div><h3 className="text-[15px] font-bold">学生权益</h3><p className="mt-1 text-[12px] text-[#64748B]">按学生查看服务包权益，并直接生成学生授权码。</p></div><button onClick={() => onGenerateAuthCode('浙江大学附属中学', '张敏老师', '王小明', '全科高量包')} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]">生成授权码</button></div>
+      {false && (
+        <div className="space-y-4">
+          {mergedServiceRights.map((right) => {
+            const authCode = authCodes.find((item) => item.id === right.authCodeId);
+            const guardianCode = guardianBindingCodes.find((item) => item.studentId === right.studentId);
+            return <div key={right.id} className="rounded-2xl border border-[#A7E4BE] bg-white p-5 shadow-2xs">
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-[16px] font-bold text-[#0F172A]">{right.studentName} · {right.packageName}</h3><p className="mt-1 text-[12px] text-[#64748B]">{right.institutionName} · {right.teacherName}</p></div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">待激活</span></div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">AI 用量</div><div className="mt-1 font-bold">{right.includedAiUsage.toLocaleString()}</div></div>
+                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">学生授权码</div><div className="mt-1 font-mono font-bold text-[#16B45B]">{authCode?.code || '待生成'}</div></div>
+                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">家长绑定码</div><div className="mt-1 font-mono font-bold text-[#16B45B]">{guardianCode?.code || '待生成'}</div></div>
+                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">服务到期时间</div><div className="mt-1 font-bold">{right.serviceExpireAt || '长期有效'}</div></div>
+              </div>
+            </div>;
+          })}
+          <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs">
+          <div className="border-b border-[#E2E8F0] px-5 py-4"><h3 className="text-[15px] font-bold">服务权益记录</h3><p className="mt-1 text-[12px] text-[#64748B]">办理结果统一回写到这里；需要新办服务时，请从学生花名册选择学生。</p></div>
           <div className="overflow-x-auto custom-scrollbar"><table className="w-full min-w-[900px] text-left text-[13px]">
             <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">授权码</th><th className="px-4 py-3">学生</th><th className="px-4 py-3">所属机构</th><th className="px-4 py-3">责任教师</th><th className="px-4 py-3">服务包权益</th><th className="px-4 py-3">到期时间</th><th className="px-4 py-3 text-center">状态</th><th className="px-4 py-3 text-right">操作</th></tr></thead>
-            <tbody className="divide-y divide-[#E2E8F0]">{studentRights.length === 0 ? <tr><td colSpan={8} className="px-6 py-12 text-center text-[#64748B]">暂无学生权益记录</td></tr> : studentRights.map((right) => <tr key={right.id}><td className="px-4 py-3.5 font-mono font-bold text-[#16B45B]">{right.code}</td><td className="px-4 py-3.5 font-bold">{right.studentName}</td><td className="px-4 py-3.5">{right.institutionName}</td><td className="px-4 py-3.5">{right.teacherName}</td><td className="px-4 py-3.5 font-bold text-[#0E7D3E]">{right.packageName}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{right.expireAt}</td><td className="px-4 py-3.5 text-center"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${right.status === 'used' ? 'bg-green-100 text-green-700' : right.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{right.statusLabel}</span></td><td className="px-4 py-3.5 text-right">{right.status === 'pending' && <button onClick={() => onRevokeAuthCode(right.id)} className="text-[12px] font-bold text-red-500">作废</button>}</td></tr>)}</tbody>
+            <tbody className="divide-y divide-[#E2E8F0]">{studentRights.length === 0 ? <tr><td colSpan={8} className="px-6 py-12 text-center text-[#64748B]">暂无服务权益记录</td></tr> : studentRights.map((right) => <tr key={right.id}><td className="px-4 py-3.5 font-mono font-bold text-[#16B45B]">{right.code}</td><td className="px-4 py-3.5 font-bold">{right.studentName}</td><td className="px-4 py-3.5">{right.institutionName}</td><td className="px-4 py-3.5">{right.teacherName}</td><td className="px-4 py-3.5 font-bold text-[#0E7D3E]">{right.packageName}</td><td className="px-4 py-3.5 text-[12px] text-[#64748B]">{right.expireAt}</td><td className="px-4 py-3.5 text-center"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${right.status === 'used' ? 'bg-green-100 text-green-700' : right.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{right.statusLabel}</span></td><td className="px-4 py-3.5 text-right">{right.status === 'pending' && <button onClick={() => onRevokeAuthCode(right.id)} className="text-[12px] font-bold text-red-500">作废</button>}</td></tr>)}</tbody>
           </table></div>
+          </div>
         </div>
       )}
 
       {/* Tab 2: WeChat Rebind Requests */}
-      {activeTab === 'rebind' && (
+      {false && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 text-[13px] text-[#64748B]">
             机构提交线下学生身份核验凭证后，平台管理员在此进行终审并重置学生微信绑定关系
@@ -298,7 +285,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
       )}
 
       {/* Tab 3: Guardianship */}
-      {activeTab === 'guardianship' && (
+      {false && (
         <div className="space-y-4">
           <div className="overflow-x-auto rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs custom-scrollbar">
           <table className="w-full min-w-[800px] text-left text-[13px]">
@@ -347,7 +334,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
           <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
               <div><h3 className="text-[15px] font-bold">家长绑定码</h3><p className="mt-1 text-[12px] text-[#64748B]">用于建立家长与学生的监护关系，不开通学生服务。</p></div>
-              <button onClick={handleGenerateGuardianBindingCode} className="flex items-center gap-1 rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined text-[16px]">add_link</span>生成家长绑定码</button>
+              <span className="text-[12px] text-[#64748B]">家长绑定码在办理学生服务时自动生成</span>
             </div>
             <div className="overflow-x-auto custom-scrollbar"><table className="w-full min-w-[760px] text-left text-[13px]">
               <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">家长绑定码</th><th className="px-4 py-3">目标学生</th><th className="px-4 py-3">所属机构</th><th className="px-4 py-3">生成时间</th><th className="px-4 py-3">到期时间</th><th className="px-4 py-3 text-center">状态</th></tr></thead>
@@ -360,6 +347,55 @@ export const StudentView: React.FC<StudentViewProps> = ({
       {/* Tab 4: Diagnostics */}
       {activeTab === 'diagnostics' && (
         <DiagnosticsView students={students} onGenerateReport={onGenerateReport} />
+      )}
+
+      {detailStudent && (() => {
+        const rights = mergedServiceRights.filter((item) => item.studentId === detailStudent.id);
+        const guardian = guardianships.find((item) => item.studentId === detailStudent.id);
+        const bindingCode = guardianBindingCodes.find((item) => item.studentId === detailStudent.id);
+        const teacher = teachers.find((item) => item.id === detailStudent.teacherId);
+        return <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true" aria-label={`学生详情 · ${detailStudent.name}`}>
+          <button className="flex-1 cursor-default" aria-label="关闭学生详情" onClick={() => setDetailStudent(null)} />
+          <aside className="h-full w-full max-w-[620px] overflow-y-auto bg-[#F8FAFC] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between border-b border-[#E2E8F0] bg-white px-6 py-5">
+              <div><h3 className="text-[18px] font-bold text-[#0F172A]">{detailStudent.name}</h3><p className="mt-1 text-[12px] text-[#64748B]">{detailStudent.institutionName} · {detailStudent.grade} · 负责教师 {detailStudent.teacherName}</p></div>
+              <button onClick={() => setDetailStudent(null)} className="rounded-lg p-1 text-[#64748B] hover:bg-[#F1F5F9]" aria-label="关闭"><span className="material-symbols-outlined">close</span></button>
+            </div>
+            <div className="space-y-4 p-5">
+              <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <h4 className="text-[14px] font-bold text-[#0F172A]">基本资料</h4>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]"><div><span className="text-[#94A3B8]">登录账号</span><p className="mt-1 font-mono font-bold">{detailStudent.account}</p></div><div><span className="text-[#94A3B8]">服务状态</span><p className="mt-1 font-bold">{detailStudent.serviceStatus === 'active' ? '服务中' : detailStudent.serviceStatus === 'expired' ? '已到期' : '待办理'}</p></div><div><span className="text-[#94A3B8]">负责教师可用点数</span><p className="mt-1 font-mono font-bold text-[#0E7D3E]">{teacher ? `${teacher.remainingQuota.toLocaleString()} 点` : '未找到教师账户'}</p></div></div>
+              </section>
+              <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <div className="flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留。</p></div><button onClick={() => { setDetailStudent(null); setServiceStudent(detailStudent); }} className="rounded-lg bg-[#E8F7EE] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E]">办理新服务</button></div>
+                <div className="mt-3 space-y-2">{rights.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-4 text-[12px] text-[#94A3B8]">暂无服务权益</div> : rights.map((right) => {
+                  const authCode = authCodes.find((item) => item.id === right.authCodeId);
+                  const rightStatus = { pending: '待激活', active: '服务中', expired: '已到期', revoked: '已撤销' }[right.status];
+                  const authStatus = authCode ? { pending: '待激活', used: '已激活', expired: '已过期', revoked: '已作废' }[authCode.status] : '待生成';
+                  const guardianStatus = bindingCode ? { pending: '待绑定', bound: '已绑定', expired: '已失效' }[bindingCode.status] : '待生成';
+                  return <div key={right.id} className="rounded-xl border border-[#E2E8F0] p-3">
+                    <div className="flex justify-between gap-3"><strong className="text-[13px]">{right.packageName}</strong><span className={`text-[11px] font-bold ${right.status === 'active' ? 'text-[#0E7D3E]' : right.status === 'pending' ? 'text-amber-700' : 'text-[#64748B]'}`}>{rightStatus}</span></div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#64748B]"><span>AI 用量 {right.includedAiUsage.toLocaleString()}</span><span>到期 {right.serviceExpireAt || (right.status === 'pending' ? '激活后计算' : '长期有效')}</span><span className="font-mono text-[#0E7D3E]">学生授权码 {authCode?.code || '待生成'} · {authStatus}</span><span className="font-mono text-[#0E7D3E]">家长绑定码 {bindingCode?.code || '待生成'} · {guardianStatus}</span></div>
+                  </div>;
+                })}</div>
+              </section>
+              <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+                <h4 className="text-[14px] font-bold text-[#0F172A]">家长关系</h4>
+                {guardian ? <div className="mt-3 flex items-center justify-between rounded-xl bg-[#F8FAFC] p-3"><div><div className="text-[13px] font-bold">{guardian.parentName}</div><div className="mt-1 text-[11px] text-[#64748B]">{guardian.relationType} · {guardian.parentPhone}</div></div><div className="flex items-center gap-3"><span className={`text-[11px] font-bold ${guardian.status === 'active' ? 'text-[#0E7D3E]' : 'text-amber-700'}`}>{guardian.status === 'active' ? '已绑定' : '待绑定'}</span>{guardian.status === 'active' && <button onClick={() => onUpdateGuardianshipStatus(guardian.id, 'released')} className="text-[11px] font-bold text-red-500">解除关系</button>}</div></div> : <div className="mt-3 rounded-xl bg-[#F8FAFC] p-3 text-[12px] text-[#64748B]">{bindingCode ? `家长绑定码 ${bindingCode.code} · 待绑定` : '暂无家长关系'}</div>}
+              </section>
+            </div>
+          </aside>
+        </div>;
+      })()}
+
+      {serviceStudent && (
+        <DialogShell
+          title={`办理学生服务 · ${serviceStudent.name}`}
+          description={`${serviceStudent.institutionName} · 负责教师 ${serviceStudent.teacherName}`}
+          onClose={() => setServiceStudent(null)}
+        >
+          <ServiceFulfillmentPanel student={serviceStudent} packages={packages} teacherRemainingQuota={teachers.find((item) => item.id === serviceStudent.teacherId)?.remainingQuota} onFulfill={onFulfillService} compact />
+        </DialogShell>
       )}
     </div>
   );

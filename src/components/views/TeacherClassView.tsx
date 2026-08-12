@@ -1,12 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { TeacherItem, TeacherClassItem, Institution, TeacherPermission, StudentItem } from '../../types';
+import { TeacherItem, TeacherClassItem, Institution, TeacherPermission, StudentItem, ServicePackage, ServiceFulfillmentResult, TeacherCreditLedgerEntry } from '../../types';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import { GradeSelect } from '../masterData/MasterDataSelects';
+import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
 
 interface TeacherClassViewProps {
   institutions: Institution[];
+  teachers: TeacherItem[];
+  packages: ServicePackage[];
+  creditLedger: TeacherCreditLedgerEntry[];
   students?: StudentItem[];
   onAddStudents?: (newStudents: StudentItem[]) => void;
+  onAddTeacher: (teacher: TeacherItem, initialQuota: number) => void;
+  onAddTeachers: (teachers: TeacherItem[]) => void;
+  onUpdateTeacher: (teacherId: string, updates: Partial<TeacherItem>) => void;
+  onTransferTeacherCredits: (teacherId: string, amount: number, type: 'allocate' | 'reclaim', reason: string) => void;
+  onFulfillServices: (results: ServiceFulfillmentResult[]) => void;
   initialTab?: 'teachers' | 'classes';
 }
 
@@ -23,7 +32,7 @@ export interface ClassRosterStudent {
   institutionName: string;
   teacherId: string;
   teacherName: string;
-  serviceStatus: 'active' | 'none'; // 服务中 / 待配包
+  serviceStatus: 'active' | 'pending' | 'none'; // 服务中 / 待激活 / 待配包
   servicePackageName?: string;
   createdAt: string;
 }
@@ -36,16 +45,10 @@ const defaultPermissions: TeacherPermission = {
   canViewReport: true,
 };
 
-const initialTeachers: TeacherItem[] = [
-  { id: 'TCH-001', name: '李明', account: 'liming_tch', phone: '13811112222', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 42, allocatedQuota: 5000, remainingQuota: 3200, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2025-09-01' },
-  { id: 'TCH-002', name: '张华', account: 'zhanghua_tch', phone: '13922223333', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 35, allocatedQuota: 4000, remainingQuota: 1500, permissions: { ...defaultPermissions, canEditContent: false }, status: 'active', createdAt: '2025-09-10' },
-  { id: 'TCH-003', name: '陈红', account: 'chenhong_tch', phone: '13733334444', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', studentCount: 28, allocatedQuota: 3000, remainingQuota: 800, permissions: { ...defaultPermissions }, status: 'active', createdAt: '2026-02-15' },
-];
-
 const initialClasses: TeacherClassItem[] = [
-  { id: 'CLS-01', name: '初三 (1) 班全科重点冲刺班', code: 'CLS-CS-101', grade: '初三', subject: '全科', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-001', headTeacherName: '李明', studentCount: 42, createdAt: '2025-09-01' },
-  { id: 'CLS-02', name: '高一 (3) 班理化竞赛班', code: 'CLS-GY-303', grade: '高一', subject: '数学, 物理, 化学', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-002', headTeacherName: '张华', studentCount: 35, createdAt: '2025-09-05' },
-  { id: 'CLS-03', name: '中考化学培优 A 班', code: 'CLS-HX-A01', grade: '初三', subject: '化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', headTeacherId: 'TCH-003', headTeacherName: '陈红', studentCount: 28, createdAt: '2026-02-20' },
+  { id: 'CLS-01', name: '初三 (1) 班全科重点冲刺班', code: 'CLS-CS-101', grade: '初三', subject: '全科', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', headTeacherId: 'TCH-001', headTeacherName: '张敏老师', studentCount: 42, createdAt: '2025-09-01' },
+  { id: 'CLS-02', name: '高一 (3) 班理化竞赛班', code: 'CLS-GY-303', grade: '高一', subject: '数学, 物理, 化学', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', headTeacherId: 'TCH-002', headTeacherName: '周强老师', studentCount: 35, createdAt: '2025-09-05' },
+  { id: 'CLS-03', name: '中考化学培优 A 班', code: 'CLS-HX-A01', grade: '初三', subject: '化学', institutionId: 'INS-3007001', institutionName: '博雅语言学院', headTeacherId: 'TCH-003', headTeacherName: '高林老师', studentCount: 28, createdAt: '2026-02-20' },
 ];
 
 const initialClassRoster: ClassRosterStudent[] = [
@@ -58,13 +61,12 @@ const initialClassRoster: ClassRosterStudent[] = [
 
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
 
-export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, onAddStudents, initialTab = 'teachers' }) => {
+export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, teachers, packages, creditLedger, students = [], onAddStudents, onAddTeacher, onAddTeachers, onUpdateTeacher, onTransferTeacherCredits, onFulfillServices, initialTab = 'teachers' }) => {
   const { getActiveSubjects } = useMasterData();
   const allSubjects = getActiveSubjects().map((item) => item.name);
   const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>(initialTab);
 
   // Teachers State
-  const [teachers, setTeachers] = useState<TeacherItem[]>(initialTeachers);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
@@ -97,7 +99,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     const institution = institutions[0];
     if (!institution) return;
     const stamp = Date.now().toString().slice(-5);
-    setTeachers((current) => [
+    onAddTeachers([
       {
         id: `TCH-B-${stamp}-1`, name: '批量教师一', account: `teacher_${stamp}_1`, phone: '13800001001',
         institutionId: institution.id, institutionName: institution.name, studentCount: 0,
@@ -108,7 +110,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         institutionId: institution.id, institutionName: institution.name, studentCount: 0,
         allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
       },
-      ...current,
     ]);
     alert(`已读取【${file.name}】，成功导入 2 位教师；初始额度为 0，可在教师列表单独划拨。`);
   };
@@ -118,6 +119,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [rosterClass, setRosterClass] = useState<TeacherClassItem | null>(null);
   const [rosterSearch, setRosterSearch] = useState('');
+  const [isBulkServiceOpen, setIsBulkServiceOpen] = useState(false);
+  const [bulkPackageId, setBulkPackageId] = useState(packages.find((item) => item.status === 'active')?.id ?? '');
 
 
   const [selectedClassSubjects, setSelectedClassSubjects] = useState<string[]>(['数学']);
@@ -129,6 +132,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     subject: '数学',
     institutionId: institutions[0]?.id || '',
     headTeacherId: teachers[0]?.id || '',
+    initialTeacherQuota: 0,
   });
 
   // Filtered Lists
@@ -164,14 +168,18 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       institutionId: teacherForm.institutionId,
       institutionName: inst?.name || '指定机构',
       studentCount: 0,
-      allocatedQuota: Number(teacherForm.initialQuota),
-      remainingQuota: Number(teacherForm.initialQuota),
+      allocatedQuota: 0,
+      remainingQuota: 0,
       permissions: { ...defaultPermissions },
       status: 'active',
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setTeachers((prev) => [newT, ...prev]);
-    setIsTeacherModalOpen(false);
+    try {
+      onAddTeacher(newT, Number(teacherForm.initialQuota));
+      setIsTeacherModalOpen(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '教师创建失败');
+    }
   };
 
   const handleOpenPermissions = (tch: TeacherItem) => {
@@ -182,9 +190,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   const handleSavePermissions = () => {
     if (!selectedTeacher) return;
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === selectedTeacher.id ? { ...t, permissions: { ...permForm } } : t))
-    );
+    onUpdateTeacher(selectedTeacher.id, { permissions: { ...permForm } });
     setIsPermissionModalOpen(false);
   };
 
@@ -197,24 +203,22 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   const handleSaveQuota = () => {
     if (!selectedTeacher) return;
-    const change = quotaType === 'allocate' ? quotaAdjustAmount : -quotaAdjustAmount;
-    setTeachers((prev) =>
-      prev.map((t) => {
-        if (t.id === selectedTeacher.id) {
-          const newAllocated = Math.max(0, t.allocatedQuota + change);
-          const newRemaining = Math.max(0, t.remainingQuota + change);
-          return { ...t, allocatedQuota: newAllocated, remainingQuota: newRemaining };
-        }
-        return t;
-      })
-    );
-    setIsQuotaModalOpen(false);
+    try {
+      onTransferTeacherCredits(selectedTeacher.id, quotaAdjustAmount, quotaType, quotaType === 'allocate' ? '教师点数补充' : '收回教师未使用点数');
+      setIsQuotaModalOpen(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '点数调整失败');
+    }
   };
 
   const handleSaveClass = (e: React.FormEvent) => {
     e.preventDefault();
     const inst = institutions.find((i) => i.id === classForm.institutionId);
     const tch = teachers.find((t) => t.id === classForm.headTeacherId);
+    if (!inst || !tch) {
+      alert('请先为该机构创建并启用班主任账号');
+      return;
+    }
 
     const subjectDisplay = selectedClassSubjects.length === allSubjects.length || selectedClassSubjects.includes('全科')
       ? '全科'
@@ -227,14 +231,21 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       grade: classForm.grade,
       subject: subjectDisplay,
       institutionId: classForm.institutionId,
-      institutionName: inst?.name || '关联机构',
+      institutionName: inst.name,
       headTeacherId: classForm.headTeacherId,
-      headTeacherName: tch?.name || '班主任',
+      headTeacherName: tch.name,
       studentCount: 0,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setClasses((prev) => [newC, ...prev]);
-    setIsClassModalOpen(false);
+    try {
+      if (classForm.initialTeacherQuota > 0) {
+        onTransferTeacherCredits(classForm.headTeacherId, classForm.initialTeacherQuota, 'allocate', `新建班级【${classForm.name}】时给班主任分配点数`);
+      }
+      setClasses((prev) => [newC, ...prev]);
+      setIsClassModalOpen(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : '班级创建失败');
+    }
   };
 
   const handleSimulateImportStudents = () => {
@@ -418,7 +429,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <th className="py-3 px-4">登录账号/手机</th>
                   <th className="py-3 px-4">所属机构</th>
                   <th className="py-3 px-4 text-center">负责学生数</th>
-                  <th className="py-3 px-4 text-right">可用点数</th>
+                  <th className="py-3 px-4 text-right">点数账户</th>
                   <th className="py-3 px-4 text-center">状态</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
@@ -434,7 +445,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <td className="py-3 px-4 font-bold">{tch.institutionName}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{tch.studentCount} 人</td>
                     <td className="py-3 px-4 text-right">
-                      <span className="font-mono font-bold text-[#16B45B] block">{tch.remainingQuota.toLocaleString()} 点</span>
+                      <span className="font-mono font-bold text-[#16B45B] block">剩余 {tch.remainingQuota.toLocaleString()} 点</span>
+                      <span className="mt-0.5 block text-[10.5px] text-[#94A3B8]">累计分配 {tch.allocatedQuota.toLocaleString()} · 已使用 {(tch.allocatedQuota - tch.remainingQuota).toLocaleString()}</span>
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
@@ -483,6 +495,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   subject: '数学',
                   institutionId: institutions[0]?.id || '',
                   headTeacherId: teachers[0]?.id || '',
+                  initialTeacherQuota: 0,
                 });
                 setIsClassModalOpen(true);
               }}
@@ -507,10 +520,14 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <h3 className="text-[16px] font-bold text-[#0F172A]">{cls.name}</h3>
                   <p className="text-[12px] text-[#64748B]">所属机构：{cls.institutionName}</p>
 
-                  <div className="bg-[#F8FAFC] p-3 rounded-xl flex justify-between items-center text-[12px]">
+                  <div className="bg-[#F8FAFC] p-3 rounded-xl grid grid-cols-3 gap-3 items-center text-[12px]">
                     <div>
                       <span className="text-[#64748B] block">班主任</span>
                       <strong className="text-[#0F172A]">{cls.headTeacherName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#64748B] block">班主任可用点数</span>
+                      <strong className="text-[#0E7D3E] font-mono">{(teachers.find((item) => item.id === cls.headTeacherId)?.remainingQuota ?? 0).toLocaleString()} 点</strong>
                     </div>
                     <div className="text-right">
                       <span className="text-[#64748B] block">班级学员</span>
@@ -519,7 +536,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   </div>
                 </div>
 
-                <div className="pt-2 flex gap-2">
+                <div className="pt-2 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => handleOpenClassRosterModal(cls)}
                     className="flex-1 border border-[#E2E8F0] text-[#0F172A] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F8FAFC] cursor-pointer transition-colors"
@@ -528,10 +545,29 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   </button>
                   <button
                     onClick={() => {
+                      const teacher = teachers.find((item) => item.id === cls.headTeacherId);
+                      if (teacher) handleOpenQuota(teacher);
+                    }}
+                    className="border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
+                  >
+                    追加点数
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRosterClass(cls);
+                      setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? '');
+                      setIsBulkServiceOpen(true);
+                    }}
+                    className="border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
+                  >
+                    批量办理服务
+                  </button>
+                  <button
+                    onClick={() => {
                       setSelectedClass(cls);
                       setIsImportStudentModalOpen(true);
                     }}
-                    className="flex-1 bg-[#E8F7EE] text-[#16B45B] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#D3F0DE] cursor-pointer transition-colors"
+                    className="bg-[#E8F7EE] text-[#16B45B] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#D3F0DE] cursor-pointer transition-colors"
                   >
                     + 批量导入
                   </button>
@@ -606,6 +642,12 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   onChange={(e) => setTeacherForm({ ...teacherForm, initialQuota: Number(e.target.value) })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                 />
+                {(() => {
+                  const institution = institutions.find((item) => item.id === teacherForm.institutionId);
+                  return <p className={`mt-1.5 text-[11px] ${institution && teacherForm.initialQuota > institution.remainingQuota ? 'text-red-600' : 'text-[#64748B]'}`}>
+                    将从机构账户直接扣除：当前 {institution?.remainingQuota.toLocaleString() ?? 0} 点 → 创建后 {((institution?.remainingQuota ?? 0) - teacherForm.initialQuota).toLocaleString()} 点
+                  </p>;
+                })()}
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
@@ -618,7 +660,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
+                  disabled={!classForm.headTeacherId || classForm.initialTeacherQuota > (institutions.find((item) => item.id === classForm.institutionId)?.remainingQuota ?? 0)}
+                  className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                 >
                   确认保存
                 </button>
@@ -687,6 +730,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
             <div className="text-[12.5px] bg-[#F8FAFC] p-3 rounded-xl space-y-1">
               <div>所属机构：<strong>{selectedTeacher.institutionName}</strong></div>
+              <div>机构当前可分配：<strong className="font-mono">{(institutions.find((item) => item.id === selectedTeacher.institutionId)?.remainingQuota ?? 0).toLocaleString()} 点</strong></div>
               <div>当前可用点数：<strong className="text-[#16B45B] font-mono">{selectedTeacher.remainingQuota.toLocaleString()} 点</strong></div>
             </div>
 
@@ -725,7 +769,13 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   onChange={(e) => setQuotaAdjustAmount(Number(e.target.value))}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono font-bold"
                 />
+                <p className="mt-1.5 text-[11px] text-[#64748B]">调整后：机构 {(quotaType === 'allocate' ? (institutions.find((item) => item.id === selectedTeacher.institutionId)?.remainingQuota ?? 0) - quotaAdjustAmount : (institutions.find((item) => item.id === selectedTeacher.institutionId)?.remainingQuota ?? 0) + quotaAdjustAmount).toLocaleString()} 点；教师 {(quotaType === 'allocate' ? selectedTeacher.remainingQuota + quotaAdjustAmount : selectedTeacher.remainingQuota - quotaAdjustAmount).toLocaleString()} 点</p>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-[#E2E8F0] p-3">
+              <div className="text-[11px] font-bold text-[#64748B]">最近点数流水</div>
+              <div className="mt-2 space-y-2">{creditLedger.filter((item) => item.teacherId === selectedTeacher.id).slice(0, 3).map((item) => <div key={item.id} className="flex justify-between gap-3 text-[11px]"><span className="truncate text-[#475569]">{item.reason}</span><strong className={item.type === 'teacher_service_debit' || item.type === 'teacher_reclaim' ? 'text-red-600' : 'text-[#0E7D3E]'}>{item.type === 'institution_to_teacher' ? '+' : '-'}{item.amount.toLocaleString()} 点</strong></div>)}{creditLedger.every((item) => item.teacherId !== selectedTeacher.id) && <div className="text-[11px] text-[#94A3B8]">暂无调整流水</div>}</div>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
@@ -858,7 +908,11 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">所属机构</label>
                 <select
                   value={classForm.institutionId}
-                  onChange={(e) => setClassForm({ ...classForm, institutionId: e.target.value })}
+                  onChange={(e) => {
+                    const institutionId = e.target.value;
+                    const firstTeacher = teachers.find((item) => item.institutionId === institutionId && item.status === 'active');
+                    setClassForm({ ...classForm, institutionId, headTeacherId: firstTeacher?.id ?? '', initialTeacherQuota: 0 });
+                  }}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
                 >
                   {institutions.map((i) => (
@@ -874,10 +928,33 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   onChange={(e) => setClassForm({ ...classForm, headTeacherId: e.target.value })}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
                 >
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.institutionName})</option>
+                  {teachers.filter((item) => item.institutionId === classForm.institutionId && item.status === 'active').map((t) => (
+                    <option key={t.id} value={t.id}>{t.name} · 当前 {t.remainingQuota.toLocaleString()} 点</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="rounded-xl border border-[#DCE7E0] bg-[#F8FBF9] p-3">
+                <label className="flex items-center justify-between text-[12px] font-bold text-[#0F172A]">
+                  <span>同时给班主任分配点数（可选）</span>
+                  <span className="text-[10.5px] font-normal text-[#64748B]">从机构账户直接扣除</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={classForm.initialTeacherQuota}
+                  onChange={(e) => setClassForm({ ...classForm, initialTeacherQuota: Math.max(0, Number(e.target.value)) })}
+                  className="mt-2 w-full rounded-xl border border-[#D5E2DA] bg-white px-3 py-2 text-[13px] font-mono font-bold outline-none focus:border-[#16B45B]"
+                />
+                {(() => {
+                  const institution = institutions.find((item) => item.id === classForm.institutionId);
+                  const teacher = teachers.find((item) => item.id === classForm.headTeacherId);
+                  const amount = classForm.initialTeacherQuota;
+                  return <div className={`mt-2 text-[11px] ${institution && amount > institution.remainingQuota ? 'text-red-600' : 'text-[#64748B]'}`}>
+                    机构现有 {institution?.remainingQuota.toLocaleString() ?? 0} 点 → 分配后 {(institution ? institution.remainingQuota - amount : 0).toLocaleString()} 点；{teacher?.name || '班主任'}现有 {teacher?.remainingQuota.toLocaleString() ?? 0} 点 → 分配后 {((teacher?.remainingQuota ?? 0) + amount).toLocaleString()} 点
+                  </div>;
+                })()}
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
@@ -934,7 +1011,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
               <div className="text-[11.5px] text-[#16B45B] bg-[#E8F7EE] p-2 rounded-lg font-medium flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px]">info</span>
-                <span>导入只建立花名册和责任关系，学生服务需在“商品与权益”中另行开通。</span>
+                <span>导入只建立花名册和责任关系；导入后可直接在本班花名册中批量办理学生服务。</span>
               </div>
             </div>
 
@@ -1015,16 +1092,22 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 placeholder="搜索学生姓名、账号或手机号..."
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[12.5px] outline-none w-64 focus:border-[#16B45B]"
               />
-              <button
-                onClick={() => {
-                  setSelectedClass(rosterClass);
-                  setIsImportStudentModalOpen(true);
-                }}
-                className="bg-[#16B45B] text-white px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 hover:bg-[#139B4E] cursor-pointer shadow-xs"
-              >
-                <span className="material-symbols-outlined text-[16px]">group_add</span>
-                批量导入更多学员
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
+                  <span className="material-symbols-outlined text-[16px]">redeem</span>
+                  批量办理待配包学生
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedClass(rosterClass);
+                    setIsImportStudentModalOpen(true);
+                  }}
+                  className="bg-[#16B45B] text-white px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 hover:bg-[#139B4E] cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[16px]">group_add</span>
+                  批量导入更多学员
+                </button>
+              </div>
             </div>
 
             {/* Roster Table */}
@@ -1062,6 +1145,10 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
                               服务中 ({s.servicePackageName || '标准包'})
                             </span>
+                          ) : s.serviceStatus === 'pending' ? (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              待激活 ({s.servicePackageName || '标准包'})
+                            </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
                               待配包
@@ -1095,6 +1182,42 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
           </div>
         </div>
       )}
+
+      {isBulkServiceOpen && rosterClass && (() => {
+        const institution = institutions.find((item) => item.id === rosterClass.institutionId);
+        const teacher = teachers.find((item) => item.id === rosterClass.headTeacherId);
+        const availablePackages = packages.filter((item) => item.status === 'active' && (!institution?.availableServicePackageIds?.length || institution.availableServicePackageIds.includes(item.id)));
+        const selectedPackage = availablePackages.find((item) => item.id === bulkPackageId) ?? availablePackages[0];
+        const pendingRosterIds = new Set(classRoster.filter((item) => item.classId === rosterClass.id && item.serviceStatus === 'none').map((item) => item.id));
+        const pendingStudents = students.filter((item) => pendingRosterIds.has(item.id) && item.teacherId === rosterClass.headTeacherId);
+        const totalQuota = (selectedPackage?.quotaCost ?? 0) * pendingStudents.length;
+        const insufficient = Boolean(teacher && totalQuota > teacher.remainingQuota);
+        const handleBulkConfirm = () => {
+          if (!teacher || !selectedPackage || pendingStudents.length === 0 || insufficient) return;
+          try {
+            const batch = createBulkServiceFulfillments({ students: pendingStudents, servicePackage: selectedPackage, now: new Date(), nonce: Math.random().toString().slice(2, 6).padEnd(4, '0') });
+            onFulfillServices(batch.results);
+            setClassRoster((current) => current.map((item) => pendingRosterIds.has(item.id) && pendingStudents.some((student) => student.id === item.id) ? { ...item, serviceStatus: 'pending', servicePackageName: selectedPackage.name } : item));
+            setIsBulkServiceOpen(false);
+          } catch (error) {
+            alert(error instanceof Error ? error.message : '批量办理失败');
+          }
+        };
+        return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between border-b border-[#E2E8F0] pb-4"><div><h3 className="text-[16px] font-bold text-[#0F172A]">批量办理学生服务</h3><p className="mt-1 text-[12px] text-[#64748B]">{rosterClass.name} · 统一从班主任 {rosterClass.headTeacherName} 账户扣点</p></div><button onClick={() => setIsBulkServiceOpen(false)} className="text-[#64748B]">✕</button></div>
+            <div className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F8FAFC] p-3 text-[12px]"><div><span className="text-[#64748B]">待配包学生</span><strong className="mt-1 block text-[16px]">{pendingStudents.length} 人</strong></div><div><span className="text-[#64748B]">教师可用点数</span><strong className="mt-1 block text-[16px] text-[#0E7D3E]">{teacher?.remainingQuota.toLocaleString() ?? 0} 点</strong></div><div><span className="text-[#64748B]">本次预计扣除</span><strong className={`mt-1 block text-[16px] ${insufficient ? 'text-red-600' : 'text-[#0F172A]'}`}>{totalQuota.toLocaleString()} 点</strong></div></div>
+            <label className="mt-4 block text-[12px] font-bold text-[#475569]">选择服务包</label>
+            <select value={selectedPackage?.id ?? ''} onChange={(event) => setBulkPackageId(event.target.value)} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
+              {availablePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人 · {item.includedAiUsage.toLocaleString()} AI 用量</option>)}
+            </select>
+            <div className={`mt-4 rounded-xl px-3 py-2 text-[12px] ${insufficient ? 'bg-red-50 text-red-700' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}>
+              {pendingStudents.length === 0 ? '当前班级没有可批量办理的待配包学生。' : insufficient ? `教师点数不足，还差 ${(totalQuota - (teacher?.remainingQuota ?? 0)).toLocaleString()} 点，请先给班主任追加点数。` : `确认后将扣除 ${totalQuota.toLocaleString()} 点，并为每名学生独立生成学生授权码、家长绑定码和服务权益。`}
+            </div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setIsBulkServiceOpen(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button disabled={!selectedPackage || pendingStudents.length === 0 || !teacher || insufficient} onClick={handleBulkConfirm} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认批量办理</button></div>
+          </div>
+        </div>;
+      })()}
 
     </div>
   );

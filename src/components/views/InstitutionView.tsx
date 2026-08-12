@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { AuthCode, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
+import { AuthCode, ContentPackageItem, CooperationPlan, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
+import { CooperationAuthorizationSummary } from '../cooperation/CooperationAuthorizationSummary';
+import { ChoiceCard, DialogShell } from '../ui/FormPrimitives';
 
 interface InstitutionViewProps {
   institutions: Institution[];
@@ -10,6 +12,9 @@ interface InstitutionViewProps {
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
   onBatchImport: (file: File) => void;
+  onCreditEntry: (institutionId: string) => void;
+  contentPackages?: ContentPackageItem[];
+  cooperationPlans?: CooperationPlan[];
 }
 
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
@@ -21,6 +26,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   onUpdateInstitution,
   onAdjustQuota,
   onBatchImport,
+  onCreditEntry,
+  contentPackages = [],
+  cooperationPlans = [],
 }) => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,12 +40,10 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const [isAdjustQuotaOpen, setIsAdjustQuotaOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-  const [isScopeConfigOpen, setIsScopeConfigOpen] = useState(false);
-  const [scopeForm, setScopeForm] = useState({
-    contentPackages: [] as string[],
-    servicePackageIds: [] as string[],
-  });
   const [isAccountPasswordModalOpen, setIsAccountPasswordModalOpen] = useState(false);
+  const [isAuthorizationModalOpen, setIsAuthorizationModalOpen] = useState(false);
+  const [authorizationContentIds, setAuthorizationContentIds] = useState<string[]>([]);
+  const [authorizationServiceIds, setAuthorizationServiceIds] = useState<string[]>([]);
   const [accountForm, setAccountForm] = useState({
     username: '',
     password: '',
@@ -70,30 +76,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     );
 
     return { contentPackageNames, servicePackagesInScope };
-  };
-
-  const contentPackageOptions = useMemo(
-    () => [...new Set(institutions.flatMap((institution) => institution.availableContentPackages || []))],
-    [institutions]
-  );
-
-  const handleOpenScopeConfig = (institution: Institution) => {
-    setScopeForm({
-      contentPackages: institution.availableContentPackages || [],
-      servicePackageIds: institution.availableServicePackageIds || [],
-    });
-    setIsScopeConfigOpen(true);
-  };
-
-  const handleSaveScopeConfig = () => {
-    if (!selectedInstitution) return;
-    const updates = {
-      availableContentPackages: scopeForm.contentPackages,
-      availableServicePackageIds: scopeForm.servicePackageIds,
-    };
-    onUpdateInstitution(selectedInstitution.id, updates);
-    setSelectedInstitution({ ...selectedInstitution, ...updates });
-    setIsScopeConfigOpen(false);
   };
 
   // Filtered institutions
@@ -281,13 +263,27 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     }
   };
 
+  const openAuthorizationModal = (inst: Institution) => {
+    const contentIds = contentPackages
+      .filter((item) => (inst.availableContentPackages || []).includes(item.id) || (inst.availableContentPackages || []).includes(item.name))
+      .map((item) => item.id);
+    setSelectedInstitution(inst);
+    setAuthorizationContentIds(contentIds);
+    setAuthorizationServiceIds(inst.availableServicePackageIds || []);
+    setIsAuthorizationModalOpen(true);
+  };
+
+  const saveAuthorizationScope = () => {
+    if (!selectedInstitution) return;
+    onUpdateInstitution(selectedInstitution.id, {
+      availableContentPackages: authorizationContentIds,
+      availableServicePackageIds: authorizationServiceIds,
+    });
+    setIsAuthorizationModalOpen(false);
+  };
+
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-[12px] font-medium text-[#0E7D3E]">组织与权限</p>
-        <h2 className="mt-1 text-[24px] font-bold text-[#0F172A]">机构管理</h2>
-        <p className="mt-1 text-[12px] text-[#64748B]">维护机构账号、可用额度及内容范围；教师和学生在各自模块管理。</p>
-      </div>
       {/* Top Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
@@ -445,7 +441,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构与状态</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">负责人</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">额度健康度</th>
-                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">内容与服务范围</th>
+                <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] whitespace-nowrap">机构授权范围</th>
                 <th className="px-5 py-3 text-[12.5px] font-medium text-[#64748B] text-right whitespace-nowrap">操作</th>
               </tr>
             </thead>
@@ -474,70 +470,41 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       }`}
                     >
                       {/* 机构名称 */}
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                              isInactive
-                                ? 'bg-gray-100 text-gray-400'
-                                : 'bg-[#E8F7EE] text-[#16B45B]'
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-[19px]">
-                              {isInactive ? 'domain_disabled' : 'school'}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span
+                      <td className="px-5 py-2.5 whitespace-nowrap">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {!isInactive && <span className="h-1.5 w-1.5 rounded-full bg-[#16B45B]" aria-label="正常服务" />}
+                            <span
                               onClick={() => {
                                 setSelectedInstitution(inst);
                                 setIsDetailDrawerOpen(true);
                               }}
                               className={`text-[13.5px] font-bold cursor-pointer hover:text-[#16B45B] transition-colors ${
-                                isInactive ? 'text-gray-400 line-through' : 'text-[#0F172A]'
+                                isInactive ? 'text-[#64748B]' : 'text-[#0F172A]'
                               }`}
                             >
                               {inst.name}
-                              </span>
-
-                              {inst.status === 'active' ? (
-                                <span className="px-2 py-0.5 rounded-full bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-semibold">
-                                  正常服务
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#64748B] text-[11px] font-medium">
-                                  已停用
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-1 text-[11px] text-[#94A3B8] font-mono">{inst.code} · {inst.regionName}</p>
+                            </span>
+                            {isInactive && <span className="rounded-full bg-[#F1F5F9] px-2 py-0.5 text-[10.5px] font-medium text-[#64748B]">已停用</span>}
                           </div>
+                          <p className="mt-0.5 text-[10.5px] text-[#94A3B8] font-mono">{inst.code} · {inst.regionName}</p>
                         </div>
                       </td>
 
                       {/* 负责人 */}
-                      <td className={`px-5 py-3.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
-                        <div className="text-[13px] font-semibold text-[#0F172A]">
+                      <td className={`px-5 py-2.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
+                        <div className="text-[13px] font-medium text-[#334155]">
                           {inst.contactPerson}
                         </div>
-                        <p className="mt-1 text-[11px] text-[#94A3B8] font-mono">{inst.phone}</p>
                       </td>
 
                       {/* 额度使用情况 */}
-                      <td className={`px-5 py-3.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
+                      <td className={`px-5 py-2.5 whitespace-nowrap ${isInactive ? 'opacity-60' : ''}`}>
                         <div>
-                          <div className="flex items-baseline gap-1 text-[12.5px] font-mono mb-1">
-                            <span className="font-bold text-[#0F172A]">
-                              {inst.remainingQuota.toLocaleString()}
-                            </span>
-                            <span className="text-[#94A3B8]">/</span>
-                            <span className="text-[#64748B]">
-                              {inst.totalQuota.toLocaleString()}
-                            </span>
+                          <div className={`mb-1.5 text-[12px] font-medium ${isWarning ? 'text-[#DC2626]' : isInactive ? 'text-[#64748B]' : 'text-[#334155]'}`}>
+                            剩余 <span className="font-mono font-bold">{inst.remainingQuota.toLocaleString()}</span> 点
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="h-1.5 w-28 bg-[#E2E8F0] rounded-full overflow-hidden">
+                          <div className="h-1 w-24 bg-[#E2E8F0] rounded-full overflow-hidden">
                               <div
                                 className={`h-full transition-all duration-300 rounded-full ${
                                   isInactive
@@ -548,44 +515,32 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                                 }`}
                                 style={{ width: `${isInactive ? 0 : remainingPct}%` }}
                               ></div>
-                            </div>
-                            <span
-                              className={`text-[11px] font-mono font-bold ${
-                                isInactive
-                                  ? 'text-gray-400'
-                                  : isWarning
-                                  ? 'text-[#EF4444]'
-                                  : 'text-[#16B45B]'
-                              }`}
-                            >
-                              {remainingPct}%
-                            </span>
                           </div>
                         </div>
                       </td>
 
-                      <td className={`px-5 py-3.5 ${isInactive ? 'opacity-60' : ''}`}>
+                      <td className={`px-5 py-2.5 ${isInactive ? 'opacity-60' : ''}`}>
                         {scope.contentPackageNames.length === 0 && scope.servicePackagesInScope.length === 0 ? (
                           <div className="text-[12px] text-[#94A3B8]">尚未配置可用范围</div>
                         ) : (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5 text-[12px] font-semibold text-[#334155]">
-                              <span className="material-symbols-outlined text-[16px] text-[#16B45B]">inventory_2</span>
-                              {scope.contentPackageNames.length} 个内容包 · {scope.servicePackagesInScope.length} 个服务包
-                            </div>
-                            <p className="text-[11px] text-[#64748B]">内容与服务包范围独立配置</p>
-                          </div>
+                          <div className="text-[12px] font-medium text-[#475569]">{scope.contentPackageNames.length} 内容包 · {scope.servicePackagesInScope.length} 服务包</div>
                         )}
                       </td>
 
                       {/* 操作 */}
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2 text-[12.5px]">
+                      <td className="px-5 py-2.5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-3 text-[12px]">
                           <button
-                            onClick={() => handleOpenAdjustQuota(inst)}
-                            className="px-2.5 py-1 bg-[#E8F7EE] text-[#0E7D3E] hover:bg-[#16B45B] hover:text-white rounded-lg font-bold transition-all cursor-pointer shadow-2xs"
+                            onClick={() => openAuthorizationModal(inst)}
+                            className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer"
                           >
-                            划拨
+                            授权
+                          </button>
+                          <button
+                            onClick={() => onCreditEntry(inst.id)}
+                            className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer"
+                          >
+                            入账
                           </button>
 
                           <button
@@ -593,7 +548,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                               setSelectedInstitution(inst);
                               setIsDetailDrawerOpen(true);
                             }}
-                            className="w-8 h-8 rounded-lg border border-[#E2E8F0] text-[#475569] hover:text-[#16B45B] hover:border-[#16B45B]/30 hover:bg-[#E8F7EE] flex items-center justify-center transition-colors cursor-pointer"
+                            className="w-7 h-7 rounded-lg text-[#94A3B8] hover:text-[#16B45B] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer"
                             title="查看详情与更多操作"
                           >
                             <span className="material-symbols-outlined text-[18px]">more_horiz</span>
@@ -938,130 +893,23 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   </div>
                 </div>
 
-                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3">
+                <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px] text-[#16B45B]">deployed_code</span>
-                        机构可用范围
+                        机构授权范围
                       </h4>
-                      <p className="mt-1 text-[11px] text-[#64748B]">内容包决定机构可使用的教学内容；服务包决定机构可采购的点数与 AI 权益。两组权限分别配置。</p>
+                      <p className="mt-1 text-[11px] text-[#64748B]">内容包与服务包范围分别生效；模板只用于快速带入，不代替本机构已保存的权限。</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenScopeConfig(selectedInstitution)}
-                      className="shrink-0 px-2.5 py-1.5 rounded-lg bg-[#E8F7EE] text-[#0E7D3E] text-[11px] font-bold hover:bg-[#16B45B] hover:text-white transition-colors cursor-pointer"
-                    >
-                      配置范围
-                    </button>
+                    <button onClick={() => openAuthorizationModal(selectedInstitution)} className="shrink-0 rounded-xl border border-[#D8EDE1] bg-[#E8F7EE] px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">修改范围</button>
                   </div>
-
-                  {isScopeConfigOpen && (
-                    <div className="rounded-xl border border-[#BBE7CC] bg-[#F4FCF7] p-3 space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-[12px] font-bold text-[#0F172A]">可用内容包</span>
-                          <span className="text-[11px] text-[#64748B]">{scopeForm.contentPackages.length} 个已选</span>
-                        </div>
-                        <div className="mt-2 grid grid-cols-1 gap-1.5">
-                          {contentPackageOptions.map((contentPackage) => {
-                            const checked = scopeForm.contentPackages.includes(contentPackage);
-                            return (
-                              <label key={contentPackage} className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-[11.5px] text-[#334155] cursor-pointer border border-transparent hover:border-[#BBE7CC]">
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => setScopeForm((current) => ({
-                                    ...current,
-                                    contentPackages: checked
-                                      ? current.contentPackages.filter((item) => item !== contentPackage)
-                                      : [...current.contentPackages, contentPackage],
-                                  }))}
-                                  className="accent-[#16B45B]"
-                                />
-                                {contentPackage}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-[12px] font-bold text-[#0F172A]">可采购服务包</span>
-                          <span className="text-[11px] text-[#64748B]">{scopeForm.servicePackageIds.length} 个已选</span>
-                        </div>
-                        <div className="mt-2 grid grid-cols-1 gap-1.5">
-                          {servicePackages.map((pkg) => {
-                            const checked = scopeForm.servicePackageIds.includes(pkg.id);
-                            return (
-                              <label key={pkg.id} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-[11.5px] text-[#334155] cursor-pointer border border-transparent hover:border-[#BBE7CC]">
-                                <span className="flex items-center gap-2 min-w-0">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => setScopeForm((current) => ({
-                                      ...current,
-                                      servicePackageIds: checked
-                                        ? current.servicePackageIds.filter((item) => item !== pkg.id)
-                                        : [...current.servicePackageIds, pkg.id],
-                                    }))}
-                                    className="accent-[#16B45B]"
-                                  />
-                                  <span className="font-medium truncate">{pkg.name}</span>
-                                </span>
-                                <span className="shrink-0 text-[#94A3B8]">{pkg.quotaCost} 点</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-2 pt-1">
-                        <button type="button" onClick={() => setIsScopeConfigOpen(false)} className="px-3 py-1.5 rounded-lg text-[11.5px] font-bold text-[#64748B] hover:bg-white cursor-pointer">取消</button>
-                        <button type="button" onClick={handleSaveScopeConfig} className="px-3 py-1.5 rounded-lg bg-[#16B45B] text-[11.5px] font-bold text-white hover:bg-[#139B4E] cursor-pointer">保存范围</button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[12.5px] font-bold text-[#0F172A]">内容包范围</span>
-                        <span className="text-[11px] text-[#64748B]">{getScopeSummary(selectedInstitution).contentPackageNames.length} 个可用内容包</span>
-                      </div>
-                      {getScopeSummary(selectedInstitution).contentPackageNames.length === 0 ? (
-                        <p className="mt-2 text-[11.5px] text-[#94A3B8]">尚未配置内容包范围</p>
-                      ) : (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {getScopeSummary(selectedInstitution).contentPackageNames.map((contentPackage) => (
-                            <span key={contentPackage} className="rounded-md border border-[#D6EBDD] bg-white px-1.5 py-0.5 text-[10.5px] text-[#475569]">
-                              {contentPackage.replace(/人教版|全套|核心|精选|内容包/g, '')}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[12.5px] font-bold text-[#0F172A]">服务包范围</span>
-                        <span className="text-[11px] text-[#64748B]">{getScopeSummary(selectedInstitution).servicePackagesInScope.length} 个可兑换服务包</span>
-                      </div>
-                      {getScopeSummary(selectedInstitution).servicePackagesInScope.length === 0 ? (
-                        <p className="mt-2 text-[11.5px] text-[#94A3B8]">尚未配置服务包范围</p>
-                      ) : (
-                        <div className="mt-2 space-y-1">
-                          {getScopeSummary(selectedInstitution).servicePackagesInScope.map((pkg) => (
-                            <div key={pkg.id} className="flex items-center justify-between gap-3 text-[11.5px]">
-                              <span className="font-medium text-[#334155]">{pkg.name}</span>
-                              <span className="text-[#64748B]">{pkg.quotaCost} 点 / {pkg.durationDays || '长期'}{pkg.durationDays ? ' 天' : ''}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <CooperationAuthorizationSummary
+                    contentPackages={contentPackages}
+                    servicePackages={servicePackages}
+                    contentPackageIds={contentPackages.filter((item) => (selectedInstitution.availableContentPackages || []).includes(item.id) || (selectedInstitution.availableContentPackages || []).includes(item.name)).map((item) => item.id)}
+                    servicePackageIds={selectedInstitution.availableServicePackageIds || []}
+                  />
                 </div>
 
                 {/* Scale info */}
@@ -1230,6 +1078,35 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {isAuthorizationModalOpen && selectedInstitution && (
+        <DialogShell
+          title={`配置授权范围 · ${selectedInstitution.name}`}
+          description="内容包范围和服务包范围分别生效；任何新增商品都不会自动扩大机构权限。"
+          onClose={() => setIsAuthorizationModalOpen(false)}
+          footer={<>
+            <button onClick={() => setIsAuthorizationModalOpen(false)} className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button>
+            <button onClick={saveAuthorizationScope} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white">保存授权范围</button>
+          </>}
+        >
+          <div className="space-y-5">
+            {cooperationPlans.filter((plan) => plan.status === 'active').length > 0 && (
+              <section className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                <div className="mb-3"><h4 className="text-[13px] font-bold text-[#0F172A]">从授权模板快速带入</h4><p className="mt-1 text-[11px] text-[#64748B]">带入后仍可单独调整，最终以本弹窗保存的范围为准。</p></div>
+                <div className="flex flex-wrap gap-2">{cooperationPlans.filter((plan) => plan.status === 'active').map((plan) => <button key={plan.id} onClick={() => { setAuthorizationContentIds(plan.contentPackageIds); setAuthorizationServiceIds(plan.servicePackageIds); }} className="rounded-lg border border-[#D8EDE1] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E8F7EE]">{plan.name}</button>)}</div>
+              </section>
+            )}
+            <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+              <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[13px] font-bold text-[#0F172A]">可用及可维护内容包</h4><p className="mt-1 text-[11px] text-[#64748B]">决定机构能访问哪些教学内容。</p></div><span className="text-[11px] font-bold text-[#16B45B]">已选 {authorizationContentIds.length} 个</span></div>
+              <div className="grid gap-2 sm:grid-cols-2">{contentPackages.filter((item) => item.status === 'active').map((item) => <ChoiceCard key={item.id} checked={authorizationContentIds.includes(item.id)} title={item.name} meta={`${item.stage} · ${item.subject}`} onChange={() => setAuthorizationContentIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>
+            </section>
+            <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+              <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[13px] font-bold text-[#0F172A]">可兑换服务包</h4><p className="mt-1 text-[11px] text-[#64748B]">决定机构能为学生办理哪些服务。</p></div><span className="text-[11px] font-bold text-[#16B45B]">已选 {authorizationServiceIds.length} 个</span></div>
+              <div className="grid gap-2 sm:grid-cols-2">{servicePackages.filter((item) => item.status === 'active').map((item) => <ChoiceCard key={item.id} checked={authorizationServiceIds.includes(item.id)} title={item.name} meta={`${item.quotaCost} 点 · ${item.durationDays || '长期'}${item.durationDays ? ' 天' : ''}`} onChange={() => setAuthorizationServiceIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>
+            </section>
+          </div>
+        </DialogShell>
       )}
     </div>
   );

@@ -10,7 +10,22 @@ import {
   AuditLogItem,
   PlatformStats,
   OrderLedgerRecord,
+  ContentPackageItem,
+  CooperationPlan,
 } from './types';
+
+export const initialContentPackages: ContentPackageItem[] = [
+  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', subject: '初中数学', stage: '初中', kpCount: 156, questionCount: 1280, status: 'active', description: '引用初中数学下已发布的知识点与题目' },
+  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '引用初中物理下已发布的知识点与题目' },
+  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '引用初中化学下已发布的知识点与题目' },
+  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '引用高中数学下已发布的知识点与题目' },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '引用初中英语下已发布的知识点与题目' },
+];
+
+export const initialCooperationPlans: CooperationPlan[] = [
+  { id: 'PLAN-001', code: 'PLAN-CZ-SCIENCE', name: '初中理科标准方案', contentPackageIds: ['CP-01', 'CP-02', 'CP-03'], servicePackageIds: ['PKG-001', 'PKG-002'], suggestedInitialQuota: 50000, cooperationDurationDays: 365, status: 'active', version: 1, institutionCount: 2, createdAt: '2026-07-01', updatedAt: '2026-08-01' },
+  { id: 'PLAN-002', code: 'PLAN-GZ-FULL', name: '高中全科旗舰方案', contentPackageIds: ['CP-04'], servicePackageIds: ['PKG-003', 'PKG-004'], suggestedInitialQuota: 100000, cooperationDurationDays: 365, status: 'active', version: 2, institutionCount: 1, createdAt: '2026-07-10', updatedAt: '2026-08-05' },
+];
 
 export const initialPlatformStats: PlatformStats = {
   activeInstitutions: 138,
@@ -525,6 +540,13 @@ export const initialTeachers: TeacherItem[] = [
     },
     status: 'active',
     createdAt: '2026-02-15',
+  },
+  {
+    id: 'TCH-003', name: '高林老师', account: 'gaolin_tch', phone: '137-3333-4444',
+    institutionId: 'INS-3007001', institutionName: '博雅语言学院', studentCount: 18,
+    allocatedQuota: 1000, remainingQuota: 320,
+    permissions: { canEditContent: false, canImportStudents: true, canManageClass: true, canRedeemPackage: true, canViewReport: true },
+    status: 'inactive', createdAt: '2026-03-10',
   },
 ];
 

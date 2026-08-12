@@ -41,7 +41,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <p>· <strong>机构管理</strong>：创建/停用机构，配置与调整机构采购总额度，监管额度告急风险。</p>
             <p>· <strong>服务包管理</strong>：配置单科低量、单科高量、全科低量、全科高量 4 类标准服务包。</p>
             <p>· <strong>额度与授权码履约</strong>：监管向下流转链路，对未激活授权码实施作废或导出。</p>
-            <p>· <strong>题库与考点树</strong>：独家维护三级考点树（1级-2级-3级考点）与精选题库，监控缺题预警。</p>
+            <p>· <strong>知识点与精选题库</strong>：按章、节、知识点维护内容结构与精选题库，监控缺题预警。</p>
           </div>
 
           <div className="border border-[#E5E7EB] p-4 rounded-xl space-y-2">
@@ -63,7 +63,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               3. PRD 题库与难度字典规范
             </h4>
             <p>· <strong>题目难度 (唯一标准)</strong>：仅统一为 <strong>基础题、提升题、压轴题</strong> 三种。</p>
-            <p>· <strong>最小考点绑定</strong>：精选题必须且只能绑定至三级知识考点。无可练题考点触发覆盖预警。</p>
+            <p>· <strong>知识点绑定</strong>：精选题必须且只能绑定至第三级知识点。无可练题知识点触发覆盖预警。</p>
           </div>
         </div>
 

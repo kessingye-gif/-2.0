@@ -94,15 +94,7 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[12px] font-medium text-[#0E7D3E]">{mode === 'settings' ? '系统与基础配置' : '商业履约 · 问题闭环'}</p>
-        <h2 className="mt-1 text-[24px] font-semibold tracking-tight text-[#0F172A]">
-          {mode === 'settings' ? '平台设置' : '售后与异常'}
-        </h2>
-        <p className="mt-1 text-[12px] text-[#64748B]">{mode === 'settings' ? '管理 AI 模型、基础数据和学生加油包。' : '处理会影响开通、续费和退款的履约待办，并留下审计记录。'}</p>
-      </div>
-
+    <div className="space-y-4">
       {mode === 'exceptions' && (
         <section className="overflow-hidden rounded-xl border border-[#DDE7E1] bg-white">
           <div className="flex items-center justify-between border-b border-[#EEF2F0] px-5 py-4">

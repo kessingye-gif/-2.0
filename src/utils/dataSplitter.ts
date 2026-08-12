@@ -1,11 +1,13 @@
 import { KnowledgePointNode, QuestionItem, QuestionDifficulty, QuestionType } from '../types';
 
+export const getKnowledgeHierarchyLabels = () => ['章', '节', '知识点'] as const;
+
 export interface SingleTableRowInput {
   subject: string;
   stage: string;
   grade: string;
   textbook: string;
-  // Knowledge Point fields (Level 1, Level 2, Level 3)
+  // Content hierarchy fields: chapter, section, knowledge point
   level1Name: string;
   level2Name: string;
   level3Name: string;
@@ -31,8 +33,8 @@ export interface SplitResult {
 }
 
 /**
- * 接收包含“知识考点 + 精选题”同行的单表数据，
- * 自动解耦提取为【知识考点表】与【精选题库表】两张独立关联表
+ * 接收包含“章 + 节 + 知识点 + 精选题”同行的单表数据，
+ * 自动解耦提取为【内容层级表】与【精选题库表】两张独立关联表
  */
 export function splitSingleTableData(
   rows: SingleTableRowInput[],
@@ -48,7 +50,7 @@ export function splitSingleTableData(
   const newCreatedQuestions: QuestionItem[] = [];
 
   rows.forEach((row, index) => {
-    // 1. 查找或创建 Level 1 知识节点
+    // 1. 查找或创建章
     let l1 = kps.find(
       (k) => k.level === 1 && k.name === row.level1Name && k.subject === row.subject
     );
@@ -70,7 +72,7 @@ export function splitSingleTableData(
       kpCreatedCount++;
     }
 
-    // 2. 查找或创建 Level 2 知识节点
+    // 2. 查找或创建节
     let l2 = kps.find(
       (k) =>
         k.level === 2 &&
@@ -97,7 +99,7 @@ export function splitSingleTableData(
       kpCreatedCount++;
     }
 
-    // 3. 查找或创建 Level 3 考点节点 (核心可绑定试题节点)
+    // 3. 查找或创建知识点（可绑定试题）
     let l3 = kps.find(
       (k) =>
         k.level === 3 &&

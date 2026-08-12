@@ -15,18 +15,20 @@ const handlers = {
   onNotify: () => undefined,
 };
 
-const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance') => renderToStaticMarkup(createElement(GoodsView, {
+const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance', initialCatalogTab?: 'packages' | 'aiUsagePacks') => renderToStaticMarkup(createElement(GoodsView, {
   mode,
+  initialCatalogTab,
   packages: initialServicePackages,
   authCodes: initialAuthCodes,
   institutions: initialInstitutions,
   ...handlers,
 }));
 
-test('catalog mode opens on service products instead of orders', () => {
+test('catalog mode opens on service products and treats authorization plans as optional templates', () => {
   const markup = renderMode('catalog');
-  assert.match(markup, /商品与权益管理/);
+  assert.doesNotMatch(markup, /商品与权益管理|商品、额度与权益/);
   assert.match(markup, /新增服务包/);
+  assert.match(markup, /授权模板/);
   assert.doesNotMatch(markup, /学生权益开通/);
   assert.doesNotMatch(markup, /学生加油包订单.*申请退款/);
 });
@@ -40,18 +42,50 @@ test('服务包只表达点数和 AI 权益，不绑定内容包', () => {
   assert.doesNotMatch(markup, /每日 AI 上限|次\/天/);
 });
 
-test('fulfillment mode opens on the authorization-code lifecycle', () => {
+test('服务包有明确的启停操作和历史保留说明', () => {
+  const markup = renderMode('catalog', 'packages');
+  assert.match(markup, />停用</);
+  assert.match(markup, /不影响已生效的学生权益和历史记录/);
+});
+
+test('AI 加油包可编辑、下架和重新上架', () => {
+  const markup = renderMode('catalog', 'aiUsagePacks');
+  assert.match(markup, />编辑</);
+  assert.match(markup, />下架</);
+  assert.match(markup, /下架后不再对新购买开放/);
+});
+
+test('授权码生命周期只查询和作废，不能脱离学生直接生成', () => {
   const markup = renderMode('fulfillment');
-  assert.match(markup, /开通与履约/);
-  assert.match(markup, /生成授权码/);
+  assert.doesNotMatch(markup, /开通与履约|商业履约 · 学生开通/);
+  assert.doesNotMatch(markup, />生成授权码</);
   assert.match(markup, /KQ-8829-9102-1823/);
   assert.match(markup, /2026-07-20 10:30/);
   assert.match(markup, /2026-07-21 14:20/);
   assert.match(markup, /2026-08-19 10:30/);
 });
 
+test('机构额度入账意图自动打开入账页并选中目标机构', () => {
+  const institution = initialInstitutions[1];
+  const markup = renderToStaticMarkup(createElement(GoodsView, {
+    mode: 'catalog',
+    packages: initialServicePackages,
+    authCodes: initialAuthCodes,
+    institutions: initialInstitutions,
+    creditInstitutionId: institution.id,
+    ...handlers,
+  }));
+  assert.match(markup, /机构额度入账/);
+  assert.match(markup, new RegExp(`<option value="${institution.id}" selected="">${institution.name}</option>`));
+});
+
 test('finance mode opens on the unified order ledger', () => {
   const markup = renderMode('finance');
-  assert.match(markup, /订单与资金/);
+  assert.doesNotMatch(markup, /订单与资金|商业履约 · 资金结算/);
   assert.match(markup, /机构额度入账/);
+});
+
+test('商品页不承载学生办理标签', () => {
+  const markup = renderMode('catalog');
+  assert.doesNotMatch(markup, /办理学生服务/);
 });

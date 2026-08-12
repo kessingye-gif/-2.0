@@ -16,10 +16,10 @@ test('业务页面不向客户展示技术词 Token', () => {
 
 test('商品与权益页明确区分四个业务对象', () => {
   const source = read('./components/views/GoodsView.tsx');
+  assert.match(source, /服务包/);
   assert.match(source, /AI 加油包/);
-  assert.match(source, /AI 用量/);
   assert.match(source, /机构点数/);
-  assert.match(source, /学生权益/);
+  assert.match(source, /授权码记录/);
 });
 
 test('服务包视图不维护内容包绑定字段', () => {

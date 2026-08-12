@@ -118,6 +118,47 @@ export interface ServicePackage {
   subjectRequirement: 'single' | 'all';
 }
 
+export interface ContentPackageItem {
+  id: string;
+  code: string;
+  name: string;
+  subjectId: string;
+  subject: string;
+  stage: string;
+  kpCount: number;
+  questionCount: number;
+  status: 'active' | 'inactive';
+  description: string;
+}
+
+export interface CooperationPlan {
+  id: string;
+  code: string;
+  name: string;
+  contentPackageIds: string[];
+  servicePackageIds: string[];
+  suggestedInitialQuota: number;
+  cooperationDurationDays: number;
+  status: 'draft' | 'active' | 'inactive';
+  version: number;
+  institutionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InstitutionAgreement {
+  id: string;
+  institutionId: string;
+  cooperationPlanId: string;
+  cooperationPlanVersion: number;
+  effectiveAt: string;
+  expireAt: string;
+  status: 'pending' | 'active' | 'expired' | 'terminated';
+  contentPackageIds: string[];
+  servicePackageIds: string[];
+  overrideNote?: string;
+}
+
 export type AuthCodeStatus = 'pending' | 'used' | 'revoked' | 'expired';
 
 export interface AuthCode {
@@ -145,7 +186,7 @@ export type QuestionDifficulty = '基础' | '提升' | '压轴';
 // 题型
 export type QuestionType = '单选题' | '多选题' | '选择题' | '填空题' | '解答题' | '判断题' | '综合题';
 
-// 三级知识点结构
+// 章 / 节 / 知识点三级结构
 export interface KnowledgePointNode {
   id: string;
   code: string; // KP-MATH-101
@@ -174,7 +215,7 @@ export interface QuestionItem {
   type: QuestionType; // 选择题, 填空题...
   knowledgePointLevel1Id: string;
   knowledgePointLevel2Id: string;
-  knowledgePointLevel3Id: string; // 唯一绑定的三级考点
+  knowledgePointLevel3Id: string; // 唯一绑定的知识点（第三级）
   knowledgePointPathName: string; // 数学 > 一元一次方程 > 解方程基本步骤
   status: 'active' | 'inactive';
   imageUrl?: string;
@@ -241,6 +282,26 @@ export interface TeacherItem {
   remainingQuota: number;
   permissions: TeacherPermission;
   status: 'active' | 'inactive';
+  createdAt: string;
+}
+
+export interface TeacherCreditLedgerEntry {
+  id: string;
+  type: 'institution_to_teacher' | 'teacher_reclaim' | 'teacher_service_debit';
+  institutionId: string;
+  institutionName: string;
+  teacherId: string;
+  teacherName: string;
+  amount: number;
+  institutionBefore?: number;
+  institutionAfter?: number;
+  teacherBefore: number;
+  teacherAfter: number;
+  studentId?: string;
+  studentName?: string;
+  packageId?: string;
+  packageName?: string;
+  reason: string;
   createdAt: string;
 }
 
@@ -341,6 +402,30 @@ export interface GuardianBindingCode {
   createdAt: string;
   expireAt: string;
   status: 'pending' | 'bound' | 'expired';
+}
+
+export interface StudentServiceRight {
+  id: string;
+  studentId: string;
+  studentName: string;
+  institutionId: string;
+  institutionName: string;
+  teacherId: string;
+  teacherName: string;
+  packageId: string;
+  packageName: string;
+  authCodeId: string;
+  includedAiUsage: number;
+  quotaConsumed: number;
+  createdAt: string;
+  serviceExpireAt: string | null;
+  status: 'pending' | 'active' | 'expired' | 'revoked';
+}
+
+export interface ServiceFulfillmentResult {
+  authCode: AuthCode;
+  guardianBindingCode: GuardianBindingCode;
+  right: StudentServiceRight;
 }
 
 export interface AuditLogItem {

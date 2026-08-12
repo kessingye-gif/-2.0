@@ -26,6 +26,9 @@ import {
   initialAuditLogs,
   initialOrderLedger,
   initialParentGuardianships,
+  initialContentPackages,
+  initialCooperationPlans,
+  initialTeachers,
 } from './mockData';
 import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
 import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
@@ -39,7 +42,15 @@ import {
   AuditLogItem,
   CurrentUser,
   OrderLedgerRecord,
+  GuardianBindingCode,
+  StudentServiceRight,
+  ServiceFulfillmentResult,
+  CooperationPlan,
+  TeacherItem,
+  TeacherCreditLedgerEntry,
 } from './types';
+import { deriveLegacyServiceRights } from './domain/studentRights';
+import { allocateTeacherCredits, debitTeacherForService, reclaimTeacherCredits } from './domain/teacherCredits';
 
 export default function App() {
   const location = useLocation();
@@ -62,12 +73,28 @@ export default function App() {
   const [stats, setStats] = useState(initialPlatformStats);
   const [institutions, setInstitutions] = useState<Institution[]>(initialInstitutions);
   const [packages, setPackages] = useState<ServicePackage[]>(initialServicePackages);
+  const [cooperationPlans, setCooperationPlans] = useState<CooperationPlan[]>(initialCooperationPlans);
   const [authCodes, setAuthCodes] = useState<AuthCode[]>(initialAuthCodes);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointNode[]>(initialKnowledgePoints);
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
   const [students, setStudents] = useState(initialStudents);
+  const [teachers, setTeachers] = useState<TeacherItem[]>(initialTeachers);
+  const [teacherCreditLedger, setTeacherCreditLedger] = useState<TeacherCreditLedgerEntry[]>([]);
   const [guardianships, setGuardianships] = useState(initialParentGuardianships);
+  const [guardianBindingCodes, setGuardianBindingCodes] = useState<GuardianBindingCode[]>(() =>
+    initialParentGuardianships.map((item, index) => ({
+      id: `GBC-SEED-${index + 1}`,
+      code: `JB-2026-${String(8101 + index).padStart(4, '0')}`,
+      studentId: item.studentId,
+      studentName: item.studentName,
+      institutionName: item.institutionName,
+      createdAt: item.createdAt,
+      expireAt: item.expireAt || '长期有效',
+      status: item.status === 'active' ? 'bound' : 'pending',
+    })),
+  );
+  const [serviceRights, setServiceRights] = useState<StudentServiceRight[]>(() => deriveLegacyServiceRights(initialAuthCodes, initialServicePackages));
   const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
   const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
@@ -140,6 +167,93 @@ export default function App() {
     const student = students.find((item) => item.id === studentId);
     addAuditLog('生成学生学习报告', student?.name ?? studentId, `${subject} · ${startDate} 至 ${endDate}`, '诊断管理');
     handleNotify(`已生成${student?.name ?? '学生'}的${subject}学习报告`);
+  };
+
+  const handleStartCreditEntry = (institutionId: string) => {
+    navigate('/platform/goods', { state: { intent: 'credit-entry', institutionId } });
+  };
+
+  const handleFulfillService = (result: ServiceFulfillmentResult) => {
+    const teacher = teachers.find((item) => item.id === result.right.teacherId);
+    if (!teacher) throw new Error('未找到负责教师的点数账户');
+    const debit = debitTeacherForService({
+      teacher,
+      amount: result.right.quotaConsumed,
+      studentId: result.right.studentId,
+      studentName: result.right.studentName,
+      packageId: result.right.packageId,
+      packageName: result.right.packageName,
+      now: new Date(),
+      nonce: Math.random().toString().slice(2, 6).padEnd(4, '0'),
+    });
+    setTeachers((current) => current.map((item) => (item.id === teacher.id ? debit.teacher : item)));
+    setTeacherCreditLedger((current) => [debit.entry, ...current]);
+    setAuthCodes((current) => [result.authCode, ...current]);
+    setGuardianBindingCodes((current) => [result.guardianBindingCode, ...current]);
+    setServiceRights((current) => [result.right, ...current]);
+    addAuditLog('办理学生服务', result.right.studentName, `开通服务包【${result.right.packageName}】，已同步生成授权码与家长绑定码。`, '额度授权码');
+    handleNotify(`已完成${result.right.studentName}的服务办理`);
+  };
+
+  const handleFulfillServices = (results: ServiceFulfillmentResult[]) => {
+    if (results.length === 0) return;
+    const first = results[0];
+    if (results.some((item) => item.right.teacherId !== first.right.teacherId)) throw new Error('批量办理必须属于同一负责教师');
+    const teacher = teachers.find((item) => item.id === first.right.teacherId);
+    if (!teacher) throw new Error('未找到负责教师的点数账户');
+    const totalQuota = results.reduce((sum, item) => sum + item.right.quotaConsumed, 0);
+    const debit = debitTeacherForService({
+      teacher,
+      amount: totalQuota,
+      studentId: `BULK-${Date.now()}`,
+      studentName: `${results.length} 名班级学生`,
+      packageId: first.right.packageId,
+      packageName: `${first.right.packageName} × ${results.length}`,
+      now: new Date(),
+      nonce: Math.random().toString().slice(2, 6).padEnd(4, '0'),
+    });
+    setTeachers((current) => current.map((item) => (item.id === teacher.id ? debit.teacher : item)));
+    setTeacherCreditLedger((current) => [debit.entry, ...current]);
+    setAuthCodes((current) => [...results.map((item) => item.authCode), ...current]);
+    setGuardianBindingCodes((current) => [...results.map((item) => item.guardianBindingCode), ...current]);
+    setServiceRights((current) => [...results.map((item) => item.right), ...current]);
+    addAuditLog('班级批量办理学生服务', teacher.name, `为 ${results.length} 名学生办理【${first.right.packageName}】，教师账户扣除 ${totalQuota.toLocaleString()} 点并生成全部双码。`, '额度授权码');
+    handleNotify(`已为 ${results.length} 名学生批量办理服务，${teacher.name}剩余 ${debit.teacher.remainingQuota.toLocaleString()} 点`);
+  };
+
+  const handleAddTeachers = (newTeachers: TeacherItem[]) => {
+    setTeachers((current) => [...newTeachers, ...current]);
+  };
+
+  const handleAddTeacher = (teacher: TeacherItem, initialQuota: number) => {
+    if (initialQuota <= 0) {
+      setTeachers((current) => [teacher, ...current]);
+      return;
+    }
+    const institution = institutions.find((item) => item.id === teacher.institutionId);
+    if (!institution) throw new Error('未找到教师所属机构');
+    const transfer = allocateTeacherCredits({ institution, teacher, amount: initialQuota, reason: '新增教师初始分配', now: new Date(), nonce: teacher.id });
+    setInstitutions((current) => current.map((item) => (item.id === institution.id ? transfer.institution : item)));
+    setTeachers((current) => [transfer.teacher, ...current]);
+    setTeacherCreditLedger((current) => [transfer.entry, ...current]);
+    addAuditLog('给教师分配点数', teacher.name, `机构【${institution.name}】扣除 ${initialQuota.toLocaleString()} 点，教师账户增加同等点数。`, '教师管理');
+  };
+
+  const handleUpdateTeacher = (teacherId: string, updates: Partial<TeacherItem>) => {
+    setTeachers((current) => current.map((item) => (item.id === teacherId ? { ...item, ...updates } : item)));
+  };
+
+  const handleTransferTeacherCredits = (teacherId: string, amount: number, type: 'allocate' | 'reclaim', reason: string) => {
+    const teacher = teachers.find((item) => item.id === teacherId);
+    if (!teacher) throw new Error('未找到教师点数账户');
+    const institution = institutions.find((item) => item.id === teacher.institutionId);
+    if (!institution) throw new Error('未找到教师所属机构');
+    const input = { institution, teacher, amount, reason, now: new Date(), nonce: Math.random().toString().slice(2, 6).padEnd(4, '0') };
+    const transfer = type === 'allocate' ? allocateTeacherCredits(input) : reclaimTeacherCredits(input);
+    setInstitutions((current) => current.map((item) => (item.id === institution.id ? transfer.institution : item)));
+    setTeachers((current) => current.map((item) => (item.id === teacher.id ? transfer.teacher : item)));
+    setTeacherCreditLedger((current) => [transfer.entry, ...current]);
+    addAuditLog(type === 'allocate' ? '给教师分配点数' : '收回教师点数', teacher.name, `${reason}：${amount.toLocaleString()} 点；机构余额 ${transfer.institution.remainingQuota.toLocaleString()} 点，教师余额 ${transfer.teacher.remainingQuota.toLocaleString()} 点。`, '教师管理');
   };
 
   // Institution Operations
@@ -220,34 +334,6 @@ export default function App() {
     addAuditLog('作废未激活授权码', `${targetCode?.code || codeId}`, `作废机构【${targetCode?.institutionName}】的授权码，阻止后续激活。`, '额度授权码');
   };
 
-  const handleGenerateAuthCode = (
-    institutionName: string,
-    teacherName: string,
-    studentName: string,
-    packageName: string
-  ) => {
-    const randomCode = `KQ-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newCode: AuthCode = {
-      id: `AC-${Date.now().toString().slice(-4)}`,
-      code: randomCode,
-      institutionId: 'INS-2023001',
-      institutionName,
-      teacherId: 'TCH-001',
-      teacherName,
-      studentId: `STU-${Date.now().toString().slice(-3)}`,
-      studentName,
-      packageId: 'PKG-004',
-      packageName,
-      packageType: 'all_high',
-      quotaConsumed: 350,
-      createdAt: new Date().toLocaleString().slice(0, 16),
-      expireAt: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-      status: 'pending',
-    };
-
-    setAuthCodes((prev) => [newCode, ...prev]);
-    addAuditLog('生成学生授权码', randomCode, `为学生【${studentName}】生成服务授权码，对应服务包【${packageName}】。`, '额度授权码');
-  };
 
   // Question Bank Operations
   const handleAddQuestion = (qData: Omit<QuestionItem, 'id' | 'createdAt'>) => {
@@ -257,7 +343,7 @@ export default function App() {
       createdAt: new Date().toLocaleString().slice(0, 16),
     };
     setQuestions((prev) => [newQ, ...prev]);
-    addAuditLog('录入新精选题', `${newQ.title} (${newQ.id})`, `学科：${newQ.subject}，难度：${newQ.difficulty}题，关联三级考点：${newQ.knowledgePointPathName}`, '题库管理');
+    addAuditLog('录入新精选题', `${newQ.title} (${newQ.id})`, `学科：${newQ.subject}，难度：${newQ.difficulty}题，关联知识点：${newQ.knowledgePointPathName}`, '题库管理');
   };
 
   const handleUpdateQuestion = (id: string, updates: Partial<QuestionItem>) => {
@@ -267,8 +353,8 @@ export default function App() {
   };
 
   const handleBatchImportQuestions = (file: File) => {
-    alert(`成功导入 Excel 题库表格【${file.name}】！成功新增 24 道精选题，更新 2 道题目，自动进行难度标准映射 (基础/提升/压轴) 及三级考点路径校验！`);
-    addAuditLog('批量导入精选题库表格', file.name, `通过 Excel 解析新增 24 道精选题，三级考点绑定匹配成功率 100%。`, '题库管理');
+    alert(`成功导入 Excel 题库表格【${file.name}】！成功新增 24 道精选题，更新 2 道题目，自动进行难度标准映射 (基础/提升/压轴) 及知识点路径校验！`);
+    addAuditLog('批量导入精选题库表格', file.name, `通过 Excel 解析新增 24 道精选题，知识点绑定匹配成功率 100%。`, '题库管理');
   };
 
   const handleAddKnowledgePoint = (kpData: Omit<KnowledgePointNode, 'id' | 'questionCount'>) => {
@@ -278,7 +364,7 @@ export default function App() {
       questionCount: 0,
     };
     setKnowledgePoints((prev) => [...prev, newKp]);
-    addAuditLog('新增知识考点节点', `${newKp.name} (${newKp.code})`, `新增第 ${newKp.level} 级节点，学科：${newKp.subject}`, '题库管理');
+    addAuditLog(`新增${newKp.level === 1 ? '章' : newKp.level === 2 ? '节' : '知识点'}`, `${newKp.name} (${newKp.code})`, `新增第 ${newKp.level} 级节点，学科：${newKp.subject}`, '题库管理');
   };
 
   if (!isAuthenticated) {
@@ -288,6 +374,7 @@ export default function App() {
   if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
 
   const currentView = currentTab === 'content' ? 'questionBank' : currentTab;
+  const routeState = location.state as { intent?: string; institutionId?: string } | null;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
@@ -324,10 +411,14 @@ export default function App() {
               onAddPackage={handleAddPackage}
               onUpdatePackage={handleUpdatePackage}
               onRevokeAuthCode={handleRevokeAuthCode}
-              onGenerateAuthCode={handleGenerateAuthCode}
               onAdjustQuota={handleAdjustQuota}
               onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
+              creditInstitutionId={routeState?.intent === 'credit-entry' ? routeState.institutionId : undefined}
+              contentPackages={initialContentPackages}
+              cooperationPlans={cooperationPlans}
+              onAddCooperationPlan={(plan) => setCooperationPlans((current) => [plan, ...current])}
+              onUpdateCooperationPlan={(id, changes) => setCooperationPlans((current) => current.map((plan) => plan.id === id ? { ...plan, ...changes } : plan))}
             />
           )}
 
@@ -352,6 +443,9 @@ export default function App() {
               onUpdateInstitution={handleUpdateInstitution}
               onAdjustQuota={handleAdjustQuota}
               onBatchImport={handleBatchImportInstitutions}
+              onCreditEntry={handleStartCreditEntry}
+              contentPackages={initialContentPackages}
+              cooperationPlans={cooperationPlans}
             />
           )}
 
@@ -359,8 +453,16 @@ export default function App() {
             <TeacherClassView
               key="teachers"
               institutions={institutions}
+              teachers={teachers}
+              creditLedger={teacherCreditLedger}
+              packages={packages}
               students={students}
               onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              onAddTeacher={handleAddTeacher}
+              onAddTeachers={handleAddTeachers}
+              onUpdateTeacher={handleUpdateTeacher}
+              onTransferTeacherCredits={handleTransferTeacherCredits}
+              onFulfillServices={handleFulfillServices}
               initialTab="teachers"
             />
           )}
@@ -369,8 +471,16 @@ export default function App() {
             <TeacherClassView
               key="classes"
               institutions={institutions}
+              teachers={teachers}
+              creditLedger={teacherCreditLedger}
+              packages={packages}
               students={students}
               onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              onAddTeacher={handleAddTeacher}
+              onAddTeachers={handleAddTeachers}
+              onUpdateTeacher={handleUpdateTeacher}
+              onTransferTeacherCredits={handleTransferTeacherCredits}
+              onFulfillServices={handleFulfillServices}
               initialTab="classes"
             />
           )}
@@ -380,7 +490,11 @@ export default function App() {
               students={students}
               guardianships={guardianships}
               authCodes={authCodes}
-              onGenerateAuthCode={handleGenerateAuthCode}
+              guardianBindingCodes={guardianBindingCodes}
+              serviceRights={serviceRights}
+              packages={packages}
+              teachers={teachers}
+              onFulfillService={handleFulfillService}
               onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
               onGenerateReport={handleGenerateReport}
