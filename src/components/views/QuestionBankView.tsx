@@ -634,8 +634,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   const handleViewBoundQuestions = (knowledgePointId: string) => {
     setSearchTerm('');
+    const knowledgePoint = knowledgePoints.find((item) => item.id === knowledgePointId);
+    if (knowledgePoint) setSubjectFilter(knowledgePoint.subject);
     setSelectedKnowledgePointId(knowledgePointId);
     setActiveSubTab('questions');
+  };
+
+  const handleOpenKnowledgePointImport = () => {
+    setKpImportNotice(null);
+    setIsKpBatchModalOpen(true);
+    navigate(getContentRoutePath('resources', 'knowledge-points'));
+  };
+
+  const handleOpenKnowledgePointCreate = () => {
+    setIsKpModalOpen(true);
+    navigate(getContentRoutePath('resources', 'knowledge-points'));
   };
 
   // Reset page when filters change
@@ -878,6 +891,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         <ContentPackageManager
           subjects={sharedSubjects}
           onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+          knowledgePoints={knowledgePoints}
+          onViewQuestions={handleViewBoundQuestions}
+          onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}
+          onAddKnowledgePoint={handleOpenKnowledgePointCreate}
           authorizedPackageNames={authorizedContentPackageNames}
           canCreatePackage={canCreateContentPackage}
         />
@@ -967,7 +984,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">upload_file</span>
-                <span>批量导入</span>
+                <span>批量导入知识点</span>
               </button>
 
               <button

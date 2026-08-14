@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import type { KnowledgeTypeMaster } from '../../masterData/types';
+import type { KnowledgePointNode } from '../../types';
 
 export interface ContentSubjectSummary {
   id: string;
@@ -11,7 +12,7 @@ export interface ContentSubjectSummary {
   questionCount: number;
 }
 
-interface ContentPackageRecord {
+export interface ContentPackageRecord {
   id: string;
   code: string;
   name: string;
@@ -50,6 +51,10 @@ const seedPackages: ContentPackageRecord[] = [
 interface ContentPackageManagerProps {
   subjects: ContentSubjectSummary[];
   onOpenResource: (resource: 'knowledge-points' | 'questions', subjectId: string) => void;
+  knowledgePoints?: KnowledgePointNode[];
+  onViewQuestions?: (knowledgePointId: string) => void;
+  onBatchImportKnowledgePoints?: () => void;
+  onAddKnowledgePoint?: () => void;
   authorizedPackageNames?: string[];
   canCreatePackage?: boolean;
 }
@@ -67,16 +72,37 @@ export function filterAuthorizedContentPackages<T extends { name: string }>(pack
     : packages.filter((item) => authorizedPackageNames.includes(item.name));
 }
 
-const workspaceKnowledgePoints = [
-  { id: 'KP-071', name: '等式的性质', knowledgeTypeId: 'KT-01', questions: 18, status: '可发布', tone: 'green', content: '等式两边同时加上或减去同一个数，等式仍然成立；等式两边同时乘以同一个数，或除以同一个不为 0 的数，等式仍然成立。', goal: '学生能够说明两条等式性质，并在解简单方程时选择和正确使用对应性质。', suggestion: '先用天平平衡情境建立直观，再转换为代数表达，重点提醒除数不能为 0。' },
-  { id: 'KP-072', name: '解一元一次方程', knowledgeTypeId: 'KT-02', questions: 12, status: '待补全', tone: 'amber', content: '通过移项、合并同类项、系数化为 1 等步骤求出一元一次方程的解。', goal: '掌握一元一次方程的标准解法，并能完成结果检验。', suggestion: '强化移项变号和等式性质之间的联系。' },
-  { id: 'KP-073', name: '一元一次方程的实际应用', knowledgeTypeId: 'KT-02', questions: 16, status: '可发布', tone: 'green', content: '从实际问题中抽象数量关系，设未知数并列出一元一次方程解决问题。', goal: '能够识别等量关系，完成设元、列式、求解和作答。', suggestion: '使用行程、工程与销售问题进行分类练习。', prerequisites: ['等式的性质', '解一元一次方程'] },
-  { id: 'KP-074', name: '一元一次方程的概念', knowledgeTypeId: 'KT-01', questions: 0, status: '待补全', tone: 'amber', content: '只含有一个未知数，未知数次数为 1，且等号两边都是整式的方程。', goal: '能够判断一个方程是否为一元一次方程。', suggestion: '通过正例和反例对比概念中的三个关键条件。' },
-] as const;
+export const getPackageWorkspaceKnowledgePoints = (knowledgePoints: KnowledgePointNode[], subjectName?: string) => knowledgePoints
+  .filter((point) => point.level === 3 && (!subjectName || subjectName.includes(point.subject)))
+  .map((point) => ({
+    ...point,
+    knowledgeTypeId: point.knowledgeType ?? 'KT-01',
+    questions: point.questionCount,
+    displayStatus: point.status === 'active' && point.coreContent && point.learningObjective ? '可发布' : '待补全',
+    tone: point.status === 'active' && point.coreContent && point.learningObjective ? 'green' : 'amber',
+    content: point.coreContent ?? '尚未填写核心学习内容。',
+    goal: point.learningObjective ?? '尚未填写教学目标。',
+    suggestion: point.teachingSuggestion ?? '尚未填写教学建议。',
+    prerequisites: (point.prerequisiteKnowledgePointIds ?? []).map((id) => knowledgePoints.find((item) => item.id === id)?.name ?? id),
+  }));
 
-const ContentPackageWorkspace: React.FC<{ pkg: ContentPackageRecord; subject?: ContentSubjectSummary; onBack: () => void; onNewPackage: () => void; onOpenResource: ContentPackageManagerProps['onOpenResource']; canCreatePackage: boolean }> = ({ pkg, subject, onBack, onNewPackage, onOpenResource, canCreatePackage }) => {
+interface ContentPackageWorkspaceProps {
+  pkg: ContentPackageRecord;
+  subject?: ContentSubjectSummary;
+  knowledgePoints: KnowledgePointNode[];
+  onBack: () => void;
+  onNewPackage: () => void;
+  onOpenResource: ContentPackageManagerProps['onOpenResource'];
+  onViewQuestions: (knowledgePointId: string) => void;
+  onBatchImportKnowledgePoints: () => void;
+  onAddKnowledgePoint: () => void;
+  canCreatePackage: boolean;
+}
+
+export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage }) => {
   const { state: masterDataState } = useMasterData();
-  const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0].id);
+  const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, subject?.name);
+  const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0]?.id ?? '');
   const activePoint = workspaceKnowledgePoints.find((item) => item.id === activePointId) ?? workspaceKnowledgePoints[0];
 
   return <div className="space-y-4">
@@ -91,10 +117,10 @@ const ContentPackageWorkspace: React.FC<{ pkg: ContentPackageRecord; subject?: C
         <button type="button" onClick={onBack} className="rounded-xl border border-[#DCE5E1] bg-white px-4 py-2 text-[13px] font-medium text-[#334155] hover:bg-[#F8FAFC]">返回内容包</button>
         <div className="flex rounded-xl bg-[#EDF2F0] p-1">
           <button type="button" className="rounded-lg bg-white px-4 py-2 text-[13px] font-bold text-[#0F755A] shadow-sm">大纲与知识点</button>
-          <button type="button" onClick={() => onOpenResource('questions', pkg.subjectId)} className="rounded-lg px-4 py-2 text-[13px] text-[#475569]">题目</button>
+          <button type="button" disabled={!activePoint} onClick={() => activePoint && onViewQuestions(activePoint.id)} className="rounded-lg px-4 py-2 text-[13px] text-[#475569] disabled:cursor-not-allowed disabled:opacity-50">题目</button>
         </div>
-        <button type="button" className="rounded-xl border border-[#DCE5E1] bg-white px-4 py-2 text-[13px] font-medium">批量导入知识点</button>
-        <button type="button" className="rounded-xl bg-[#0F755A] px-4 py-2 text-[13px] font-bold text-white">新建知识点</button>
+        <button type="button" onClick={onBatchImportKnowledgePoints} className="rounded-xl border border-[#DCE5E1] bg-white px-4 py-2 text-[13px] font-medium">批量导入知识点</button>
+        <button type="button" onClick={onAddKnowledgePoint} className="rounded-xl bg-[#0F755A] px-4 py-2 text-[13px] font-bold text-white">新增章 / 节 / 知识点</button>
       </div>
     </section>
 
@@ -119,7 +145,7 @@ const ContentPackageWorkspace: React.FC<{ pkg: ContentPackageRecord; subject?: C
         </div>
         <div className="divide-y divide-[#E8EEEB]">
           {workspaceKnowledgePoints.map((point) => <button key={point.id} type="button" onClick={() => setActivePointId(point.id)} className={`block w-full border-l-2 px-4 py-4 text-left transition ${activePointId === point.id ? 'border-[#0F755A] bg-[#F1F8F5]' : 'border-transparent hover:bg-[#F8FAFC]'}`}>
-            <div className="flex items-center gap-2"><strong className="text-[14px] text-[#0F172A]">{point.name}</strong><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${point.tone === 'green' ? 'bg-[#E3F5EC] text-[#0E7D3E]' : 'bg-[#FFF1DD] text-[#B86608]'}`}>{point.status}</span></div>
+            <div className="flex items-center gap-2"><strong className="text-[14px] text-[#0F172A]">{point.name}</strong><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${point.tone === 'green' ? 'bg-[#E3F5EC] text-[#0E7D3E]' : 'bg-[#FFF1DD] text-[#B86608]'}`}>{point.displayStatus}</span></div>
             <p className="mt-1 text-[11px] text-[#64748B]">{point.id} · {point.questions ? `已关联 ${point.questions} 道` : '未关联题目'}{point.questions < 15 ? ' · 缺最小验证题' : ''}</p>
           </button>)}
         </div>
@@ -127,22 +153,22 @@ const ContentPackageWorkspace: React.FC<{ pkg: ContentPackageRecord; subject?: C
 
       <aside className="min-w-0">
         <div className="flex items-center justify-between border-b border-[#DCE5E1] px-4 py-3"><strong className="text-[14px]">知识点详情</strong><button type="button" className="rounded-lg border border-[#DCE5E1] px-3 py-1.5 text-[12px] font-bold">编辑</button></div>
-        <div className="space-y-4 p-4 text-[12px] leading-5 text-[#0F172A]">
+        {activePoint ? <div className="space-y-4 p-4 text-[12px] leading-5 text-[#0F172A]">
           <div><h3 className="text-[17px] font-bold">{activePoint.name}</h3><span className="mt-2 inline-block rounded-full bg-[#E3F5EC] px-2.5 py-1 text-[10px] font-medium text-[#0E7D3E]">平台内容 · 已发布</span></div>
           <dl className="grid grid-cols-2 gap-x-5 gap-y-3"><div><dt className="text-[#64748B]">知识点 ID</dt><dd className="mt-1 font-mono">{activePoint.id}</dd></div><div><dt className="text-[#64748B]">学科 / 学段</dt><dd className="mt-1">{subject?.name ?? '数学'} / {subject?.stage ?? '初中'}</dd></div><div><dt className="text-[#64748B]">适用年级</dt><dd className="mt-1">初一</dd></div><div><dt className="text-[#64748B]">适用地区</dt><dd className="mt-1">全国</dd></div></dl>
           <div><p className="text-[#64748B]">大纲层级路径</p><p className="mt-1 font-medium">数与代数 / 方程与不等式 / 一元一次方程</p></div>
-          <div><p className="text-[#64748B]">前置知识点</p><div className="mt-1 flex flex-wrap gap-1.5">{'prerequisites' in activePoint && activePoint.prerequisites?.length ? activePoint.prerequisites.map((name) => <button key={name} type="button" onClick={() => { const point = workspaceKnowledgePoints.find((item) => item.name === name); if (point) setActivePointId(point.id); }} className="rounded-lg bg-[#E7F3EE] px-2 py-1 text-[11px] font-medium text-[#0F755A] hover:bg-[#D8EDE3]">{name}</button>) : <span className="text-[#64748B]">无</span>}</div></div>
+          <div><p className="text-[#64748B]">前置知识点</p><div className="mt-1 flex flex-wrap gap-1.5">{activePoint.prerequisites.length ? activePoint.prerequisites.map((name) => <button key={name} type="button" onClick={() => { const point = workspaceKnowledgePoints.find((item) => item.name === name); if (point) setActivePointId(point.id); }} className="rounded-lg bg-[#E7F3EE] px-2 py-1 text-[11px] font-medium text-[#0F755A] hover:bg-[#D8EDE3]">{name}</button>) : <span className="text-[#64748B]">无</span>}</div></div>
           <div><p className="text-[#64748B]">知识类型</p><p className="mt-1 font-medium">{resolveKnowledgeTypeName(masterDataState.knowledgeTypes, activePoint.knowledgeTypeId)}</p></div>
           <div><p className="text-[#64748B]">核心学习内容</p><p className="mt-1">{activePoint.content}</p></div>
           <div><p className="text-[#64748B]">教学目标</p><p className="mt-1">{activePoint.goal}</p></div>
           <div><p className="text-[#64748B]">教学建议</p><p className="mt-1">{activePoint.suggestion}</p></div>
-        </div>
+        </div> : <div className="p-8 text-center text-[12px] text-[#94A3B8]">当前内容包暂无可维护知识点</div>}
       </aside>
     </section>
   </div>;
 };
 
-export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, authorizedPackageNames, canCreatePackage = true }) => {
+export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true }) => {
   const [packages, setPackages] = useState(seedPackages);
   const visiblePackages = filterAuthorizedContentPackages<ContentPackageRecord>(packages, authorizedPackageNames);
   const [selected, setSelected] = useState<ContentPackageRecord | null>(null);
@@ -177,7 +203,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
   };
 
   if (selected) {
-    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} onBack={() => setSelected(null)} onNewPackage={() => { setSelected(null); openWizard(); }} onOpenResource={onOpenResource} canCreatePackage={canCreatePackage} />;
+    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} knowledgePoints={knowledgePoints} onBack={() => setSelected(null)} onNewPackage={() => { setSelected(null); openWizard(); }} onOpenResource={onOpenResource} onViewQuestions={onViewQuestions} onBatchImportKnowledgePoints={onBatchImportKnowledgePoints} onAddKnowledgePoint={onAddKnowledgePoint} canCreatePackage={canCreatePackage} />;
   }
 
   return (
