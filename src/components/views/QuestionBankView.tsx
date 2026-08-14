@@ -50,6 +50,8 @@ interface QuestionBankViewProps {
     stats: { totalRows: number; kpCreatedCount: number; questionCreatedCount: number };
   }) => void;
   onAddKnowledgePoint: (kp: Omit<KnowledgePointNode, 'id' | 'questionCount'>) => void;
+  authorizedContentPackageNames?: string[];
+  canCreateContentPackage?: boolean;
 }
 
 // 模拟单表同行的 Excel 数据结构样本 (1行包含考点+试题)
@@ -131,6 +133,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   onUpdateQuestion,
   onBatchImportQuestions,
   onAddKnowledgePoint,
+  authorizedContentPackageNames,
+  canCreateContentPackage = true,
 }) => {
   const { state: masterDataState, getActiveTextbooks } = useMasterData();
   const location = useLocation();
@@ -505,8 +509,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   };
 
   // Filtered Content Packages
+  const scopedContentPackages = useMemo(
+    () => authorizedContentPackageNames === undefined
+      ? contentPackages
+      : contentPackages.filter((pkg) => authorizedContentPackageNames.includes(pkg.name)),
+    [contentPackages, authorizedContentPackageNames],
+  );
+
   const filteredContentPackages = useMemo(() => {
-    return contentPackages.filter((pkg) => {
+    return scopedContentPackages.filter((pkg) => {
       const matchesSearch =
         !packageSearchTerm ||
         pkg.name.includes(packageSearchTerm) ||
@@ -514,7 +525,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       const matchesStage = !packageStageFilter || pkg.stage === packageStageFilter;
       return matchesSearch && matchesStage;
     });
-  }, [contentPackages, packageSearchTerm, packageStageFilter]);
+  }, [scopedContentPackages, packageSearchTerm, packageStageFilter]);
 
   const handleOpenAddPackage = () => {
     setEditingPackage(null);
@@ -862,11 +873,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       <div className="space-y-4">
         <div className="flex w-fit items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs">
           <button type="button" onClick={() => navigate(getContentRoutePath('resources', 'knowledge-points'))} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer">内容资源</button>
-          <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({contentPackages.length})</button>
+          <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({scopedContentPackages.length})</button>
         </div>
         <ContentPackageManager
           subjects={sharedSubjects}
           onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+          authorizedPackageNames={authorizedContentPackageNames}
+          canCreatePackage={canCreateContentPackage}
         />
       </div>
     );
@@ -887,7 +900,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
           onClick={() => setActiveSubTab('contentPackages')}
           className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
         >
-          内容包 ({contentPackages.length})
+          内容包 ({scopedContentPackages.length})
         </button>
       </div>
 
@@ -2254,7 +2267,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行分别填写【学段、学科、章、节、知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析】
+                    单表模式要求：每一行分别填写【学段、学科、章、节、知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析、前置知识点、题干图片、选项图片】
                   </p>
 
                   <input
@@ -2274,6 +2287,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   >
                     选择 Excel 题库文件
                   </label>
+                </div>
+
+                <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+                  <div className="flex items-center gap-2 font-bold text-[#1E40AF]"><span className="material-symbols-outlined">imagesmode</span>同一导入任务的图片压缩包</div>
+                  <p className="mt-1 text-[12px] text-[#475569]">Excel 的“题干图片”“选项图片”填写压缩包内相对文件名；多个选项图片用“、”分隔。解析不导入图片。</p>
+                  <input id="qBatchImageZipInput" type="file" accept=".zip" className="hidden" />
+                  <label htmlFor="qBatchImageZipInput" className="mt-3 inline-block cursor-pointer rounded-xl border border-[#2563EB] bg-white px-4 py-2 text-[12px] font-bold text-[#1E40AF]">选择图片压缩包（可选）</label>
                 </div>
 
                 {/* Quick test sample import button */}
@@ -2315,6 +2335,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
+                        <th className="p-2 border-r">前置知识点</th>
+                        <th className="p-2 border-r">题干图片</th>
+                        <th className="p-2 border-r">选项图片</th>
                         <th className="p-2 border-r text-[#16B45B] font-bold">选项列表 (选择题)</th>
                         <th className="p-2 border-r">正确答案</th>
                         <th className="p-2 text-[#2563EB] font-bold">解题步骤 / 详尽解析</th>
@@ -2349,6 +2372,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                           <td className="p-2 border-r max-w-[140px] truncate" title={row.content}>
                             {row.content}
                           </td>
+                          <td className="p-2 border-r text-[#64748B]">完整三级路径；多个用；分隔</td>
+                          <td className="p-2 border-r text-[#64748B]">stem/q{idx + 1}.png</td>
+                          <td className="p-2 border-r text-[#64748B]">option/a.png、option/b.png</td>
                           <td className="p-2 border-r max-w-[160px] truncate text-[#0F172A]" title={row.options?.join(' | ') || '无选项'}>
                             {row.options && row.options.length > 0 ? (
                               <span className="font-sans text-[10.5px] text-[#16B45B] font-medium">

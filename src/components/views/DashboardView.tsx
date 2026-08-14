@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom';
 import type { PlatformDashboardSnapshot } from '../../dashboardSnapshot';
 import { DashboardSection } from '../dashboard/DashboardSection';
 
-export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot }> = ({ snapshot }) => (
+export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot; title?: string }> = ({ snapshot, title = '平台经营驾驶舱' }) => (
   <div className="mx-auto max-w-[1480px] space-y-5">
+    <div><h2 className="text-[22px] font-bold text-[#0F172A]">{title}</h2><p className="mt-1 text-[12px] text-[#64748B]">数据更新：{snapshot.updatedAt}</p></div>
     {snapshot.sections.map((section) => <DashboardSection key={section.id} section={section} />)}
     <section className="rounded-xl border border-[#E2E8F0] bg-white">
       <div className="border-b border-[#EEF2F0] px-5 py-4"><h3 className="text-[15px] font-bold text-[#0F172A]">待办与异常</h3><p className="mt-1 text-[11px] text-[#64748B]">点击待办直接进入已筛选的处理页面</p></div>

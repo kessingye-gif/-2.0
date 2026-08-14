@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TeacherItem, TeacherClassItem, Institution, TeacherPermission, StudentItem, ServicePackage, ServiceFulfillmentResult, TeacherCreditLedgerEntry } from '../../types';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import { GradeSelect } from '../masterData/MasterDataSelects';
 import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
+import type { Role } from '../../permissions/accessControl';
 
 interface TeacherClassViewProps {
   institutions: Institution[];
@@ -17,7 +19,18 @@ interface TeacherClassViewProps {
   onTransferTeacherCredits: (teacherId: string, amount: number, type: 'allocate' | 'reclaim', reason: string) => void;
   onFulfillServices: (results: ServiceFulfillmentResult[]) => void;
   initialTab?: 'teachers' | 'classes';
+  viewerRole?: Role;
+  viewerInstitutionId?: string;
+  viewerTeacherId?: string;
 }
+
+export const filterClassesForViewer = <T extends { institutionId: string; headTeacherId: string }>(classes: T[], role: Role, institutionId?: string, teacherId?: string): T[] => {
+  if (role === 'super_admin') return classes;
+  if (!institutionId) return [];
+  if (role === 'institution_admin') return classes.filter((item) => item.institutionId === institutionId);
+  if (!teacherId) return [];
+  return classes.filter((item) => item.institutionId === institutionId && item.headTeacherId === teacherId);
+};
 
 export interface ClassRosterStudent {
   id: string;
@@ -61,7 +74,9 @@ const initialClassRoster: ClassRosterStudent[] = [
 
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
 
-export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, teachers, packages, creditLedger, students = [], onAddStudents, onAddTeacher, onAddTeachers, onUpdateTeacher, onTransferTeacherCredits, onFulfillServices, initialTab = 'teachers' }) => {
+export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, teachers, packages, creditLedger, students = [], onAddStudents, onAddTeacher, onAddTeachers, onUpdateTeacher, onTransferTeacherCredits, onFulfillServices, initialTab = 'teachers', viewerRole = 'super_admin', viewerInstitutionId, viewerTeacherId }) => {
+  const location = useLocation();
+  const institutionId = (location.state as { institutionId?: string } | null)?.institutionId;
   const { getActiveSubjects } = useMasterData();
   const allSubjects = getActiveSubjects().map((item) => item.name);
   const [activeTab, setActiveTab] = useState<'teachers' | 'classes'>(initialTab);
@@ -139,22 +154,24 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const filteredTeachers = useMemo(() => {
     return teachers.filter(
       (t) =>
-        t.name.includes(teacherSearch) ||
-        t.account.includes(teacherSearch) ||
-        t.phone.includes(teacherSearch) ||
-        t.institutionName.includes(teacherSearch)
+        (!institutionId || t.institutionId === institutionId) && (
+          t.name.includes(teacherSearch) ||
+          t.account.includes(teacherSearch) ||
+          t.phone.includes(teacherSearch) ||
+          t.institutionName.includes(teacherSearch)
+        )
     );
-  }, [teachers, teacherSearch]);
+  }, [teachers, teacherSearch, institutionId]);
 
   const filteredClasses = useMemo(() => {
-    return classes.filter(
+    return filterClassesForViewer<TeacherClassItem>(classes, viewerRole as Role, viewerInstitutionId, viewerTeacherId).filter(
       (c) =>
         c.name.includes(classSearch) ||
         c.code.includes(classSearch) ||
         c.headTeacherName.includes(classSearch) ||
         c.institutionName.includes(classSearch)
     );
-  }, [classes, classSearch]);
+  }, [classes, classSearch, viewerRole, viewerInstitutionId, viewerTeacherId]);
 
   // Handlers
   const handleSaveTeacher = (e: React.FormEvent) => {
@@ -356,30 +373,12 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   return (
     <div className="space-y-6">
-      {/* Navigation Sub-Tabs */}
-      <div className="flex border-b border-[#E2E8F0] gap-6 text-[13.5px] font-bold">
-        <button
-          onClick={() => setActiveTab('teachers')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'teachers' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          教师账号与权限 ({teachers.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('classes')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'classes' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          班级管理与花名册 ({classes.length})
-        </button>
-      </div>
+      <div className="border-b border-[#E2E8F0] pb-3"><h2 className="text-[18px] font-bold text-[#0F172A]">{activeTab === 'teachers' ? `教师管理（${filteredTeachers.length}）` : `班级管理（${filteredClasses.length}）`}</h2><p className="mt-1 text-[12px] text-[#64748B]">{activeTab === 'teachers' ? '管理已开通老师的额度、权限、状态和负责班级。' : '管理班级花名册、学生状态和老师在班级内的服务办理。'}</p></div>
 
       {/* Tab 1: Teachers Management */}
       {activeTab === 'teachers' && (
         <div className="space-y-4">
+          {institutionId && <div className="rounded-xl border border-[#CDE7DA] bg-[#F1FBF6] px-4 py-3 text-[13px] text-[#0E7D3E]">当前正在管理：<strong>{institutions.find((item) => item.id === institutionId)?.name ?? '所选机构'}</strong> 的已开通老师与老师额度。</div>}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4">
             <input
               type="text"
@@ -388,37 +387,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索教师姓名、账号、手机号或机构..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer rounded-xl border border-[#16B45B]/30 bg-[#E8F7EE] px-3.5 py-1.5 text-[12.5px] font-bold text-[#0E7D3E] hover:bg-[#DDF3E6]">
-                批量导入教师
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) handleBatchImportTeachers(file);
-                    event.target.value = '';
-                  }}
-                />
-              </label>
-              <button
-              onClick={() => {
-                setTeacherForm({
-                  name: '',
-                  account: '',
-                  phone: '',
-                  institutionId: institutions[0]?.id || '',
-                  initialQuota: 1000,
-                });
-                setIsTeacherModalOpen(true);
-              }}
-              className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              新增教师账号
-              </button>
-            </div>
+            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">新增老师后，额度须由机构管理员单独分配。</p><button type="button" onClick={() => { setTeacherForm({ name: '', account: '', phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button></div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -502,7 +471,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              新建班级
+              管理班级
             </button>
           </div>
 
@@ -545,15 +514,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   </button>
                   <button
                     onClick={() => {
-                      const teacher = teachers.find((item) => item.id === cls.headTeacherId);
-                      if (teacher) handleOpenQuota(teacher);
-                    }}
-                    className="border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
-                  >
-                    追加点数
-                  </button>
-                  <button
-                    onClick={() => {
                       setRosterClass(cls);
                       setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? '');
                       setIsBulkServiceOpen(true);
@@ -569,7 +529,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     }}
                     className="bg-[#E8F7EE] text-[#16B45B] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#D3F0DE] cursor-pointer transition-colors"
                   >
-                    + 批量导入
+                    关联已开通学生
                   </button>
                 </div>
               </div>
@@ -622,33 +582,10 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">所属机构</label>
-                <select
-                  value={teacherForm.institutionId}
-                  onChange={(e) => setTeacherForm({ ...teacherForm, institutionId: e.target.value })}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
-                >
-                  {institutions.map((i) => (
-                    <option key={i.id} value={i.id}>{i.name}</option>
-                  ))}
-                </select>
+                {institutionId ? <div className="rounded-xl bg-[#F1FBF6] px-3 py-2 text-[13px] font-bold text-[#0E7D3E]">{institutions.find((item) => item.id === institutionId)?.name}</div> : <select value={teacherForm.institutionId} onChange={(e) => setTeacherForm({ ...teacherForm, institutionId: e.target.value })} className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold">{institutions.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select>}
               </div>
 
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">初始分配点数</label>
-                <input
-                  type="number"
-                  required
-                  value={teacherForm.initialQuota}
-                  onChange={(e) => setTeacherForm({ ...teacherForm, initialQuota: Number(e.target.value) })}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
-                />
-                {(() => {
-                  const institution = institutions.find((item) => item.id === teacherForm.institutionId);
-                  return <p className={`mt-1.5 text-[11px] ${institution && teacherForm.initialQuota > institution.remainingQuota ? 'text-red-600' : 'text-[#64748B]'}`}>
-                    将从机构账户直接扣除：当前 {institution?.remainingQuota.toLocaleString() ?? 0} 点 → 创建后 {((institution?.remainingQuota ?? 0) - teacherForm.initialQuota).toLocaleString()} 点
-                  </p>;
-                })()}
-              </div>
+              <p className="rounded-xl bg-[#F8FAFC] p-3 text-[12px] text-[#64748B]">老师创建后初始额度为 0；请在老师列表中由机构管理员分配额度。</p>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                 <button
@@ -660,7 +597,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </button>
                 <button
                   type="submit"
-                  disabled={!classForm.headTeacherId || classForm.initialTeacherQuota > (institutions.find((item) => item.id === classForm.institutionId)?.remainingQuota ?? 0)}
+                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.phone || !teacherForm.institutionId}
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                 >
                   确认保存
@@ -682,7 +619,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             <div className="space-y-3">
               {[
                 { key: 'canEditContent', label: '知识点与精选题库管理', desc: '允许新增、编辑与修改考点题目' },
-                { key: 'canImportStudents', label: '批量导入学生与花名册', desc: '允许通过 Excel 表格划拨导入学生' },
+                { key: 'canImportStudents', label: '维护班级花名册', desc: '允许关联已开通学生并维护班级归属' },
                 { key: 'canManageClass', label: '建立与维系班级信息', desc: '允许新建与更变负责班级' },
                 { key: 'canRedeemPackage', label: '使用点数兑换激活码', desc: '允许扣减可用点数生成学生配包码' },
                 { key: 'canViewReport', label: '查看学生学情诊断报告', desc: '允许生成并导出 AI 学情报告' },
@@ -725,7 +662,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
             <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">
-              划拨教师可用点数 - {selectedTeacher.name}
+              机构管理员 · 分配老师额度 - {selectedTeacher.name}
             </h3>
 
             <div className="text-[12.5px] bg-[#F8FAFC] p-3 rounded-xl space-y-1">
@@ -736,7 +673,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">划拨类型</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">机构管理员操作</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-1.5 text-[13px] cursor-pointer font-bold text-[#0F172A]">
                     <input

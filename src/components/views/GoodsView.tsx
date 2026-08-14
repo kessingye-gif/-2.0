@@ -39,11 +39,6 @@ const initialAiUsagePacks: AiUsagePack[] = [
   { id: 'AUP-03', code: 'AUP-10M', name: '1000万 AI 用量旗舰包', usageAmount: 10000000, price: 4000, status: 'active', description: '旗舰级 AI 用量，无时间限制直至消耗完毕', createdAt: '2026-07-01' },
 ];
 
-const initialCreditEntries: CreditEntryRecord[] = [
-  { id: 'CE-20260701', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', paymentAmount: 50000, allocatedCredits: 50000, entryDate: '2026-07-01', voucherNo: 'P-20260701-001', operatorName: '超级管理员', notes: '对公转账 5 万元已到账，划拨 5 万采购点数', createdAt: '2026-07-01 10:30' },
-  { id: 'CE-20260715', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', paymentAmount: 20000, allocatedCredits: 20000, entryDate: '2026-07-15', voucherNo: 'P-20260715-082', operatorName: '超级管理员', notes: '支票结算，充值 2 万点', createdAt: '2026-07-15 14:20' },
-];
-
 const initialLedgers: OrderLedgerRecord[] = [
   { id: 'ORD-1001', orderNo: 'ORD-20260728-001', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'credit_inflow', typeName: '机构点数入账', paymentAmount: 50000, creditChange: 50000, status: 'completed', operatorName: '超级管理员', timestamp: '2026-07-28 11:20', reason: '线下对公充值' },
   { id: 'ORD-1002', orderNo: 'ORD-20260729-014', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'package_redeem', typeName: '授权码服务包兑换', paymentAmount: 0, creditChange: -350, status: 'completed', operatorName: '王教师', timestamp: '2026-07-29 09:15', reason: '兑换高三全科冲刺包' },
@@ -69,8 +64,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onUpdateCooperationPlan,
   initialCatalogTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<'cooperationPlans' | 'packages' | 'aiUsagePacks' | 'creditEntry' | 'authCodes' | 'ledger' | 'addOnOrders'>(
-    creditInstitutionId ? 'creditEntry' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'creditEntry',
+  const [activeTab, setActiveTab] = useState<'cooperationPlans' | 'packages' | 'aiUsagePacks' | 'authCodes' | 'ledger' | 'addOnOrders'>(
+    creditInstitutionId ? 'ledger' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'ledger',
   );
 
   // AI usage packs state
@@ -86,7 +81,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   });
 
   // Credit Entry State
-  const [creditEntries, setCreditEntries] = useState<CreditEntryRecord[]>(initialCreditEntries);
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(Boolean(creditInstitutionId));
   const [creditForm, setCreditForm] = useState({
     institutionId: creditInstitutionId || institutions[0]?.id || '',
@@ -271,8 +265,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       createdAt: new Date().toLocaleString().slice(0, 16),
     };
 
-    setCreditEntries((prev) => [newRecord, ...prev]);
-
     // Update institution quota & log ledger
     onAdjustQuota(inst.id, Number(creditForm.allocatedCredits), true, `线下入账充值 (${newRecord.voucherNo})`);
 
@@ -324,13 +316,12 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         { id: 'packages' as const, label: '服务包' },
         { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
         { id: 'cooperationPlans' as const, label: `授权模板 (${cooperationPlans.length})` },
-        { id: 'creditEntry' as const, label: '机构额度入账' },
-        { id: 'ledger' as const, label: '权益流水' },
+        { id: 'ledger' as const, label: '资产流水' },
         { id: 'addOnOrders' as const, label: '学生加油包订单' },
       ]
     : mode === 'fulfillment'
       ? [{ id: 'authCodes' as const, label: `授权码记录 (${authCodes.length})` }]
-      : [{ id: 'creditEntry' as const, label: '机构额度入账' }, { id: 'ledger' as const, label: '订单流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
+      : [{ id: 'ledger' as const, label: '资产流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
 
   return (
     <div className="space-y-4">
@@ -475,53 +466,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         </div>
       )}
 
-      {/* Tab 3: Credit Entry */}
-      {activeTab === 'creditEntry' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
-            <span className="text-[13px] text-[#64748B]">
-              确认机构线下对公汇款到账后，在此录入入账凭证并自动触发采购点数划拨
-            </span>
-            <button
-              onClick={() => setIsCreditModalOpen(true)}
-              className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              录入线下入账
-            </button>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
-            <table className="w-full text-left text-[13px]">
-              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
-                <tr>
-                  <th className="py-3 px-4">凭证/流水号</th>
-                  <th className="py-3 px-4">收款机构</th>
-                  <th className="py-3 px-4 text-right">实收金额 (元)</th>
-                  <th className="py-3 px-4 text-right">划拨点数 (点)</th>
-                  <th className="py-3 px-4">入账日期</th>
-                  <th className="py-3 px-4">经办人</th>
-                  <th className="py-3 px-4">备注与说明</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
-                {creditEntries.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-[#F8FAFC]">
-                    <td className="py-3 px-4 font-mono font-bold text-[#0F172A]">{rec.voucherNo}</td>
-                    <td className="py-3 px-4 font-bold">{rec.institutionName}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-[#0F172A]">¥{rec.paymentAmount.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-[#16B45B]">+{rec.allocatedCredits.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-[#64748B]">{rec.entryDate}</td>
-                    <td className="py-3 px-4 font-bold">{rec.operatorName}</td>
-                    <td className="py-3 px-4 text-[#64748B] text-[12px]">{rec.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* Tab 4: Auth Codes */}
       {activeTab === 'authCodes' && (
         <div className="space-y-4">
@@ -625,9 +569,12 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <option value="reversal">冲正/退款流水</option>
               </select>
             </div>
-            <span className="text-[12px] text-[#64748B]">
-              不可覆盖订单流水：所有变更均生成新的冲正或逆向订单
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[12px] text-[#64748B]">所有变更均生成新的流水或冲正记录</span>
+              <button onClick={() => setIsCreditModalOpen(true)} className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer">
+                <span className="material-symbols-outlined text-[16px]">add</span>录入线下入账
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">

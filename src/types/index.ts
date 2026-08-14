@@ -6,9 +6,10 @@ export interface CurrentUser {
   id: string;
   name: string;
   username: string;
-  role: 'super_admin' | 'institution_admin';
+  role: 'super_admin' | 'institution_admin' | 'teacher';
   institutionId?: string;
   institutionName?: string;
+  teacherId?: string;
   avatar?: string;
 }
 
@@ -38,6 +39,14 @@ export interface Institution {
   contractExpireAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OrganizationNode {
+  id: string;
+  institutionId: string;
+  parentId?: string;
+  type: 'campus' | 'grade_group' | 'class';
+  name: string;
 }
 
 export type FulfillmentStageId =

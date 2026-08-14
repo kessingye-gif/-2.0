@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { navGroups } from './navigation';
+import { getDefaultRouteForRole, getNavGroupsForRole, navGroups } from './navigation';
 
 test('后台导航包含驾驶舱和七个正式业务模块', () => {
   const items = navGroups.flatMap((group) => group.items);
@@ -15,4 +15,11 @@ test('后台导航包含驾驶舱和七个正式业务模块', () => {
 
 test('驾驶舱不与七个业务模块混为一组', () => {
   assert.deepEqual(navGroups.map((group) => group.title ?? null), [null, '业务模块', '系统']);
+});
+
+test('不同身份只看到被授权模块', () => {
+  assert.deepEqual(getNavGroupsForRole('institution_admin').flatMap((group) => group.items).map((item) => item.id), ['dashboard', 'content', 'teachers', 'classes', 'students']);
+  assert.deepEqual(getNavGroupsForRole('teacher').flatMap((group) => group.items).map((item) => item.id), ['dashboard', 'classes', 'students']);
+  assert.equal(getDefaultRouteForRole('institution_admin'), '/platform/dashboard');
+  assert.equal(getDefaultRouteForRole('teacher'), '/platform/dashboard');
 });

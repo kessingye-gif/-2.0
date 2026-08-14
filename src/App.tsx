@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Sidebar } from './components/layout/Sidebar';
-import type { NavTab } from './navigation';
+import { canAccessRoute, getDefaultRouteForRole, type NavTab } from './navigation';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getPlatformRoute, getPlatformRouteId } from './router/platformRoutes';
 import { Header } from './components/layout/Header';
@@ -12,6 +12,7 @@ import { DashboardView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
 import { TeacherClassView } from './components/views/TeacherClassView';
 import { StudentView } from './components/views/StudentView';
+import { DiagnosticsView } from './components/views/DiagnosticsView';
 import { HelpModal } from './components/modals/HelpModal';
 import { Toast } from './components/ui/Toast';
 
@@ -31,7 +32,7 @@ import {
   initialTeachers,
 } from './mockData';
 import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
-import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
+import { deriveInstitutionDashboardSnapshot, derivePlatformDashboardSnapshot, deriveTeacherDashboardSnapshot } from './dashboardSnapshot';
 
 import {
   Institution,
@@ -51,6 +52,8 @@ import {
 } from './types';
 import { deriveLegacyServiceRights } from './domain/studentRights';
 import { allocateTeacherCredits, debitTeacherForService, reclaimTeacherCredits } from './domain/teacherCredits';
+import type { Role } from './permissions/accessControl';
+import { scopeInstitutions, scopeStudents, scopeTeachers } from './permissions/dataScope';
 
 export default function App() {
   const location = useLocation();
@@ -110,6 +113,14 @@ export default function App() {
     [institutions, authCodes, students, orders, auditLogs, resolvedWorkItemIds],
   );
   const dashboardSnapshot = useMemo(() => derivePlatformDashboardSnapshot({ institutions, authCodes, students, orders, auditLogs }), [institutions, authCodes, students, orders, auditLogs]);
+  const visibleDashboardSnapshot = useMemo(() => {
+    if (currentUser.role === 'institution_admin' && currentUser.institutionId) return deriveInstitutionDashboardSnapshot({ institutionId: currentUser.institutionId, institutions, teachers, students, auditLogs });
+    if (currentUser.role === 'teacher' && currentUser.teacherId) return deriveTeacherDashboardSnapshot({ teacherId: currentUser.teacherId, teachers, students, auditLogs });
+    return dashboardSnapshot;
+  }, [auditLogs, currentUser.institutionId, currentUser.role, currentUser.teacherId, dashboardSnapshot, institutions, students, teachers]);
+  const visibleInstitutions = useMemo(() => scopeInstitutions(institutions, currentUser), [institutions, currentUser]);
+  const visibleTeachers = useMemo(() => scopeTeachers(teachers, currentUser), [teachers, currentUser]);
+  const visibleStudents = useMemo(() => scopeStudents(students, currentUser), [students, currentUser]);
 
   const handleSelectSearchResult = (tab: NavTab) => {
     setCurrentTab(tab);
@@ -130,6 +141,18 @@ export default function App() {
   const handleLogout = () => {
     addAuditLog('管理员安全退出', `${currentUser.name}`, '用户主动点击退出登录，会话已被清空并返回安全登录门户。', '系统设置');
     setIsAuthenticated(false);
+  };
+
+  const handleRoleChange = (role: Role) => {
+    setCurrentUser((user) => ({
+      ...user,
+      role,
+      name: role === 'super_admin' ? '超级管理员' : role === 'institution_admin' ? '机构管理员' : '李老师',
+      institutionId: role === 'super_admin' ? undefined : institutions[0]?.id,
+      institutionName: role === 'super_admin' ? undefined : institutions[0]?.name,
+      teacherId: role === 'teacher' ? teachers[0]?.id : undefined,
+    }));
+    navigate(getDefaultRouteForRole(role));
   };
 
   // Add Log Helper
@@ -373,13 +396,17 @@ export default function App() {
 
   if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
 
+  if (!canAccessRoute(currentUser.role, currentTab)) {
+    return <Navigate to={getDefaultRouteForRole(currentUser.role)} replace />;
+  }
+
   const currentView = currentTab === 'content' ? 'questionBank' : currentTab;
   const routeState = location.state as { intent?: string; institutionId?: string } | null;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F4F6F5] text-[#0F172A] font-sans">
       {/* Fixed Left Sidebar */}
-      <Sidebar />
+      <Sidebar role={currentUser.role} />
 
       {/* Main Container Column */}
       <div className="flex-1 flex flex-col h-screen min-w-0 pl-[220px]">
@@ -393,12 +420,18 @@ export default function App() {
           onOpenSettings={() => setIsHelpModalOpen(true)}
           searchResults={searchResults}
           onSelectSearchResult={handleSelectSearchResult}
+          activeRole={currentUser.role}
+          onRoleChange={handleRoleChange}
         />
 
         {/* Scrollable Main Content Area */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
-            <DashboardView snapshot={dashboardSnapshot} />
+            <div className="space-y-6">
+              <DashboardView snapshot={visibleDashboardSnapshot} title={currentUser.role === 'institution_admin' ? `${currentUser.institutionName ?? '当前机构'}运营大屏` : currentUser.role === 'teacher' ? `${currentUser.name}经营驾驶舱` : '平台经营驾驶舱'} />
+              {currentUser.role === 'institution_admin' && currentUser.institutionId && <DiagnosticsView students={students.filter((item) => item.institutionId === currentUser.institutionId)} onGenerateReport={handleGenerateReport} scopeLabel="本机构" />}
+              {currentUser.role === 'teacher' && currentUser.teacherId && <DiagnosticsView students={students.filter((item) => item.teacherId === currentUser.teacherId)} onGenerateReport={handleGenerateReport} scopeLabel="我的班级" />}
+            </div>
           )}
 
           {currentView === 'goods' && (
@@ -430,6 +463,12 @@ export default function App() {
               onUpdateQuestion={handleUpdateQuestion}
               onBatchImportQuestions={handleBatchImportQuestions}
               onAddKnowledgePoint={handleAddKnowledgePoint}
+              authorizedContentPackageNames={
+                currentUser.role === 'institution_admin'
+                  ? institutions.find((institution) => institution.id === currentUser.institutionId)?.availableContentPackages ?? []
+                  : undefined
+              }
+              canCreateContentPackage={currentUser.role === 'super_admin'}
             />
           )}
 
@@ -452,11 +491,11 @@ export default function App() {
           {currentView === 'teachers' && (
             <TeacherClassView
               key="teachers"
-              institutions={institutions}
-              teachers={teachers}
+              institutions={visibleInstitutions}
+              teachers={visibleTeachers}
               creditLedger={teacherCreditLedger}
               packages={packages}
-              students={students}
+              students={visibleStudents}
               onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
               onAddTeacher={handleAddTeacher}
               onAddTeachers={handleAddTeachers}
@@ -464,17 +503,20 @@ export default function App() {
               onTransferTeacherCredits={handleTransferTeacherCredits}
               onFulfillServices={handleFulfillServices}
               initialTab="teachers"
+              viewerRole={currentUser.role}
+              viewerInstitutionId={currentUser.institutionId}
+              viewerTeacherId={currentUser.teacherId}
             />
           )}
 
           {currentView === 'classes' && (
             <TeacherClassView
               key="classes"
-              institutions={institutions}
-              teachers={teachers}
+              institutions={visibleInstitutions}
+              teachers={visibleTeachers}
               creditLedger={teacherCreditLedger}
               packages={packages}
-              students={students}
+              students={visibleStudents}
               onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
               onAddTeacher={handleAddTeacher}
               onAddTeachers={handleAddTeachers}
@@ -482,22 +524,26 @@ export default function App() {
               onTransferTeacherCredits={handleTransferTeacherCredits}
               onFulfillServices={handleFulfillServices}
               initialTab="classes"
+              viewerRole={currentUser.role}
+              viewerInstitutionId={currentUser.institutionId}
+              viewerTeacherId={currentUser.teacherId}
             />
           )}
 
           {currentView === 'students' && (
             <StudentView
-              students={students}
+              students={visibleStudents}
               guardianships={guardianships}
               authCodes={authCodes}
               guardianBindingCodes={guardianBindingCodes}
               serviceRights={serviceRights}
               packages={packages}
-              teachers={teachers}
+              teachers={visibleTeachers}
               onFulfillService={handleFulfillService}
               onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
               onGenerateReport={handleGenerateReport}
+              viewerRole={currentUser.role}
             />
           )}
 

@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { navGroups } from '../../navigation';
+import { getNavGroupsForRole } from '../../navigation';
+import type { Role } from '../../permissions/accessControl';
 
-export const Sidebar: React.FC = () => {
+export const Sidebar: React.FC<{ role: Role }> = ({ role }) => {
+  const visibleGroups = getNavGroupsForRole(role);
   return (
     <aside className="fixed left-0 top-0 h-screen w-[220px] bg-white border-r border-[#E2E8F0] flex flex-col py-5 z-50 select-none">
       {/* Brand Header */}
@@ -22,7 +24,7 @@ export const Sidebar: React.FC = () => {
             </h1>
             <p className="text-[10px] font-bold text-[#16B45B] tracking-wider uppercase mt-0.5 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16B45B]"></span>
-              超级管理员后台
+              {role === 'super_admin' ? '超级管理员后台' : role === 'institution_admin' ? '机构管理员后台' : '教师工作台'}
             </p>
           </div>
         </div>
@@ -30,7 +32,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Nav Groups */}
       <nav className="flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar">
-        {navGroups.map((group, groupIdx) => (
+        {visibleGroups.map((group, groupIdx) => (
           <div key={groupIdx} className="space-y-1">
             {group.title && <div className="px-3 text-[11px] font-medium text-[#94A3B8] mb-2">{group.title}</div>}
             {group.items.map((item) => {
@@ -57,7 +59,7 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="px-5 pt-4 border-t border-[#E2E8F0] text-[11px] text-[#94A3B8]">平台总部运营</div>
+      <div className="px-5 pt-4 border-t border-[#E2E8F0] text-[11px] text-[#94A3B8]">{role === 'super_admin' ? '平台总部运营' : role === 'institution_admin' ? '机构内部运营' : '班级与学生运营'}</div>
     </aside>
   );
 };

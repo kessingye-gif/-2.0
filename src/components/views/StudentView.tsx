@@ -18,6 +18,7 @@ import { useMasterData } from '../../masterData/MasterDataContext';
 import { DialogShell } from '../ui/FormPrimitives';
 import { ServiceFulfillmentPanel } from '../fulfillment/ServiceFulfillmentPanel';
 import { mergeStudentServiceRights } from '../../domain/studentRights';
+import type { Role } from '../../permissions/accessControl';
 
 interface StudentViewProps {
   students: StudentItem[];
@@ -32,6 +33,7 @@ interface StudentViewProps {
   onUpdateGuardianshipStatus: (id: string, status: GuardianshipStatus) => void;
   onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void;
   initialTab?: 'roster' | 'diagnostics';
+  viewerRole?: Role;
 }
 
 const hiddenRebindRequests: WeChatRebindRequest[] = [];
@@ -49,6 +51,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
   onUpdateGuardianshipStatus,
   onGenerateReport,
   initialTab = 'roster',
+  viewerRole = 'super_admin',
 }) => {
   const { getActiveGrades } = useMasterData();
   const [activeTab, setActiveTab] = useState<'roster' | 'diagnostics'>(initialTab);
@@ -83,25 +86,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Navigation Sub-Tabs */}
       <div className="flex flex-wrap border-b border-[#E2E8F0] gap-x-6 gap-y-2 text-[13.5px] font-bold">
-        <button
-          onClick={() => setActiveTab('roster')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          学生列表 ({students.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('diagnostics')}
-          className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${
-            activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'
-          }`}
-        >
-          学情报告
-        </button>
+        <button onClick={() => setActiveTab('roster')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>学生列表 ({students.length})</button>
+        <button onClick={() => setActiveTab('diagnostics')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>学情报告</button>
       </div>
 
       {/* Tab 1: Student Roster */}
@@ -116,8 +103,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 placeholder="搜索学生姓名、账号、负责教师或机构..."
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
               />
-              <select value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-              <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+              {viewerRole === 'super_admin' && <select value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
+              {viewerRole !== 'teacher' && <select value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
               <select value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
               <select
                 value={serviceStatusFilter}
@@ -344,10 +331,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
         </div>
       )}
 
-      {/* Tab 4: Diagnostics */}
-      {activeTab === 'diagnostics' && (
-        <DiagnosticsView students={students} onGenerateReport={onGenerateReport} />
-      )}
+      {activeTab === 'diagnostics' && <DiagnosticsView students={students} onGenerateReport={onGenerateReport} />}
 
       {detailStudent && (() => {
         const rights = mergedServiceRights.filter((item) => item.studentId === detailStudent.id);
@@ -367,7 +351,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]"><div><span className="text-[#94A3B8]">登录账号</span><p className="mt-1 font-mono font-bold">{detailStudent.account}</p></div><div><span className="text-[#94A3B8]">服务状态</span><p className="mt-1 font-bold">{detailStudent.serviceStatus === 'active' ? '服务中' : detailStudent.serviceStatus === 'expired' ? '已到期' : '待办理'}</p></div><div><span className="text-[#94A3B8]">负责教师可用点数</span><p className="mt-1 font-mono font-bold text-[#0E7D3E]">{teacher ? `${teacher.remainingQuota.toLocaleString()} 点` : '未找到教师账户'}</p></div></div>
               </section>
               <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                <div className="flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留。</p></div><button onClick={() => { setDetailStudent(null); setServiceStudent(detailStudent); }} className="rounded-lg bg-[#E8F7EE] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E]">办理新服务</button></div>
+                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">学生页仅查看服务状态；办理或额度操作由负责教师在班级内完成。</p></div>
                 <div className="mt-3 space-y-2">{rights.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-4 text-[12px] text-[#94A3B8]">暂无服务权益</div> : rights.map((right) => {
                   const authCode = authCodes.find((item) => item.id === right.authCodeId);
                   const rightStatus = { pending: '待激活', active: '服务中', expired: '已到期', revoked: '已撤销' }[right.status];

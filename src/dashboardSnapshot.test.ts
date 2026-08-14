@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { initialAuditLogs, initialAuthCodes, initialInstitutions, initialOrderLedger, initialStudents } from './mockData';
-import { derivePlatformDashboardSnapshot } from './dashboardSnapshot';
+import { initialAuditLogs, initialAuthCodes, initialInstitutions, initialOrderLedger, initialStudents, initialTeachers } from './mockData';
+import { deriveInstitutionDashboardSnapshot, derivePlatformDashboardSnapshot, deriveTeacherDashboardSnapshot } from './dashboardSnapshot';
 
 const snapshot = derivePlatformDashboardSnapshot({
   institutions: initialInstitutions,
@@ -31,4 +31,22 @@ test('每个指标都说明来源、口径和下钻去向', () => {
   assert.ok(metrics.every((metric) => metric.sourceLabel && metric.definition && metric.targetPath.startsWith('/platform/')));
   assert.ok(snapshot.workItems.every((item) => item.targetPath.startsWith('/platform/')));
   assert.equal(JSON.stringify(snapshot).match(/合同|签约|回款/), null);
+});
+
+test('机构管理员大屏只汇总本机构老师和学生', () => {
+  const institutionId = initialInstitutions[0].id;
+  const result = deriveInstitutionDashboardSnapshot({ institutionId, institutions: initialInstitutions, teachers: initialTeachers, students: initialStudents, auditLogs: initialAuditLogs });
+  const metrics = result.sections.flatMap((section) => section.metrics);
+  assert.equal(metrics.find((item) => item.id === 'teachers')?.value, initialTeachers.filter((item) => item.institutionId === institutionId).length);
+  assert.equal(metrics.find((item) => item.id === 'students')?.value, initialStudents.filter((item) => item.institutionId === institutionId).length);
+  assert.equal(result.sections.some((section) => section.title.includes('全平台')), false);
+});
+
+test('教师大屏只汇总自己负责学生的学情', () => {
+  const teacher = initialTeachers[0];
+  const result = deriveTeacherDashboardSnapshot({ teacherId: teacher.id, teachers: initialTeachers, students: initialStudents, auditLogs: initialAuditLogs });
+  const metrics = result.sections.flatMap((section) => section.metrics);
+  const ownStudents = initialStudents.filter((item) => item.teacherId === teacher.id);
+  assert.equal(metrics.find((item) => item.id === 'students')?.value, ownStudents.length);
+  assert.equal(metrics.find((item) => item.id === 'questions')?.value, ownStudents.reduce((sum, item) => sum + item.totalQuestions, 0));
 });

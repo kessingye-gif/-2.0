@@ -4,11 +4,13 @@ import { StudentItem } from '../../types';
 interface DiagnosticsViewProps {
   students: StudentItem[];
   onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void;
+  scopeLabel?: string;
 }
 
 export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
   students,
   onGenerateReport,
+  scopeLabel = '全平台/机构',
 }) => {
   const [activeTab, setActiveTab] = useState<'platform' | 'individual'>('platform');
 
@@ -21,6 +23,11 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
   const [isSyncedToMiniProgram, setIsSyncedToMiniProgram] = useState(false);
 
   const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
+  const totalQuestions = students.reduce((sum, item) => sum + item.totalQuestions, 0);
+  const averageAccuracy = students.length ? Math.round(students.reduce((sum, item) => sum + item.accuracyRate, 0) / students.length * 10) / 10 : 0;
+  const totalErrors = students.reduce((sum, item) => sum + item.errorCount, 0);
+  const unreviewedErrors = students.reduce((sum, item) => sum + item.unreviewedErrorCount, 0);
+  const reviewRate = totalErrors ? Math.round((totalErrors - unreviewedErrors) / totalErrors * 1000) / 10 : 0;
 
   const handleRunDiagnostic = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +92,7 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">space_dashboard</span>
-            全平台/机构学情大屏
+            {scopeLabel}学情大屏
           </button>
 
           <button
@@ -117,8 +124,8 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
                 <span>小程序累积刷题量</span>
                 <span className="text-[#16B45B] font-bold font-mono">+12.4%</span>
               </div>
-              <p className="text-[22px] font-extrabold text-[#0F172A] font-mono">1,428,900 <span className="text-[12px] font-normal text-[#64748B]">题</span></p>
-              <p className="text-[11px] text-[#94A3B8]">覆盖全平台 2,150 名在读学生</p>
+              <p className="text-[22px] font-extrabold text-[#0F172A] font-mono">{totalQuestions.toLocaleString()} <span className="text-[12px] font-normal text-[#64748B]">题</span></p>
+              <p className="text-[11px] text-[#94A3B8]">覆盖 {students.length} 名负责学生</p>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] shadow-2xs space-y-1">
@@ -126,7 +133,7 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
                 <span>平台整体正确率</span>
                 <span className="text-[#16B45B] font-bold font-mono">达标</span>
               </div>
-              <p className="text-[22px] font-extrabold text-[#16B45B] font-mono">81.6%</p>
+              <p className="text-[22px] font-extrabold text-[#16B45B] font-mono">{averageAccuracy}%</p>
               <p className="text-[11px] text-[#94A3B8]">其中基础题正确率 89.2%</p>
             </div>
 
@@ -135,8 +142,8 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
                 <span>小程序错题消灭率</span>
                 <span className="text-[#2563EB] font-bold font-mono">持续提升</span>
               </div>
-              <p className="text-[22px] font-extrabold text-[#2563EB] font-mono">76.8%</p>
-              <p className="text-[11px] text-[#94A3B8]">已累计消灭 342,100 条错题</p>
+              <p className="text-[22px] font-extrabold text-[#2563EB] font-mono">{reviewRate}%</p>
+              <p className="text-[11px] text-[#94A3B8]">已复习 {Math.max(0, totalErrors - unreviewedErrors)} 条错题</p>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-[#E2E8F0] shadow-2xs space-y-1">
@@ -156,7 +163,7 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
               <div className="flex justify-between items-center">
                 <h3 className="text-[14px] font-bold text-[#0F172A] flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[#16B45B] text-[18px]">bar_chart</span>
-                  四大学科全平台平均掌握度
+                  {scopeLabel}学科平均掌握度
                 </h3>
                 <span className="text-[11px] text-[#64748B]">最近30天</span>
               </div>
@@ -186,7 +193,7 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
               <div className="flex justify-between items-center">
                 <h3 className="text-[14px] font-bold text-[#0F172A] flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[#DC2626] text-[18px]">report_problem</span>
-                  小程序学生全网高频易错考点 Top 5
+                  {scopeLabel}高频易错考点 Top 5
                 </h3>
                 <span className="text-[11px] text-[#64748B]">待专项提升</span>
               </div>
@@ -514,4 +521,3 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
     </div>
   );
 };
-

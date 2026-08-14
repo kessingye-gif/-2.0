@@ -3,6 +3,7 @@ import { CurrentUser } from '../../types';
 import type { GlobalSearchResult } from '../../types';
 import type { NavTab } from '../../navigation';
 import { GlobalSearchPanel } from './GlobalSearchPanel';
+import type { Role } from '../../permissions/accessControl';
 
 interface HeaderProps {
   currentUser: CurrentUser;
@@ -13,6 +14,8 @@ interface HeaderProps {
   onOpenSettings?: () => void;
   searchResults?: GlobalSearchResult[];
   onSelectSearchResult?: (tab: NavTab) => void;
+  activeRole: Role;
+  onRoleChange: (role: Role) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,6 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettings,
   searchResults = [],
   onSelectSearchResult,
+  activeRole,
+  onRoleChange,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -61,6 +66,15 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
+        <label className="relative hidden sm:block">
+          <span className="sr-only">切换管理身份</span>
+          <select value={activeRole} onChange={(event) => onRoleChange(event.target.value as Role)} className="appearance-none rounded-xl border border-[#DCE5E1] bg-white py-2 pl-3 pr-9 text-[12px] font-bold text-[#334155] outline-none hover:border-[#16B45B] focus:border-[#16B45B]">
+            <option value="super_admin">平台超级管理员</option>
+            <option value="institution_admin">机构管理员</option>
+            <option value="teacher">教师</option>
+          </select>
+          <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[17px] text-[#64748B]">expand_more</span>
+        </label>
         {/* Notifications */}
         <button
           type="button"

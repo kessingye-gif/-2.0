@@ -101,10 +101,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const stats = useMemo(() => {
     const activeCount = institutions.filter((i) => i.status === 'active').length;
     const totalStudents = institutions.reduce((acc, curr) => acc + curr.studentCount, 0);
-    const alertCount = institutions.filter((i) => {
-      if (i.totalQuota === 0) return false;
-      return i.remainingQuota / i.totalQuota <= 0.15 && i.status === 'active';
-    }).length;
+    const alertCount = institutions.filter((i) => i.totalQuota > 0 && i.remainingQuota / i.totalQuota <= 0.15 && i.status === 'active').length;
     const totalRemaining = institutions.reduce((acc, curr) => acc + curr.remainingQuota, 0);
 
     return {
@@ -429,6 +426,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             <span className="material-symbols-outlined text-[18px]">add</span>
             <span>新增机构</span>
           </button>
+
         </div>
       </div>
 
@@ -530,18 +528,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       {/* 操作 */}
                       <td className="px-5 py-2.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-3 text-[12px]">
-                          <button
-                            onClick={() => openAuthorizationModal(inst)}
-                            className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer"
-                          >
-                            授权
-                          </button>
-                          <button
-                            onClick={() => onCreditEntry(inst.id)}
-                            className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer"
-                          >
-                            入账
-                          </button>
+                          <button onClick={() => openAuthorizationModal(inst)} className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer">授权</button>
+                          <button onClick={() => onCreditEntry(inst.id)} className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer">入账</button>
 
                           <button
                             onClick={() => {
