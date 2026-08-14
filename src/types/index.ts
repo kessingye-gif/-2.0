@@ -198,6 +198,17 @@ export interface KnowledgePointNode {
   parentId?: string;
   questionCount: number; // 绑定精选题数
   status: 'active' | 'inactive';
+  stage?: string;
+  applicableGrades?: string[];
+  applicableRegion?: string;
+  knowledgeType?: string;
+  coreContent?: string;
+  learningObjective?: string;
+  teachingSuggestion?: string;
+  validationCriteria?: string;
+  minimumValidationQuestionIds?: string[];
+  relatedQuestionIds?: string[];
+  prerequisiteKnowledgePointIds?: string[];
 }
 
 export interface QuestionItem {
