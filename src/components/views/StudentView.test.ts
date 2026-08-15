@@ -5,7 +5,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { initialAuthCodes, initialParentGuardianships, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
 import { MasterDataProvider } from '../../masterData/MasterDataContext';
-import { StudentView } from './StudentView';
+import { StudentServiceReminderCards, StudentView } from './StudentView';
 
 test('学生列表合并展示服务与家长状态，顶部只保留两个视图', () => {
   const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
@@ -52,4 +52,18 @@ test('学生详情集中承载服务权益、双码和家长关系', () => {
   assert.match(source, /基本资料/);
   assert.match(source, /每笔服务包、AI 用量、双码和有效期分别保留/);
   assert.match(source, /家长关系/);
+});
+
+test('学生详情为命中规则的服务权益显示待跟进提醒', () => {
+  const markup = renderToStaticMarkup(createElement(StudentServiceReminderCards, {
+    reminders: [{
+      id: 'RIGHT-1:activation', rightId: 'RIGHT-1', studentId: 'STU-001', packageName: '全科高量包',
+      kind: 'activation' as const, title: '已办理服务尚未激活', description: '请联系学生完成激活。',
+    }],
+    onDismiss: () => undefined,
+  }));
+
+  assert.match(markup, /待跟进提醒/);
+  assert.match(markup, /联系学生完成激活/);
+  assert.match(markup, /标记已处理/);
 });

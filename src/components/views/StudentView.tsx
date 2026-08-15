@@ -18,6 +18,7 @@ import { useMasterData } from '../../masterData/MasterDataContext';
 import { DialogShell } from '../ui/FormPrimitives';
 import { ServiceFulfillmentPanel } from '../fulfillment/ServiceFulfillmentPanel';
 import { mergeStudentServiceRights } from '../../domain/studentRights';
+import { deriveStudentServiceReminders, type StudentServiceReminder } from '../../domain/serviceReminders';
 import type { Role } from '../../permissions/accessControl';
 
 interface StudentViewProps {
@@ -37,6 +38,17 @@ interface StudentViewProps {
 }
 
 const hiddenRebindRequests: WeChatRebindRequest[] = [];
+
+export const StudentServiceReminderCards: React.FC<{ reminders: StudentServiceReminder[]; onDismiss: (id: string) => void }> = ({ reminders, onDismiss }) => {
+  if (reminders.length === 0) return null;
+  return <section className="rounded-2xl border border-amber-200 bg-white p-4">
+    <div><h4 className="text-[14px] font-bold text-[#0F172A]">待跟进提醒</h4><p className="mt-1 text-[11px] text-[#64748B]">系统根据服务状态自动生成，不影响学生权益。</p></div>
+    <div className="mt-3 space-y-2">{reminders.map((reminder) => <div key={reminder.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-3 py-2.5">
+      <div className="min-w-0"><p className="text-[12px] font-bold text-amber-800">{reminder.title} · {reminder.packageName}</p><p className="mt-1 text-[11px] text-amber-700">{reminder.description}</p></div>
+      <button type="button" onClick={() => onDismiss(reminder.id)} className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100">标记已处理</button>
+    </div>)}</div>
+  </section>;
+};
 
 export const StudentView: React.FC<StudentViewProps> = ({
   students,
@@ -64,9 +76,11 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [gradeFilter, setGradeFilter] = useState('');
   const [serviceStudent, setServiceStudent] = useState<StudentItem | null>(null);
   const [detailStudent, setDetailStudent] = useState<StudentItem | null>(null);
+  const [dismissedReminderIds, setDismissedReminderIds] = useState<Set<string>>(() => new Set());
   const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(hiddenRebindRequests);
   const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
   const mergedServiceRights = useMemo(() => mergeStudentServiceRights(serviceRights, authCodes, packages), [serviceRights, authCodes, packages]);
+  const serviceReminders = useMemo(() => deriveStudentServiceReminders(mergedServiceRights, new Date()), [mergedServiceRights]);
 
   const handleReviewRebind = (id: string, isApproved: boolean) => {
     setRebindRequests((current) => current.map((item) => item.id === id ? { ...item, status: isApproved ? 'approved' : 'rejected' } : item));
@@ -338,6 +352,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
         const guardian = guardianships.find((item) => item.studentId === detailStudent.id);
         const bindingCode = guardianBindingCodes.find((item) => item.studentId === detailStudent.id);
         const teacher = teachers.find((item) => item.id === detailStudent.teacherId);
+        const reminders = serviceReminders.filter((item) => item.studentId === detailStudent.id && !dismissedReminderIds.has(item.id));
         return <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true" aria-label={`学生详情 · ${detailStudent.name}`}>
           <button className="flex-1 cursor-default" aria-label="关闭学生详情" onClick={() => setDetailStudent(null)} />
           <aside className="h-full w-full max-w-[620px] overflow-y-auto bg-[#F8FAFC] shadow-2xl">
@@ -350,8 +365,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 <h4 className="text-[14px] font-bold text-[#0F172A]">基本资料</h4>
                 <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]"><div><span className="text-[#94A3B8]">登录账号</span><p className="mt-1 font-mono font-bold">{detailStudent.account}</p></div><div><span className="text-[#94A3B8]">服务状态</span><p className="mt-1 font-bold">{detailStudent.serviceStatus === 'active' ? '服务中' : detailStudent.serviceStatus === 'expired' ? '已到期' : '待办理'}</p></div><div><span className="text-[#94A3B8]">负责教师可用点数</span><p className="mt-1 font-mono font-bold text-[#0E7D3E]">{teacher ? `${teacher.remainingQuota.toLocaleString()} 点` : '未找到教师账户'}</p></div></div>
               </section>
+              <StudentServiceReminderCards reminders={reminders} onDismiss={(id) => setDismissedReminderIds((current) => new Set([...current, id]))} />
               <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">学生页仅查看服务状态；办理或额度操作由负责教师在班级内完成。</p></div>
+                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留；办理或额度操作由负责教师在班级内完成。</p></div>
                 <div className="mt-3 space-y-2">{rights.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-4 text-[12px] text-[#94A3B8]">暂无服务权益</div> : rights.map((right) => {
                   const authCode = authCodes.find((item) => item.id === right.authCodeId);
                   const rightStatus = { pending: '待激活', active: '服务中', expired: '已到期', revoked: '已撤销' }[right.status];
