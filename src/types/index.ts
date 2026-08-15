@@ -138,6 +138,8 @@ export interface ContentPackageItem {
   questionCount: number;
   status: 'active' | 'inactive';
   description: string;
+  knowledgePointIds?: string[]; // 逐步迁移为内容包显式选择的三级知识点
+  questionIds?: string[]; // 空数组表示所选知识点下全部启用题目
 }
 
 export interface CooperationPlan {
