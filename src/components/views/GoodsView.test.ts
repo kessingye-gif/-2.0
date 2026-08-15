@@ -85,8 +85,7 @@ test('finance mode opens on the unified order ledger', () => {
   assert.doesNotMatch(markup, /订单与资金|商业履约 · 资金结算/);
   assert.match(markup, /交易流水/);
   assert.doesNotMatch(markup, />资产流水</);
-  assert.doesNotMatch(markup, />学生加油包订单</);
-  assert.match(markup, /学生加油包交易/);
+  assert.match(markup, /PAY-20260808-0192/);
   assert.match(markup, /申请退款/);
 });
 
@@ -98,11 +97,12 @@ test('机构入账和学生加油包交易合并为一个交易流水入口', ()
   assert.match(markup, />交易流水</);
   assert.doesNotMatch(markup, />机构额度入账</);
   assert.doesNotMatch(markup, />权益流水</);
-  assert.doesNotMatch(markup, />学生加油包订单</);
   assert.match(markup, /全部流水类型/);
   assert.match(markup, />录入线下入账</);
-  assert.match(markup, /学生加油包交易/);
+  assert.match(markup, /PAY-20260808-0192/);
+  assert.match(markup, /张伟强/);
   assert.match(markup, /申请退款/);
+  assert.doesNotMatch(markup, /学生加油包交易/);
 });
 
 test('商品页不承载学生办理标签', () => {

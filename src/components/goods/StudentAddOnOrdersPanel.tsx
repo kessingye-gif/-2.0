@@ -12,7 +12,7 @@ interface StudentAddOnOrdersPanelProps {
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
 }
 
-const initialOrders: StudentAddOnOrder[] = [
+export const initialStudentAddOnOrders: StudentAddOnOrder[] = [
   { id: 'PAY-20260808-0192', student: '张伟强', institution: '浙江大学附属中学', packageName: '标准加油包', channel: '微信支付', paidAmount: 39.9, grantedUsage: 1_000_000, remainingUsage: 1_000_000, status: 'paid', orderedAt: '2026-08-08 19:32' },
   { id: 'PAY-20260808-0186', student: '李思思', institution: '上海青葱教育培训中心', packageName: '轻量加油包', channel: '支付宝', paidAmount: 9.9, grantedUsage: 200_000, remainingUsage: 185_200, status: 'paid', orderedAt: '2026-08-08 18:46' },
   { id: 'PAY-20260807-0163', student: '王浩然', institution: '博雅语言学院', packageName: '畅用加油包', channel: '微信支付', paidAmount: 99, grantedUsage: 3_000_000, remainingUsage: 0, status: 'refunded', orderedAt: '2026-08-07 16:03', refundedAt: '2026-08-07 16:08', refundNo: 'RF-20260807-0163', refundReason: '家长误购' },
@@ -21,7 +21,7 @@ const initialOrders: StudentAddOnOrder[] = [
 const formatUsage = (value: number) => value.toLocaleString('zh-CN');
 
 export const StudentAddOnOrdersPanel: React.FC<StudentAddOnOrdersPanelProps> = ({ onAudit, onNotify }) => {
-  const [orders, setOrders] = useState<StudentAddOnOrder[]>(initialOrders);
+  const [orders, setOrders] = useState<StudentAddOnOrder[]>(initialStudentAddOnOrders);
   const [refundLedgers, setRefundLedgers] = useState<RefundLedger[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<StudentAddOnOrder | null>(null);
   const [refundReason, setRefundReason] = useState('');

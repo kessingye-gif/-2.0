@@ -8,8 +8,13 @@ import {
   Institution,
   PackageType,
 } from '../../types';
-import { StudentAddOnOrdersPanel } from '../goods/StudentAddOnOrdersPanel';
-import type { RefundAuditEvent } from '../../domain/studentAddOnOrder';
+import { initialStudentAddOnOrders } from '../goods/StudentAddOnOrdersPanel';
+import {
+  getRefundEligibility,
+  refundStudentAddOnOrder,
+  type RefundAuditEvent,
+  type StudentAddOnOrder,
+} from '../../domain/studentAddOnOrder';
 
 interface GoodsViewProps {
   mode: 'catalog' | 'fulfillment' | 'finance';
@@ -38,6 +43,8 @@ const initialLedgers: OrderLedgerRecord[] = [
   { id: 'ORD-1003', orderNo: 'ORD-20260730-008', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', type: 'ai_usage_pack_buy', typeName: 'AI 加油包购买', paymentAmount: 500, creditChange: -500, status: 'completed', operatorName: '张管理员', timestamp: '2026-07-30 16:40', reason: '购买100万 AI 用量加油包' },
   { id: 'ORD-1004', orderNo: 'ORD-20260731-002', institutionId: 'INS-2022091', institutionName: '博雅语言学院', type: 'reversal', typeName: '点数误冲正冲销', paymentAmount: 0, creditChange: -2000, status: 'reversed', operatorName: '超级管理员', timestamp: '2026-07-31 18:00', originalOrderNo: 'ORD-20260720-005', reason: '充值金额核算纠错冲正' },
 ];
+
+const formatUsage = (value: number) => value.toLocaleString('zh-CN');
 
 export const GoodsView: React.FC<GoodsViewProps> = ({
   mode,
@@ -102,6 +109,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   const [ledgers, setLedgers] = useState<OrderLedgerRecord[]>(initialLedgers);
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState('');
+  const [studentOrders, setStudentOrders] = useState<StudentAddOnOrder[]>(initialStudentAddOnOrders);
+  const [selectedStudentOrder, setSelectedStudentOrder] = useState<StudentAddOnOrder | null>(null);
+  const [refundReason, setRefundReason] = useState('');
 
   // Handlers
   const handleOpenAddPkg = () => {
@@ -299,6 +309,29 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       return matchSearch && matchType;
     });
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
+
+  const filteredStudentOrders = useMemo(() => {
+    const keyword = ledgerSearch.trim().toLowerCase();
+    if (ledgerTypeFilter && ledgerTypeFilter !== 'student_add_on') return [];
+    if (!keyword) return studentOrders;
+    return studentOrders.filter((order) => [order.id, order.student, order.institution].some((value) => value.toLowerCase().includes(keyword)));
+  }, [studentOrders, ledgerSearch, ledgerTypeFilter]);
+
+  const handleStudentOrderRefund = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedStudentOrder || !refundReason.trim()) return;
+    const now = new Date().toLocaleString('zh-CN', { hour12: false }).replaceAll('/', '-');
+    try {
+      const result = refundStudentAddOnOrder(selectedStudentOrder, refundReason.trim(), now);
+      setStudentOrders((current) => current.map((order) => order.id === result.order.id ? result.order : order));
+      onAudit(result.audit);
+      onNotify(`退款成功：¥${result.ledger.amount} 已原路退回，退款流水 ${result.ledger.id}`);
+      setSelectedStudentOrder(null);
+      setRefundReason('');
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : '退款失败', 'error');
+    }
+  };
 
   const tabs = mode === 'catalog'
       ? [
@@ -546,6 +579,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <option value="credit_inflow">机构点数入账</option>
                 <option value="package_redeem">服务包兑换</option>
                 <option value="ai_usage_pack_buy">AI 加油包购买</option>
+                <option value="student_add_on">学生加油包订单</option>
                 <option value="reversal">冲正/退款流水</option>
               </select>
             </div>
@@ -562,13 +596,14 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
                 <tr>
                   <th className="py-3 px-4">订单编号</th>
-                  <th className="py-3 px-4">机构名称</th>
+                  <th className="py-3 px-4">交易主体</th>
                   <th className="py-3 px-4">业务类型</th>
                   <th className="py-3 px-4 text-right">金额 (元)</th>
-                  <th className="py-3 px-4 text-right">点数变动</th>
-                  <th className="py-3 px-4">操作人</th>
+                  <th className="py-3 px-4 text-right">点数 / AI 用量</th>
+                  <th className="py-3 px-4">操作人 / 渠道</th>
                   <th className="py-3 px-4">交易时间</th>
                   <th className="py-3 px-4">状态/原因</th>
+                  <th className="py-3 px-4 text-right">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
@@ -594,13 +629,40 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                         <span className="text-gray-600">{ord.reason || '正常交易'}</span>
                       )}
                     </td>
+                    <td className="py-3 px-4" />
                   </tr>
                 ))}
+                {filteredStudentOrders.map((order) => {
+                  const eligibility = getRefundEligibility(order);
+                  const statusText = order.status === 'refunded' ? '已退款' : order.status === 'paid' ? '已到账' : '支付失败';
+                  return (
+                    <tr key={order.id} className="hover:bg-[#F8FAFC]">
+                      <td className="py-3 px-4 font-mono font-bold text-[#0F172A]">{order.id}</td>
+                      <td className="py-3 px-4"><div className="font-bold">{order.student}</div><div className="text-[11px] text-[#94A3B8]">{order.institution}</div></td>
+                      <td className="py-3 px-4"><span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">学生加油包</span><div className="mt-1 text-[11px] text-[#64748B]">{order.packageName}</div></td>
+                      <td className="py-3 px-4 text-right font-mono font-bold">¥{order.paidAmount}</td>
+                      <td className="py-3 px-4 text-right text-[12px] font-mono text-[#0E7D3E]">{formatUsage(order.remainingUsage)} / {formatUsage(order.grantedUsage)}</td>
+                      <td className="py-3 px-4 font-bold">{order.channel}</td>
+                      <td className="py-3 px-4 text-[12px] text-[#64748B]">{order.refundedAt ?? order.orderedAt}</td>
+                      <td className="py-3 px-4 text-[12px]"><div className={order.status === 'refunded' ? 'font-bold text-[#64748B]' : 'font-bold text-[#0E7D3E]'}>{statusText}</div>{order.refundNo ? <div className="mt-1 font-mono text-[10px] text-[#64748B]">{order.refundNo}</div> : !eligibility.allowed && <div className="mt-1 text-[11px] text-[#94A3B8]">{eligibility.reason}</div>}</td>
+                      <td className="py-3 px-4 text-right">{eligibility.allowed && <button onClick={() => setSelectedStudentOrder(order)} className="rounded-lg border border-[#0E7D3E]/30 bg-[#E8F7EE] px-3 py-1.5 text-[12px] font-semibold text-[#0E7D3E] hover:bg-[#DDF3E6]">申请退款</button>}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
 
-          <StudentAddOnOrdersPanel onAudit={onAudit} onNotify={onNotify} />
+      {selectedStudentOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <form onSubmit={handleStudentOrderRefund} className="w-full max-w-md space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl">
+            <div><h3 className="text-[17px] font-bold text-[#0F172A]">确认原路全额退款</h3><p className="mt-1 text-[12px] text-[#64748B]">确认后将同步收回未使用的 AI 用量并生成退款流水。</p></div>
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F8FAFC] p-4 text-[12px]"><div><span className="text-[#64748B]">订单号</span><strong className="mt-1 block font-mono">{selectedStudentOrder.id}</strong></div><div><span className="text-[#64748B]">退款金额</span><strong className="mt-1 block">¥{selectedStudentOrder.paidAmount}</strong></div><div><span className="text-[#64748B]">原支付渠道</span><strong className="mt-1 block">{selectedStudentOrder.channel}</strong></div><div><span className="text-[#64748B]">收回 AI 用量</span><strong className="mt-1 block">{formatUsage(selectedStudentOrder.remainingUsage)}</strong></div></div>
+            <label className="block text-[12px] font-semibold text-[#475569]">退款原因<textarea required value={refundReason} onChange={(event) => setRefundReason(event.target.value)} className="mt-1.5 min-h-20 w-full resize-none rounded-xl border border-[#E2E8F0] p-3 text-[13px] outline-none focus:border-[#16B45B]" placeholder="填写退款原因" /></label>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => { setSelectedStudentOrder(null); setRefundReason(''); }} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-semibold text-[#64748B]">取消</button><button type="submit" className="rounded-xl bg-[#0E7D3E] px-4 py-2 text-[13px] font-semibold text-white">确认退款</button></div>
+          </form>
         </div>
       )}
 
