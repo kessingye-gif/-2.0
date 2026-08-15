@@ -198,6 +198,8 @@ export default function App() {
   const handleFulfillService = (result: ServiceFulfillmentResult) => {
     const teacher = teachers.find((item) => item.id === result.right.teacherId);
     if (!teacher) throw new Error('未找到负责教师的点数账户');
+    const institution = institutions.find((item) => item.id === result.right.institutionId);
+    if (!institution?.availableServicePackageIds?.includes(result.right.packageId)) throw new Error('该机构未获授权使用此服务包');
     const debit = debitTeacherForService({
       teacher,
       amount: result.right.quotaConsumed,
@@ -223,6 +225,8 @@ export default function App() {
     if (results.some((item) => item.right.teacherId !== first.right.teacherId)) throw new Error('批量办理必须属于同一负责教师');
     const teacher = teachers.find((item) => item.id === first.right.teacherId);
     if (!teacher) throw new Error('未找到负责教师的点数账户');
+    const institution = institutions.find((item) => item.id === first.right.institutionId);
+    if (!institution?.availableServicePackageIds?.includes(first.right.packageId)) throw new Error('该机构未获授权使用此服务包');
     const totalQuota = results.reduce((sum, item) => sum + item.right.quotaConsumed, 0);
     const debit = debitTeacherForService({
       teacher,
