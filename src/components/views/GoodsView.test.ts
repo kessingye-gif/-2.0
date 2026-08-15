@@ -24,11 +24,11 @@ const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance', initialCatalogT
   ...handlers,
 }));
 
-test('catalog mode opens on service products and treats authorization plans as optional templates', () => {
+test('catalog mode opens on service products without an authorization-template tab', () => {
   const markup = renderMode('catalog');
   assert.doesNotMatch(markup, /商品与权益管理|商品、额度与权益/);
   assert.match(markup, /新增服务包/);
-  assert.match(markup, /授权模板/);
+  assert.doesNotMatch(markup, /授权模板/);
   assert.doesNotMatch(markup, /学生权益开通/);
   assert.doesNotMatch(markup, /学生加油包订单.*申请退款/);
 });
@@ -75,7 +75,7 @@ test('机构额度入账意图自动打开入账页并选中目标机构', () =>
     creditInstitutionId: institution.id,
     ...handlers,
   }));
-  assert.match(markup, /资产流水/);
+  assert.match(markup, /交易流水/);
   assert.match(markup, /录入机构线下点数入账/);
   assert.match(markup, new RegExp(`<option value="${institution.id}" selected="">${institution.name}</option>`));
 });
@@ -83,19 +83,26 @@ test('机构额度入账意图自动打开入账页并选中目标机构', () =>
 test('finance mode opens on the unified order ledger', () => {
   const markup = renderMode('finance');
   assert.doesNotMatch(markup, /订单与资金|商业履约 · 资金结算/);
-  assert.match(markup, /资产流水/);
+  assert.match(markup, /交易流水/);
+  assert.doesNotMatch(markup, />资产流水</);
+  assert.doesNotMatch(markup, />学生加油包订单</);
+  assert.match(markup, /学生加油包交易/);
+  assert.match(markup, /申请退款/);
 });
 
-test('机构入账和权益变动合并为一个资产流水入口', () => {
+test('机构入账和学生加油包交易合并为一个交易流水入口', () => {
   const markup = renderToStaticMarkup(createElement(GoodsView, {
     mode: 'catalog', packages: initialServicePackages, authCodes: initialAuthCodes, institutions: initialInstitutions,
     creditInstitutionId: initialInstitutions[0].id, ...handlers,
   }));
-  assert.match(markup, />资产流水</);
+  assert.match(markup, />交易流水</);
   assert.doesNotMatch(markup, />机构额度入账</);
   assert.doesNotMatch(markup, />权益流水</);
+  assert.doesNotMatch(markup, />学生加油包订单</);
   assert.match(markup, /全部流水类型/);
   assert.match(markup, />录入线下入账</);
+  assert.match(markup, /学生加油包交易/);
+  assert.match(markup, /申请退款/);
 });
 
 test('商品页不承载学生办理标签', () => {

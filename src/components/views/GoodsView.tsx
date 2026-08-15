@@ -7,12 +7,9 @@ import {
   OrderLedgerRecord,
   Institution,
   PackageType,
-  ContentPackageItem,
-  CooperationPlan,
 } from '../../types';
 import { StudentAddOnOrdersPanel } from '../goods/StudentAddOnOrdersPanel';
 import type { RefundAuditEvent } from '../../domain/studentAddOnOrder';
-import { CooperationPlanPanel } from '../cooperation/CooperationPlanPanel';
 
 interface GoodsViewProps {
   mode: 'catalog' | 'fulfillment' | 'finance';
@@ -26,10 +23,6 @@ interface GoodsViewProps {
   onAudit: (event: RefundAuditEvent) => void;
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
   creditInstitutionId?: string;
-  contentPackages?: ContentPackageItem[];
-  cooperationPlans?: CooperationPlan[];
-  onAddCooperationPlan?: (plan: CooperationPlan) => void;
-  onUpdateCooperationPlan?: (id: string, changes: Partial<CooperationPlan>) => void;
   initialCatalogTab?: 'packages' | 'aiUsagePacks';
 }
 
@@ -58,13 +51,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onAudit,
   onNotify,
   creditInstitutionId,
-  contentPackages = [],
-  cooperationPlans = [],
-  onAddCooperationPlan,
-  onUpdateCooperationPlan,
   initialCatalogTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<'cooperationPlans' | 'packages' | 'aiUsagePacks' | 'authCodes' | 'ledger' | 'addOnOrders'>(
+  const [activeTab, setActiveTab] = useState<'packages' | 'aiUsagePacks' | 'authCodes' | 'ledger'>(
     creditInstitutionId ? 'ledger' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'ledger',
   );
 
@@ -315,13 +304,11 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       ? [
         { id: 'packages' as const, label: '服务包' },
         { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
-        { id: 'cooperationPlans' as const, label: `授权模板 (${cooperationPlans.length})` },
-        { id: 'ledger' as const, label: '资产流水' },
-        { id: 'addOnOrders' as const, label: '学生加油包订单' },
+        { id: 'ledger' as const, label: '交易流水' },
       ]
     : mode === 'fulfillment'
       ? [{ id: 'authCodes' as const, label: `授权码记录 (${authCodes.length})` }]
-      : [{ id: 'ledger' as const, label: '资产流水' }, { id: 'addOnOrders' as const, label: '学生加油包订单' }];
+      : [{ id: 'ledger' as const, label: '交易流水' }];
 
   return (
     <div className="space-y-4">
@@ -333,14 +320,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
           </button>
         ))}
       </div>
-
-      {activeTab === 'addOnOrders' && (
-        <StudentAddOnOrdersPanel onAudit={onAudit} onNotify={onNotify} />
-      )}
-
-      {activeTab === 'cooperationPlans' && onAddCooperationPlan && onUpdateCooperationPlan && (
-        <CooperationPlanPanel plans={cooperationPlans} contentPackages={contentPackages} servicePackages={packages} onAddPlan={onAddCooperationPlan} onUpdatePlan={onUpdateCooperationPlan} />
-      )}
 
       {/* Tab 1: Service Packages */}
       {activeTab === 'packages' && (
@@ -542,6 +521,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               </tbody>
             </table>
           </div>
+
         </div>
       )}
 
@@ -619,6 +599,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <StudentAddOnOrdersPanel onAudit={onAudit} onNotify={onNotify} />
         </div>
       )}
 

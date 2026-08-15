@@ -448,10 +448,6 @@ export default function App() {
               onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
               creditInstitutionId={routeState?.intent === 'credit-entry' ? routeState.institutionId : undefined}
-              contentPackages={initialContentPackages}
-              cooperationPlans={cooperationPlans}
-              onAddCooperationPlan={(plan) => setCooperationPlans((current) => [plan, ...current])}
-              onUpdateCooperationPlan={(id, changes) => setCooperationPlans((current) => current.map((plan) => plan.id === id ? { ...plan, ...changes } : plan))}
             />
           )}
 
