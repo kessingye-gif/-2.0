@@ -881,6 +881,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     );
   };
 
+  if (contentRoute.section === 'packages') {
+    return (
+      <ContentPackageManager
+        subjects={sharedSubjects}
+        onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+        knowledgePoints={knowledgePoints}
+        onViewQuestions={handleViewBoundQuestions}
+        onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}
+        onAddKnowledgePoint={handleOpenKnowledgePointCreate}
+        authorizedPackageNames={authorizedContentPackageNames}
+        canCreatePackage={canCreateContentPackage}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Sub Navigation Tabs & Action Buttons */}
