@@ -881,46 +881,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     );
   };
 
-  if (contentRoute.section === 'packages') {
-    return (
-      <div className="space-y-4">
-        <div className="flex w-fit items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs">
-          <button type="button" onClick={() => navigate(getContentRoutePath('resources', 'knowledge-points'))} className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer">内容资源</button>
-          <button type="button" className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E]">内容包 ({scopedContentPackages.length})</button>
-        </div>
-        <ContentPackageManager
-          subjects={sharedSubjects}
-          onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
-          knowledgePoints={knowledgePoints}
-          onViewQuestions={handleViewBoundQuestions}
-          onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}
-          onAddKnowledgePoint={handleOpenKnowledgePointCreate}
-          authorizedPackageNames={authorizedContentPackageNames}
-          canCreatePackage={canCreateContentPackage}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-2xs w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('tree')}
-          className="rounded-lg bg-[#EAF7EF] px-4 py-2 text-[13px] font-bold text-[#0E7D3E] cursor-pointer"
-        >
-          内容资源
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('contentPackages')}
-          className="rounded-lg px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
-        >
-          内容包 ({scopedContentPackages.length})
-        </button>
-      </div>
-
       {/* Sub Navigation Tabs & Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
         <div className="flex gap-6">
@@ -944,6 +906,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             }`}
           >
             知识点 ({knowledgePoints.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('contentPackages')}
+            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'contentPackages'
+                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            内容包 ({scopedContentPackages.length})
           </button>
 
         </div>
