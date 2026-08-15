@@ -945,7 +945,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               <span className="material-symbols-outlined text-[36px] text-[#16B45B]">upload_file</span>
               <p className="text-[12.5px] font-bold text-[#0F172A]">选择或拖拽学员 Excel 表格文件</p>
               <p className="text-[11px] text-[#64748B]">包含列：学生姓名、手机号/微信标识、初始入学年级</p>
-              <button type="button" onClick={() => downloadImportTemplate('班级学员导入模板', ['学生姓名', '手机号/微信标识', '初始入学年级'], [['张同学', '13800000000', selectedClass.grade]])} className="text-[12px] font-bold text-[#16B45B] hover:underline">下载 Excel 模板</button>
+              <button type="button" onClick={() => downloadImportTemplate('classStudents')} className="text-[12px] font-bold text-[#16B45B] hover:underline">下载 Excel 模板</button>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
