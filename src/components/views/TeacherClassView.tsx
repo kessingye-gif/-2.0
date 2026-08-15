@@ -471,13 +471,13 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              管理班级
+              新建班级
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {filteredClasses.map((cls) => (
-              <div key={cls.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3 flex flex-col justify-between">
+              <div key={cls.id} role="button" tabIndex={0} onClick={() => handleOpenClassRosterModal(cls)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') handleOpenClassRosterModal(cls); }} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3 flex flex-col justify-between cursor-pointer transition-colors hover:border-[#A7E4BE] hover:bg-[#FCFFFD]">
                 <div className="space-y-3">
                   <div className="flex justify-between items-start">
                     <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
@@ -501,35 +501,22 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <div className="text-right">
                       <span className="text-[#64748B] block">班级学员</span>
                       <strong className="text-[#16B45B] font-mono text-[15px]">{cls.studentCount} 人</strong>
+                      <button onClick={(event) => { event.stopPropagation(); setSelectedClass(cls); setIsImportStudentModalOpen(true); }} className="mt-1 block w-full text-[11px] font-bold text-[#16B45B] hover:underline">关联已开通学生</button>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-2 grid grid-cols-2 gap-2">
+                <div className="pt-2">
                   <button
-                    onClick={() => handleOpenClassRosterModal(cls)}
-                    className="flex-1 border border-[#E2E8F0] text-[#0F172A] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F8FAFC] cursor-pointer transition-colors"
-                  >
-                    查看花名册
-                  </button>
-                  <button
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setRosterClass(cls);
                       setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? '');
                       setIsBulkServiceOpen(true);
                     }}
-                    className="border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
+                    className="w-full border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
                   >
                     批量办理服务
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedClass(cls);
-                      setIsImportStudentModalOpen(true);
-                    }}
-                    className="bg-[#E8F7EE] text-[#16B45B] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#D3F0DE] cursor-pointer transition-colors"
-                  >
-                    关联已开通学生
                   </button>
                 </div>
               </div>
