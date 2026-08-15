@@ -881,21 +881,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     );
   };
 
-  if (contentRoute.section === 'packages') {
-    return (
-      <ContentPackageManager
-        subjects={sharedSubjects}
-        onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
-        knowledgePoints={knowledgePoints}
-        onViewQuestions={handleViewBoundQuestions}
-        onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}
-        onAddKnowledgePoint={handleOpenKnowledgePointCreate}
-        authorizedPackageNames={authorizedContentPackageNames}
-        canCreatePackage={canCreateContentPackage}
-      />
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Sub Navigation Tabs & Action Buttons */}
@@ -1017,7 +1002,18 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       </div>
 
       {activeSubTab === 'contentPackages' ? (
-        <div className="space-y-4">
+        <>
+          <ContentPackageManager
+            subjects={sharedSubjects}
+            onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+            knowledgePoints={knowledgePoints}
+            onViewQuestions={handleViewBoundQuestions}
+            onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}
+            onAddKnowledgePoint={handleOpenKnowledgePointCreate}
+            authorizedPackageNames={authorizedContentPackageNames}
+            canCreatePackage={canCreateContentPackage}
+          />
+          {false && <div className="space-y-4">
           {/* Package Filters Bar */}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-center gap-3 flex-1 min-w-[280px]">
@@ -1137,8 +1133,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
+          </div></div>}
+        </>
       ) : activeSubTab === 'questions' ? (
         <div className="space-y-4">
           {/* Question Filters */}
