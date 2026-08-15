@@ -10,7 +10,9 @@ import { DashboardView } from './DashboardView';
 test('驾驶舱展示四类有来源且可下钻的数据', () => {
   const snapshot = derivePlatformDashboardSnapshot({ institutions: initialInstitutions, authCodes: initialAuthCodes, students: initialStudents, orders: initialOrderLedger, auditLogs: initialAuditLogs });
   const markup = renderToStaticMarkup(createElement(MemoryRouter, {}, createElement(DashboardView, { snapshot })));
-  ['运营总览', '学情总览', '内容管理', '人员管理', '交易管理', '学生与开通', '学习与使用', '待办与异常', '数据来源'].forEach((text) => assert.match(markup, new RegExp(text)));
+  ['运营总览', '学生与开通', '学习与使用', '待办与异常', '数据来源'].forEach((text) => assert.match(markup, new RegExp(text)));
+  assert.doesNotMatch(markup, /学情总览|人员管理|交易管理/);
+  ['#institutions', '#students', '#learning', '#work-items'].forEach((anchor) => assert.match(markup, new RegExp(`href="${anchor}"`)));
   assert.doesNotMatch(markup, /平台总部 · 全局监管|数据更新于/);
   assert.equal(/商业履约驾驶舱|七段履约漏斗|签约|合同|回款/.test(markup), false);
   assert.match(markup, /href="\/platform\/institutions\?quota=low"/);
