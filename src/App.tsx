@@ -195,10 +195,6 @@ export default function App() {
     handleNotify(`已生成${student?.name ?? '学生'}的${subject}学习报告`);
   };
 
-  const handleStartCreditEntry = (institutionId: string) => {
-    navigate('/platform/goods', { state: { intent: 'credit-entry', institutionId } });
-  };
-
   const handleFulfillService = (result: ServiceFulfillmentResult) => {
     const teacher = teachers.find((item) => item.id === result.right.teacherId);
     if (!teacher) throw new Error('未找到负责教师的点数账户');
@@ -460,7 +456,6 @@ export default function App() {
               onCreateCreditEntry={handleCreateInstitutionCreditEntry}
               onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
-              creditInstitutionId={routeState?.intent === 'credit-entry' ? routeState.institutionId : undefined}
             />
           )}
 
@@ -491,7 +486,7 @@ export default function App() {
               onUpdateInstitution={handleUpdateInstitution}
               onAdjustQuota={handleAdjustQuota}
               onBatchImport={handleBatchImportInstitutions}
-              onCreditEntry={handleStartCreditEntry}
+              onCreateCreditEntry={handleCreateInstitutionCreditEntry}
               contentPackages={initialContentPackages}
               cooperationPlans={cooperationPlans}
             />

@@ -13,7 +13,7 @@ interface InstitutionViewProps {
   onUpdateInstitution: (id: string, updates: Partial<Institution>) => void;
   onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
   onBatchImport: (file: File) => void;
-  onCreditEntry: (institutionId: string) => void;
+  onCreateCreditEntry: (input: { institutionId: string; paymentAmount: number; creditAmount: number; voucherNo: string; notes: string }) => void;
   contentPackages?: ContentPackageItem[];
   cooperationPlans?: CooperationPlan[];
 }
@@ -27,7 +27,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   onUpdateInstitution,
   onAdjustQuota,
   onBatchImport,
-  onCreditEntry,
+  onCreateCreditEntry,
   contentPackages = [],
   cooperationPlans = [],
 }) => {
@@ -49,6 +49,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     username: '',
     password: '',
   });
+  const [isCreditEntryOpen, setIsCreditEntryOpen] = useState(false);
+  const [creditEntryForm, setCreditEntryForm] = useState({ paymentAmount: 10000, creditAmount: 10000, voucherNo: '', notes: '' });
 
   // Form states
   const [formData, setFormData] = useState({
@@ -785,7 +787,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <section>
                   <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">开通与配置</h4><p className="mt-1 text-[11px] text-[#64748B]">先完成账号、额度和业务授权，再查看详细资料。</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#FFF7ED] text-[#B45309]'}`}>{(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? '配置已完成' : '待补充授权'}</span></div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4"><span className="material-symbols-outlined text-[20px] text-[#0E7D3E]">account_balance_wallet</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">额度账户</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">调整可用额度或录入线下入账。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">调整额度</button><button onClick={() => { onCreditEntry(selectedInstitution.id); setIsDetailDrawerOpen(false); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
+                    <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4"><span className="material-symbols-outlined text-[20px] text-[#0E7D3E]">account_balance_wallet</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">额度账户</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">调整可用额度或录入线下入账。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">调整额度</button><button onClick={() => { setCreditEntryForm({ paymentAmount: 10000, creditAmount: 10000, voucherNo: '', notes: '' }); setIsCreditEntryOpen(true); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
                     <div className="rounded-2xl border border-[#DCE5F5] bg-[#F6F9FF] p-4"><span className="material-symbols-outlined text-[20px] text-[#2563EB]">deployed_code</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">内容与服务授权</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">配置可用内容包和服务包。</p><button onClick={() => openAuthorizationModal(selectedInstitution)} className="mt-3 w-full rounded-lg bg-[#2563EB] px-3 py-2 text-[12px] font-bold text-white">配置授权范围</button></div>
                     <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4"><span className="material-symbols-outlined text-[20px] text-[#64748B]">manage_accounts</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">管理员账号</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">维护登录账号和机构资料。</p><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg border border-[#B8DCC6] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">账号管理</button><button onClick={() => { handleOpenEditModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-2 w-full text-[11px] font-bold text-[#475569]">编辑机构资料</button></div>
                   </div>
@@ -892,6 +894,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {isCreditEntryOpen && selectedInstitution && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"><form onSubmit={(event) => { event.preventDefault(); onCreateCreditEntry({ institutionId: selectedInstitution.id, paymentAmount: Number(creditEntryForm.paymentAmount), creditAmount: Number(creditEntryForm.creditAmount), voucherNo: creditEntryForm.voucherNo, notes: creditEntryForm.notes }); setIsCreditEntryOpen(false); }} className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl"><div className="border-b border-[#E2E8F0] pb-3"><h3 className="text-[16px] font-bold text-[#0F172A]">录入线下入账</h3><p className="mt-1 text-[12px] text-[#64748B]">机构：{selectedInstitution.name}</p></div><div className="mt-4 space-y-3"><div className="grid grid-cols-2 gap-3"><label className="text-[12px] font-semibold">实收金额（元）<input required min="1" type="number" value={creditEntryForm.paymentAmount} onChange={(event) => setCreditEntryForm({ ...creditEntryForm, paymentAmount: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 font-mono" /></label><label className="text-[12px] font-semibold">划拨点数<input required min="1" type="number" value={creditEntryForm.creditAmount} onChange={(event) => setCreditEntryForm({ ...creditEntryForm, creditAmount: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 font-mono" /></label></div><label className="block text-[12px] font-semibold">打款凭证/流水号<input required value={creditEntryForm.voucherNo} onChange={(event) => setCreditEntryForm({ ...creditEntryForm, voucherNo: event.target.value })} placeholder="如：BANK-20260815-001" className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 font-mono" /></label><label className="block text-[12px] font-semibold">备注<textarea required value={creditEntryForm.notes} onChange={(event) => setCreditEntryForm({ ...creditEntryForm, notes: event.target.value })} className="mt-1 min-h-20 w-full rounded-lg border border-[#E2E8F0] p-3" /></label><p className="rounded-lg bg-[#F3FBF6] p-3 text-[12px] text-[#0E7D3E]">提交后，机构可用额度将增加 {creditEntryForm.creditAmount.toLocaleString()} 点，并生成不可编辑的交易流水。</p><div className="flex justify-end gap-2"><button type="button" onClick={() => setIsCreditEntryOpen(false)} className="rounded-lg border border-[#E2E8F0] px-4 py-2 text-[13px] font-semibold">取消</button><button type="submit" className="rounded-lg bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white">确认入账</button></div></div></form></div>
       )}
       {/* Institution Account & Password Reset Modal */}
       {isAccountPasswordModalOpen && selectedInstitution && (
