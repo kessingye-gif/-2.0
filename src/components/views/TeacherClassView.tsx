@@ -1017,12 +1017,13 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[12.5px] outline-none w-64 focus:border-[#16B45B]"
               />
               <div className="flex items-center gap-2">
-                <button onClick={() => { setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
+                <button onClick={() => { setIsRosterModalOpen(false); setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
                   <span className="material-symbols-outlined text-[16px]">redeem</span>
                   批量办理待配包学生
                 </button>
                 <button
                   onClick={() => {
+                    setIsRosterModalOpen(false);
                     setSelectedClass(rosterClass);
                     setIsImportStudentModalOpen(true);
                   }}
