@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuditLogItem, AiModelConfig, FulfillmentWorkItem, AiUsageCompensation } from '../../types';
 import { AuditLogView } from './AuditLogView';
-import { MasterDataManager } from '../masterData/MasterDataManager';
+import { AdminAccountManager, MasterDataManager } from '../masterData/MasterDataManager';
 
 interface SystemViewProps {
   auditLogs: AuditLogItem[];
@@ -22,14 +22,15 @@ const initialCompensations: AiUsageCompensation[] = [
   { id: 'COMP-102', studentId: 'STU-003', studentName: '李思思', institutionName: '上海青葱教育培训中心', usageAmount: 100000, reason: '活动特邀体验学员非付费算力补充', operatorName: '超级管理员', timestamp: '2026-08-02 14:30' },
 ];
 
-type SystemTab = 'aiRules' | 'masterData' | 'compensation' | 'auditLogs' | 'exceptionReversal';
+type SystemTab = 'aiRules' | 'masterData' | 'accounts' | 'compensation' | 'auditLogs' | 'exceptionReversal';
 
 export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workItems = [], onResolveWorkItem, onNotify }) => {
   const [activeTab, setActiveTab] = useState<SystemTab>(mode === 'settings' ? 'aiRules' : 'compensation');
   const tabs: { id: SystemTab; label: string }[] = mode === 'settings'
     ? [
         { id: 'aiRules', label: 'AI 模型' },
-        { id: 'masterData', label: '基础数据' },
+        { id: 'masterData', label: '基础字典' },
+        { id: 'accounts', label: '账号与权限' },
         { id: 'auditLogs', label: '操作审计' },
         { id: 'exceptionReversal', label: '异常处理' },
       ]
@@ -247,6 +248,8 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
       {activeTab === 'masterData' && (
         <MasterDataManager />
       )}
+
+      {activeTab === 'accounts' && <AdminAccountManager />}
 
       {/* Tab 4: Audit Logs */}
       {activeTab === 'auditLogs' && <AuditLogView logs={auditLogs} />}

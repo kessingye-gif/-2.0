@@ -17,4 +17,6 @@ test('系统管理不重复维护商品和正常退款', () => {
   assert.doesNotMatch(markup, /系统与基础配置|平台设置|管理 AI 模型/);
   assert.match(markup, /异常处理/);
   assert.match(markup, /审计/);
+  assert.match(markup, /基础字典/);
+  assert.match(markup, /账号与权限/);
 });
