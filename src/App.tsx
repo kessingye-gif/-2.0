@@ -49,11 +49,13 @@ import {
   CooperationPlan,
   TeacherItem,
   TeacherCreditLedgerEntry,
+  InstitutionCreditEntry,
 } from './types';
 import { deriveLegacyServiceRights } from './domain/studentRights';
 import { allocateTeacherCredits, debitTeacherForService, reclaimTeacherCredits } from './domain/teacherCredits';
 import type { Role } from './permissions/accessControl';
 import { scopeInstitutions, scopeStudents, scopeTeachers } from './permissions/dataScope';
+import { createInstitutionCreditEntry } from './domain/institutionResources';
 
 export default function App() {
   const location = useLocation();
@@ -84,6 +86,7 @@ export default function App() {
   const [students, setStudents] = useState(initialStudents);
   const [teachers, setTeachers] = useState<TeacherItem[]>(initialTeachers);
   const [teacherCreditLedger, setTeacherCreditLedger] = useState<TeacherCreditLedgerEntry[]>([]);
+  const [institutionCreditEntries, setInstitutionCreditEntries] = useState<InstitutionCreditEntry[]>([]);
   const [guardianships, setGuardianships] = useState(initialParentGuardianships);
   const [guardianBindingCodes, setGuardianBindingCodes] = useState<GuardianBindingCode[]>(() =>
     initialParentGuardianships.map((item, index) => ({
@@ -327,6 +330,16 @@ export default function App() {
     addAuditLog('调整机构额度', `${targetInst?.name || id}`, `${actionText}。事由：${reason}`, '机构管理');
   };
 
+  const handleCreateInstitutionCreditEntry = ({ institutionId, paymentAmount, creditAmount, voucherNo, notes }: { institutionId: string; paymentAmount: number; creditAmount: number; voucherNo: string; notes: string }) => {
+    const institution = institutions.find((item) => item.id === institutionId);
+    if (!institution) throw new Error('未找到入账机构');
+    const result = createInstitutionCreditEntry({ institution, paymentAmount, creditAmount, voucherNo, notes, operatorName: currentUser.name, now: new Date() });
+    setInstitutions((current) => current.map((item) => item.id === institutionId ? result.institution : item));
+    setInstitutionCreditEntries((current) => [result.entry, ...current]);
+    addAuditLog('录入机构线下入账', institution.name, `实收 ¥${paymentAmount.toLocaleString()}，入账 ${creditAmount.toLocaleString()} 点；凭证：${voucherNo}。`, '交易流水');
+    return result.ledger;
+  };
+
   const handleBatchImportInstitutions = (file: File) => {
     alert(`成功解析并导入文件【${file.name}】！成功导入 5 家新机构，全补齐采购额度与管理员账号。`);
     addAuditLog('批量导入机构表格', file.name, `通过 Excel 解析新增 5 家机构，三级路径关联率 100%。`, '机构管理');
@@ -444,7 +457,7 @@ export default function App() {
               onAddPackage={handleAddPackage}
               onUpdatePackage={handleUpdatePackage}
               onRevokeAuthCode={handleRevokeAuthCode}
-              onAdjustQuota={handleAdjustQuota}
+              onCreateCreditEntry={handleCreateInstitutionCreditEntry}
               onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
               creditInstitutionId={routeState?.intent === 'credit-entry' ? routeState.institutionId : undefined}

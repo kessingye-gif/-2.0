@@ -266,6 +266,11 @@ export interface CreditEntryRecord {
   createdAt: string;
 }
 
+export interface InstitutionCreditEntry extends CreditEntryRecord {
+  status: 'posted' | 'reversed';
+  reversalOf?: string;
+}
+
 export interface OrderLedgerRecord {
   id: string;
   orderNo: string;

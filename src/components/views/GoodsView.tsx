@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import {
   ServicePackage,
   AiUsagePack,
-  CreditEntryRecord,
   AuthCode,
   OrderLedgerRecord,
   Institution,
@@ -24,7 +23,7 @@ interface GoodsViewProps {
   onAddPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
   onUpdatePackage: (id: string, updates: Partial<ServicePackage>) => void;
   onRevokeAuthCode: (codeId: string) => void;
-  onAdjustQuota: (id: string, amount: number, isIncrease: boolean, reason: string) => void;
+  onCreateCreditEntry: (input: { institutionId: string; paymentAmount: number; creditAmount: number; voucherNo: string; notes: string }) => OrderLedgerRecord;
   onAudit: (event: RefundAuditEvent) => void;
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
   creditInstitutionId?: string;
@@ -54,7 +53,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onAddPackage,
   onUpdatePackage,
   onRevokeAuthCode,
-  onAdjustQuota,
+  onCreateCreditEntry,
   onAudit,
   onNotify,
   creditInstitutionId,
@@ -251,36 +250,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     const inst = institutions.find((i) => i.id === creditForm.institutionId);
     if (!inst) return;
 
-    const newRecord: CreditEntryRecord = {
-      id: `CE-${Date.now().toString().slice(-6)}`,
-      institutionId: inst.id,
-      institutionName: inst.name,
-      paymentAmount: Number(creditForm.paymentAmount),
-      allocatedCredits: Number(creditForm.allocatedCredits),
-      entryDate: creditForm.entryDate,
-      voucherNo: creditForm.voucherNo || `P-${Date.now().toString().slice(-8)}`,
-      operatorName: '超级管理员',
-      notes: creditForm.notes,
-      createdAt: new Date().toLocaleString().slice(0, 16),
-    };
-
-    // Update institution quota & log ledger
-    onAdjustQuota(inst.id, Number(creditForm.allocatedCredits), true, `线下入账充值 (${newRecord.voucherNo})`);
-
-    const newLedger: OrderLedgerRecord = {
-      id: `ORD-${Date.now().toString().slice(-4)}`,
-      orderNo: `ORD-${Date.now().toString().slice(-8)}`,
-      institutionId: inst.id,
-      institutionName: inst.name,
-      type: 'credit_inflow',
-      typeName: '机构点数入账',
-      paymentAmount: Number(creditForm.paymentAmount),
-      creditChange: Number(creditForm.allocatedCredits),
-      status: 'completed',
-      operatorName: '超级管理员',
-      timestamp: new Date().toLocaleString().slice(0, 16),
-      reason: `线下入账凭证: ${newRecord.voucherNo}`,
-    };
+    const voucherNo = creditForm.voucherNo || `P-${Date.now().toString().slice(-8)}`;
+    const newLedger = onCreateCreditEntry({ institutionId: inst.id, paymentAmount: Number(creditForm.paymentAmount), creditAmount: Number(creditForm.allocatedCredits), voucherNo, notes: creditForm.notes });
     setLedgers((prev) => [newLedger, ...prev]);
 
     setIsCreditModalOpen(false);
