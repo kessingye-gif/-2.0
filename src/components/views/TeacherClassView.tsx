@@ -374,7 +374,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-[#E2E8F0] pb-3"><h2 className="text-[18px] font-bold text-[#0F172A]">{activeTab === 'teachers' ? `教师管理（${filteredTeachers.length}）` : `班级管理（${filteredClasses.length}）`}</h2><p className="mt-1 text-[12px] text-[#64748B]">{activeTab === 'teachers' ? '管理已开通老师的额度、权限、状态和负责班级。' : '管理班级花名册、学生状态和老师在班级内的服务办理。'}</p></div>
 
       {/* Tab 1: Teachers Management */}
       {activeTab === 'teachers' && (
