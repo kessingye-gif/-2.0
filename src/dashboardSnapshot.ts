@@ -51,7 +51,8 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
   const unconfigured = institutions.filter((item) => (item.availableServicePackageIds?.length ?? 0) === 0);
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const pending = authCodes.filter((item) => item.status === 'pending').length;
-  const serviceStudents = institutions.reduce((sum, item) => sum + item.studentCount, 0);
+  const institutionStudents = students.length;
+  const activeStudents = students.filter((item) => item.serviceStatus === 'active').length;
   const studyHours = students.reduce((sum, item) => sum + item.totalStudyHours, 0);
   const questions = students.reduce((sum, item) => sum + item.totalQuestions, 0);
 
@@ -68,12 +69,13 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
         id: 'institutions', title: '运营总览', description: '平台机构、额度与服务学生的实时汇总', metrics: [
           metric(activeInstitutions.length, { id: 'activeInstitutions', label: '运行中机构数', sourceLabel: '机构档案', definition: '状态为正常的机构数量', targetPath: '/platform/institutions?status=active', icon: 'domain' }),
           metric(remainingQuota, { id: 'remainingQuota', label: '平台剩余额度', sourceLabel: '机构额度账户', definition: '全部机构当前可用额度之和', targetPath: '/platform/institutions?view=quota', icon: 'layers' }),
-          metric(serviceStudents, { id: 'serviceStudents', label: '服务学生总数', sourceLabel: '机构档案', definition: '各机构服务学生数汇总', targetPath: '/platform/students', icon: 'group' }),
+          metric(institutionStudents, { id: 'institutionStudents', label: '机构学生总数', sourceLabel: '学生档案', definition: '全平台机构学生档案去重数', targetPath: '/platform/students', icon: 'group' }),
           metric(lowQuota.length, { id: 'lowQuota', label: '低额度预警机构', sourceLabel: '机构额度账户', definition: '运行中且剩余额度不超过总额度 15% 的机构', targetPath: '/platform/institutions?quota=low', tone: 'warning', icon: 'warning' }),
         ],
       },
       {
         id: 'students', title: '学生与开通', description: '全平台学生的开通和激活结果', metrics: [
+          metric(activeStudents, { id: 'activeStudents', label: '服务中学生', suffix: ' 人', sourceLabel: '学生服务档案', definition: '服务状态为正常的学生', targetPath: '/platform/students?service=active', tone: 'positive' }),
           metric(activated, { id: 'activated', label: '已激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '状态为已激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=used', tone: 'positive' }),
           metric(pending, { id: 'pending', label: '待激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '已创建但尚未激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' }),
         ],

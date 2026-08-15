@@ -22,7 +22,8 @@ test('低额度和激活指标从共享记录推导', () => {
   const studentMetrics = snapshot.sections.find((section) => section.id === 'students')!.metrics;
   const expectedLow = initialInstitutions.filter((item) => item.status === 'active' && item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15).length;
   assert.equal(institutionMetrics.find((metric) => metric.id === 'lowQuota')?.value, expectedLow);
-  assert.equal(institutionMetrics.find((metric) => metric.id === 'serviceStudents')?.value, initialInstitutions.reduce((sum, item) => sum + item.studentCount, 0));
+  assert.equal(institutionMetrics.find((metric) => metric.id === 'institutionStudents')?.value, initialStudents.length);
+  assert.equal(studentMetrics.find((metric) => metric.id === 'activeStudents')?.value, initialStudents.filter((item) => item.serviceStatus === 'active').length);
   assert.equal(studentMetrics.find((metric) => metric.id === 'activated')?.value, initialAuthCodes.filter((item) => item.status === 'used').length);
 });
 
