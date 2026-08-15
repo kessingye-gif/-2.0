@@ -57,6 +57,7 @@ interface ContentPackageManagerProps {
   onAddKnowledgePoint?: () => void;
   authorizedPackageNames?: string[];
   canCreatePackage?: boolean;
+  showNewPackageAction?: boolean;
 }
 
 type PackageWizardStep = 'basics' | 'content' | 'review';
@@ -97,9 +98,10 @@ interface ContentPackageWorkspaceProps {
   onBatchImportKnowledgePoints: () => void;
   onAddKnowledgePoint: () => void;
   canCreatePackage: boolean;
+  showNewPackageAction: boolean;
 }
 
-export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage }) => {
+export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage, showNewPackageAction }) => {
   const { state: masterDataState } = useMasterData();
   const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, subject?.name);
   const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0]?.id ?? '');
@@ -108,7 +110,7 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   return <div className="space-y-4">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div><h2 className="text-[24px] font-bold text-[#10231D]">内容管理</h2><p className="mt-1 text-[12px] text-[#64748B]">先选择内容包，再在该内容包的边界内维护大纲、知识点和题目。</p></div>
-      {canCreatePackage && <button type="button" onClick={onNewPackage} className="self-start rounded-xl bg-[#0F755A] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#0A624B]">新建内容包</button>}
+      {canCreatePackage && showNewPackageAction && <button type="button" onClick={onNewPackage} className="self-start rounded-xl bg-[#0F755A] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#0A624B]">新建内容包</button>}
     </div>
 
     <section className="flex flex-col gap-4 rounded-2xl border border-[#DCE5E1] bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -168,7 +170,7 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   </div>;
 };
 
-export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true }) => {
+export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true }) => {
   const [packages, setPackages] = useState(seedPackages);
   const visiblePackages = filterAuthorizedContentPackages<ContentPackageRecord>(packages, authorizedPackageNames);
   const [selected, setSelected] = useState<ContentPackageRecord | null>(null);
@@ -203,12 +205,12 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
   };
 
   if (selected) {
-    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} knowledgePoints={knowledgePoints} onBack={() => setSelected(null)} onNewPackage={() => { setSelected(null); openWizard(); }} onOpenResource={onOpenResource} onViewQuestions={onViewQuestions} onBatchImportKnowledgePoints={onBatchImportKnowledgePoints} onAddKnowledgePoint={onAddKnowledgePoint} canCreatePackage={canCreatePackage} />;
+    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} knowledgePoints={knowledgePoints} onBack={() => setSelected(null)} onNewPackage={() => { setSelected(null); openWizard(); }} onOpenResource={onOpenResource} onViewQuestions={onViewQuestions} onBatchImportKnowledgePoints={onBatchImportKnowledgePoints} onAddKnowledgePoint={onAddKnowledgePoint} canCreatePackage={canCreatePackage} showNewPackageAction={showNewPackageAction} />;
   }
 
   return (
     <div className="space-y-4">
-      {canCreatePackage && <div className="flex justify-end">
+      {canCreatePackage && showNewPackageAction && <div className="flex justify-end">
         <button type="button" onClick={openWizard} className="flex items-center justify-center gap-1 rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#139B4E] cursor-pointer">
           <span className="material-symbols-outlined text-[18px]">add</span>新增内容包
         </button>
