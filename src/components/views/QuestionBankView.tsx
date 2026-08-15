@@ -922,15 +922,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 mb-1">
-          {activeSubTab === 'contentPackages' ? (
-            <button
-              onClick={handleOpenAddPackage}
-              className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              <span>新增内容包</span>
-            </button>
-          ) : activeSubTab === 'tree' ? (
+          {activeSubTab === 'contentPackages' ? null : activeSubTab === 'tree' ? (
             <>
               <button
                 type="button"
