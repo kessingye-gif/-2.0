@@ -49,19 +49,19 @@ test('机构管理员只能看到机构已授权的内容包', () => {
   assert.deepEqual(filterAuthorizedContentPackages(packages).map((item) => item.name), ['数学包', '物理包', '化学包']);
 });
 
-test('内容包工作区直接使用同一学科的全局三级知识点 ID', () => {
+test('内容包工作区只使用内容包显式选择的三级知识点', () => {
   const points = [
     { id: 'KP-L1-01', code: 'M1', name: '方程', level: 1 as const, subject: '数学', grade: '初一', textbook: '人教版', questionCount: 2, status: 'active' as const },
     { id: 'KP-L3-01', code: 'M3', name: '移项规则', level: 3 as const, subject: '数学', grade: '初一', textbook: '人教版', questionCount: 1, status: 'active' as const },
     { id: 'KP-L3-02', code: 'P3', name: '牛顿定律', level: 3 as const, subject: '物理', grade: '高一', textbook: '人教版', questionCount: 1, status: 'active' as const },
   ];
-  assert.deepEqual(getPackageWorkspaceKnowledgePoints(points, '初中数学').map((item) => item.id), ['KP-L3-01']);
+  assert.deepEqual(getPackageWorkspaceKnowledgePoints(points, ['KP-L3-02']).map((item) => item.id), ['KP-L3-02']);
 });
 
 test('内容包工作区与知识点页使用相同操作名称', () => {
   const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
     createElement(ContentPackageWorkspace, {
-      pkg: { id: 'CP-01', code: 'CP-MATH', name: '数学包', subjectId: 'SUB-01', status: 'active', kpCount: 1, questionCount: 1, institutionCount: 1, updatedAt: '2026-08-14', description: '' },
+      pkg: { id: 'CP-01', code: 'CP-MATH', name: '数学包', subjectId: 'SUB-01', status: 'active', kpCount: 1, questionCount: 1, institutionCount: 1, updatedAt: '2026-08-14', description: '', knowledgePointIds: ['KP-L3-01'] },
       subject: subjects[0],
       knowledgePoints: [{ id: 'KP-L3-01', code: 'M3', name: '移项规则', level: 3, subject: '数学', grade: '初一', textbook: '人教版', questionCount: 1, status: 'active' }],
       onBack: () => undefined,

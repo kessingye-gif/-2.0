@@ -23,6 +23,7 @@ export interface ContentPackageRecord {
   institutionCount: number;
   updatedAt: string;
   description: string;
+  knowledgePointIds: string[];
 }
 
 export interface ContentPackageDraft {
@@ -41,11 +42,11 @@ export const validateContentPackageDraft = (draft: ContentPackageDraft) => {
 };
 
 const seedPackages: ContentPackageRecord[] = [
-  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', status: 'active', kpCount: 156, questionCount: 1280, institutionCount: 4, updatedAt: '2026-08-08 16:20', description: '引用初中数学下已发布的知识点与题目' },
-  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', status: 'active', kpCount: 98, questionCount: 840, institutionCount: 3, updatedAt: '2026-08-07 11:10', description: '引用初中物理下已发布的知识点与题目' },
-  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', status: 'active', kpCount: 75, questionCount: 620, institutionCount: 2, updatedAt: '2026-08-06 09:45', description: '引用初中化学下已发布的知识点与题目' },
-  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', status: 'active', kpCount: 210, questionCount: 1850, institutionCount: 1, updatedAt: '2026-08-05 18:30', description: '引用高中数学下已发布的知识点与题目' },
-  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', status: 'inactive', kpCount: 110, questionCount: 950, institutionCount: 0, updatedAt: '2026-08-03 14:00', description: '引用初中英语下已发布的知识点与题目' },
+  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', status: 'active', kpCount: 156, questionCount: 1280, institutionCount: 4, updatedAt: '2026-08-08 16:20', description: '显式选择初中数学知识点与题目', knowledgePointIds: ['KP-L3-01', 'KP-L3-02'] },
+  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', status: 'active', kpCount: 98, questionCount: 840, institutionCount: 3, updatedAt: '2026-08-07 11:10', description: '显式选择物理知识点与题目', knowledgePointIds: ['KP-L3-03'] },
+  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', status: 'active', kpCount: 75, questionCount: 620, institutionCount: 2, updatedAt: '2026-08-06 09:45', description: '尚未配置知识点', knowledgePointIds: [] },
+  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', status: 'active', kpCount: 210, questionCount: 1850, institutionCount: 1, updatedAt: '2026-08-05 18:30', description: '尚未配置知识点', knowledgePointIds: [] },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', status: 'inactive', kpCount: 110, questionCount: 950, institutionCount: 0, updatedAt: '2026-08-03 14:00', description: '尚未配置知识点', knowledgePointIds: [] },
 ];
 
 interface ContentPackageManagerProps {
@@ -73,8 +74,8 @@ export function filterAuthorizedContentPackages<T extends { name: string }>(pack
     : packages.filter((item) => authorizedPackageNames.includes(item.name));
 }
 
-export const getPackageWorkspaceKnowledgePoints = (knowledgePoints: KnowledgePointNode[], subjectName?: string) => knowledgePoints
-  .filter((point) => point.level === 3 && (!subjectName || subjectName.includes(point.subject)))
+export const getPackageWorkspaceKnowledgePoints = (knowledgePoints: KnowledgePointNode[], selectedKnowledgePointIds: string[]) => knowledgePoints
+  .filter((point) => point.level === 3 && selectedKnowledgePointIds.includes(point.id))
   .map((point) => ({
     ...point,
     knowledgeTypeId: point.knowledgeType ?? 'KT-01',
@@ -103,7 +104,7 @@ interface ContentPackageWorkspaceProps {
 
 export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage, showNewPackageAction }) => {
   const { state: masterDataState } = useMasterData();
-  const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, subject?.name);
+  const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, pkg.knowledgePointIds);
   const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0]?.id ?? '');
   const activePoint = workspaceKnowledgePoints.find((item) => item.id === activePointId) ?? workspaceKnowledgePoints[0];
 
@@ -199,6 +200,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
       institutionCount: 0,
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 16),
       description: `引用${subject.name}下已发布的知识点与题目`,
+      knowledgePointIds: [],
     }, ...current]);
     setWizardOpen(false);
   };
