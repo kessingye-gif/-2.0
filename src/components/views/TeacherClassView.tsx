@@ -934,10 +934,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </div>
               </div>
 
-              <div className="text-[11.5px] text-[#16B45B] bg-[#E8F7EE] p-2 rounded-lg font-medium flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">info</span>
-                <span>导入只建立花名册和责任关系；导入后可直接在本班花名册中批量办理学生服务。</span>
-              </div>
             </div>
 
             {/* Excel Upload Visual */}
