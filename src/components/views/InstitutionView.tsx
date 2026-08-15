@@ -471,19 +471,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       {/* 操作 */}
                       <td className="px-5 py-2.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-3 text-[12px]">
-                          <button onClick={() => openAuthorizationModal(inst)} className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer">授权</button>
-                          <button onClick={() => onCreditEntry(inst.id)} className="font-bold text-[#0E7D3E] hover:text-[#16B45B] cursor-pointer">入账</button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedInstitution(inst);
-                              setIsDetailDrawerOpen(true);
-                            }}
-                            className="w-7 h-7 rounded-lg text-[#94A3B8] hover:text-[#16B45B] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer"
-                            title="查看详情与更多操作"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">more_horiz</span>
-                          </button>
+                          <button onClick={() => { setSelectedInstitution(inst); setIsDetailDrawerOpen(true); }} className="font-medium text-[#475569] hover:text-[#0E7D3E] cursor-pointer">查看详情</button>
+                          <button onClick={() => { setSelectedInstitution(inst); setIsDetailDrawerOpen(true); }} className="rounded-lg bg-[#16B45B] px-3 py-1.5 font-bold text-white hover:bg-[#139B4E] cursor-pointer">开通/配置</button>
                         </div>
                       </td>
                     </tr>
@@ -797,16 +786,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-[13.5px] font-bold text-[#0F172A]">采购额度总览</span>
-                    <span
-                      className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${
-                        selectedInstitution.status === 'active'
-                          ? 'bg-[#E8F7EE] text-[#16B45B]'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {selectedInstitution.status === 'active' ? '正常服务' : '已停用'}
-                    </span>
+                    <div className="flex items-center gap-2"><span className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${selectedInstitution.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-gray-200 text-gray-600'}`}>{selectedInstitution.status === 'active' ? '正常服务' : '已停用'}</span><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#D8EDE1] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#0E7D3E]">调整额度</button></div>
                   </div>
+                  <button onClick={() => { onCreditEntry(selectedInstitution.id); setIsDetailDrawerOpen(false); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">录入线下入账 →</button>
 
                   <div className="grid grid-cols-2 gap-4 text-[13px]">
                     <div className="bg-white p-3 rounded-xl border border-[#E2E8F0]">
@@ -879,29 +861,12 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                     <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email || '暂无'}</span></p>
                     <p>所属区域: <span className="text-[#0F172A] font-medium">{selectedInstitution.regionName}</span></p>
                   </div>
+                  <div className="flex gap-2 pt-1"><button onClick={() => { handleOpenEditModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] font-bold text-[#334155]">编辑资料</button><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] font-bold text-[#334155]">账号管理</button></div>
                 </div>
               </div>
             </div>
 
             <div className="pt-4 border-t border-[#E2E8F0] flex flex-wrap justify-end gap-2">
-              <button
-                onClick={() => {
-                  handleOpenEditModal(selectedInstitution);
-                  setIsDetailDrawerOpen(false);
-                }}
-                className="px-4 py-2 bg-white border border-[#E2E8F0] text-[#334155] rounded-xl text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
-              >
-                编辑资料
-              </button>
-              <button
-                onClick={() => {
-                  handleOpenAccountModal(selectedInstitution);
-                  setIsDetailDrawerOpen(false);
-                }}
-                className="px-4 py-2 bg-white border border-[#E2E8F0] text-[#334155] rounded-xl text-[13px] font-bold hover:bg-[#F8FAFC] cursor-pointer"
-              >
-                账号管理
-              </button>
               <button
                 onClick={() => handleToggleStatus(selectedInstitution)}
                 className={`px-4 py-2 rounded-xl text-[13px] font-bold cursor-pointer ${
