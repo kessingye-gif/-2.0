@@ -62,7 +62,9 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     subject: '数学',
     grade: '初一',
     textbook: '人教版',
+    level1Code: 'KP-MATH-L1-01',
     level1Name: '数与代数',
+    level2Code: 'KP-MATH-L2-01',
     level2Name: '一元一次方程应用',
     level3Name: '行程问题与追及方程',
     level3Code: 'KP-MATH-301',
@@ -79,7 +81,9 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     subject: '数学',
     grade: '初二',
     textbook: '人教版',
+    level1Code: 'KP-MATH-L1-01',
     level1Name: '数与代数',
+    level2Code: 'KP-MATH-L2-02',
     level2Name: '实数与二次根式',
     level3Name: '无理数的判定与识别',
     level3Code: 'KP-MATH-303',
@@ -96,7 +100,9 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     subject: '数学',
     grade: '初二',
     textbook: '人教版',
+    level1Code: 'KP-MATH-L1-02',
     level1Name: '图形与几何',
+    level2Code: 'KP-MATH-L2-03',
     level2Name: '勾股定理',
     level3Name: '直角三角形求边长',
     level3Code: 'KP-MATH-304',
@@ -113,7 +119,9 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     subject: '数学',
     grade: '初三',
     textbook: '人教版',
+    level1Code: 'KP-MATH-L1-01',
     level1Name: '数与代数',
+    level2Code: 'KP-MATH-L2-04',
     level2Name: '一元二次方程',
     level3Name: '配方法与公式法解方程',
     level3Code: 'KP-MATH-305',
@@ -2264,7 +2272,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行分别填写【学段、学科、章、节、知识点】以及【题型、难度、完整题干、选项列表、正确答案、解题解析、前置知识点、题干图片、选项图片】
+                    单表模式要求：每一行分别填写【学段、所属学科、适用年级、教材版本、一级/二级/知识点编码及名称】以及【题型、难度、题干、选项、答案、解析、前置知识点、题干图片、选项图片】
                   </p>
 
                   <input
@@ -2326,10 +2334,12 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     <thead className="bg-[#F1F5F9]">
                       <tr>
                         <th className="p-2 border-r">学段</th>
-                        <th className="p-2 border-r">学科</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">章</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">节</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">知识点</th>
+                        <th className="p-2 border-r">所属学科</th>
+                        <th className="p-2 border-r">适用年级</th>
+                        <th className="p-2 border-r">教材版本</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">一级编码及名称</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">二级编码及名称</th>
+                        <th className="p-2 border-r text-[#16B45B] font-bold">知识点编码及名称</th>
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
@@ -2348,9 +2358,11 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                             <span className="font-bold text-[#0F172A]">{row.stage}</span>
                           </td>
                           <td className="p-2 border-r font-bold text-[#0F172A]">{row.subject}</td>
-                          <td className="p-2 border-r text-[#475569]">{row.level1Name}</td>
-                          <td className="p-2 border-r text-[#475569]">{row.level2Name}</td>
-                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.level3Name}</td>
+                          <td className="p-2 border-r">{row.grade}</td>
+                          <td className="p-2 border-r">{row.textbook}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level1Code} {row.level1Name}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level2Code} {row.level2Name}</td>
+                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.level3Code} {row.level3Name}</td>
                           <td className="p-2 border-r font-medium text-[#0F172A]">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               row.type === '多选题'

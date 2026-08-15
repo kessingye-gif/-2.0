@@ -1,14 +1,16 @@
 import { KnowledgePointNode, QuestionItem, QuestionDifficulty, QuestionType } from '../types';
 
-export const getKnowledgeHierarchyLabels = () => ['章', '节', '知识点'] as const;
+export const getKnowledgeHierarchyLabels = () => ['一级', '二级', '知识点'] as const;
 
 export interface SingleTableRowInput {
   subject: string;
   stage: string;
   grade: string;
   textbook: string;
-  // Content hierarchy fields: chapter, section, knowledge point
+  // Content hierarchy fields: level 1, level 2, knowledge point
+  level1Code?: string;
   level1Name: string;
+  level2Code?: string;
   level2Name: string;
   level3Name: string;
   level3Code: string;
@@ -33,7 +35,7 @@ export interface SplitResult {
 }
 
 /**
- * 接收包含“章 + 节 + 知识点 + 精选题”同行的单表数据，
+ * 接收包含“一级 + 二级 + 知识点 + 精选题”同行的单表数据，
  * 自动解耦提取为【内容层级表】与【精选题库表】两张独立关联表
  */
 export function splitSingleTableData(
@@ -50,7 +52,7 @@ export function splitSingleTableData(
   const newCreatedQuestions: QuestionItem[] = [];
 
   rows.forEach((row, index) => {
-    // 1. 查找或创建章
+    // 1. 查找或创建一级节点
     let l1 = kps.find(
       (k) => k.level === 1 && k.name === row.level1Name && k.subject === row.subject
     );
@@ -58,7 +60,7 @@ export function splitSingleTableData(
       const l1Id = `KP-L1-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 100)}`;
       l1 = {
         id: l1Id,
-        code: `KP-L1-AUTO-${index + 1}`,
+        code: row.level1Code || `KP-L1-AUTO-${index + 1}`,
         name: row.level1Name,
         level: 1,
         subject: row.subject,
@@ -72,7 +74,7 @@ export function splitSingleTableData(
       kpCreatedCount++;
     }
 
-    // 2. 查找或创建节
+    // 2. 查找或创建二级节点
     let l2 = kps.find(
       (k) =>
         k.level === 2 &&
@@ -84,7 +86,7 @@ export function splitSingleTableData(
       const l2Id = `KP-L2-${Date.now().toString().slice(-4)}-${Math.floor(Math.random() * 100)}`;
       l2 = {
         id: l2Id,
-        code: `KP-L2-AUTO-${index + 1}`,
+        code: row.level2Code || `KP-L2-AUTO-${index + 1}`,
         name: row.level2Name,
         level: 2,
         subject: row.subject,
