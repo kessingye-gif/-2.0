@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
-import { TeacherClassView, filterClassesForViewer } from './components/views/TeacherClassView';
+import { TeacherClassView, filterClassesForViewer, filterServicePackagesForInstitution } from './components/views/TeacherClassView';
 import { initialInstitutions, initialServicePackages, initialTeachers } from './mockData';
 import { MasterDataProvider } from './masterData/MasterDataContext';
 import { MemoryRouter } from 'react-router-dom';
@@ -63,4 +63,18 @@ test('教师班级页面数量只计算本人负责班级', () => {
   });
   assert.match(markup, /班级管理（1）/);
   assert.doesNotMatch(markup, /班级管理（3）/);
+});
+
+test('教师只能为本机构学生选择已授权且启用的服务包', () => {
+  const scopedPackages = filterServicePackagesForInstitution(initialServicePackages, initialInstitutions, 'INS-2023001');
+  const institution = initialInstitutions.find((item) => item.id === 'INS-2023001');
+
+  assert.ok(institution);
+  assert.deepEqual(
+    scopedPackages.map((item) => item.id),
+    initialServicePackages
+      .filter((item) => item.status === 'active' && institution.availableServicePackageIds.includes(item.id))
+      .map((item) => item.id),
+  );
+  assert.equal(filterServicePackagesForInstitution(initialServicePackages, initialInstitutions, 'UNKNOWN').length, 0);
 });

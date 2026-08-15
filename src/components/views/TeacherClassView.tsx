@@ -33,6 +33,16 @@ export const filterClassesForViewer = <T extends { institutionId: string; headTe
   return classes.filter((item) => item.institutionId === institutionId && item.headTeacherId === teacherId);
 };
 
+export const filterServicePackagesForInstitution = (
+  packages: ServicePackage[],
+  institutions: Institution[],
+  institutionId: string,
+): ServicePackage[] => {
+  const institution = institutions.find((item) => item.id === institutionId);
+  const authorizedPackageIds = new Set(institution?.availableServicePackageIds ?? []);
+  return packages.filter((item) => item.status === 'active' && authorizedPackageIds.has(item.id));
+};
+
 export interface ClassRosterStudent {
   id: string;
   name: string;
@@ -511,7 +521,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     onClick={(event) => {
                       event.stopPropagation();
                       setRosterClass(cls);
-                      setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? '');
+                      setBulkPackageId(filterServicePackagesForInstitution(packages, institutions, cls.institutionId)[0]?.id ?? '');
                       setIsBulkServiceOpen(true);
                     }}
                     className="w-full border border-[#A7E4BE] text-[#0E7D3E] py-1.5 rounded-xl font-bold text-[12px] hover:bg-[#F0FBF4] cursor-pointer transition-colors"
@@ -1014,7 +1024,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[12.5px] outline-none w-64 focus:border-[#16B45B]"
               />
               <div className="flex items-center gap-2">
-                <button onClick={() => { setIsRosterModalOpen(false); setBulkPackageId(packages.find((item) => item.status === 'active')?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
+                <button onClick={() => { setIsRosterModalOpen(false); setBulkPackageId(filterServicePackagesForInstitution(packages, institutions, rosterClass.institutionId)[0]?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
                   <span className="material-symbols-outlined text-[16px]">redeem</span>
                   批量办理待配包学生
                 </button>
@@ -1106,9 +1116,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       )}
 
       {isBulkServiceOpen && rosterClass && (() => {
-        const institution = institutions.find((item) => item.id === rosterClass.institutionId);
         const teacher = teachers.find((item) => item.id === rosterClass.headTeacherId);
-        const availablePackages = packages.filter((item) => item.status === 'active' && (!institution?.availableServicePackageIds?.length || institution.availableServicePackageIds.includes(item.id)));
+        const availablePackages = filterServicePackagesForInstitution(packages, institutions, rosterClass.institutionId);
         const selectedPackage = availablePackages.find((item) => item.id === bulkPackageId) ?? availablePackages[0];
         const pendingRosterIds = new Set(classRoster.filter((item) => item.classId === rosterClass.id && item.serviceStatus === 'none').map((item) => item.id));
         const pendingStudents = students.filter((item) => pendingRosterIds.has(item.id) && item.teacherId === rosterClass.headTeacherId);
@@ -1130,11 +1139,15 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             <div className="flex items-start justify-between border-b border-[#E2E8F0] pb-4"><div><h3 className="text-[16px] font-bold text-[#0F172A]">批量办理学生服务</h3><p className="mt-1 text-[12px] text-[#64748B]">{rosterClass.name} · 统一从班主任 {rosterClass.headTeacherName} 账户扣点</p></div><button onClick={() => setIsBulkServiceOpen(false)} className="text-[#64748B]">✕</button></div>
             <div className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F8FAFC] p-3 text-[12px]"><div><span className="text-[#64748B]">待配包学生</span><strong className="mt-1 block text-[16px]">{pendingStudents.length} 人</strong></div><div><span className="text-[#64748B]">教师可用点数</span><strong className="mt-1 block text-[16px] text-[#0E7D3E]">{teacher?.remainingQuota.toLocaleString() ?? 0} 点</strong></div><div><span className="text-[#64748B]">本次预计扣除</span><strong className={`mt-1 block text-[16px] ${insufficient ? 'text-red-600' : 'text-[#0F172A]'}`}>{totalQuota.toLocaleString()} 点</strong></div></div>
             <label className="mt-4 block text-[12px] font-bold text-[#475569]">选择服务包</label>
-            <select value={selectedPackage?.id ?? ''} onChange={(event) => setBulkPackageId(event.target.value)} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
-              {availablePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人 · {item.includedAiUsage.toLocaleString()} AI 用量</option>)}
-            </select>
+            {availablePackages.length > 0 ? (
+              <select value={selectedPackage?.id ?? ''} onChange={(event) => setBulkPackageId(event.target.value)} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
+                {availablePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人 · {item.includedAiUsage.toLocaleString()} AI 用量</option>)}
+              </select>
+            ) : (
+              <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-700">当前机构暂无已授权且启用的服务包，请先在机构详情完成服务包配置。</div>
+            )}
             <div className={`mt-4 rounded-xl px-3 py-2 text-[12px] ${insufficient ? 'bg-red-50 text-red-700' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}>
-              {pendingStudents.length === 0 ? '当前班级没有可批量办理的待配包学生。' : insufficient ? `教师点数不足，还差 ${(totalQuota - (teacher?.remainingQuota ?? 0)).toLocaleString()} 点，请先给班主任追加点数。` : `确认后将扣除 ${totalQuota.toLocaleString()} 点，并为每名学生独立生成学生授权码、家长绑定码和服务权益。`}
+              {availablePackages.length === 0 ? '当前机构尚未配置可办理的服务包。' : pendingStudents.length === 0 ? '当前班级没有可批量办理的待配包学生。' : insufficient ? `教师点数不足，还差 ${(totalQuota - (teacher?.remainingQuota ?? 0)).toLocaleString()} 点，请先给班主任追加点数。` : `确认后将扣除 ${totalQuota.toLocaleString()} 点，并为每名学生独立生成学生授权码、家长绑定码和服务权益。`}
             </div>
             <div className="mt-5 flex justify-end gap-2"><button onClick={() => setIsBulkServiceOpen(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button disabled={!selectedPackage || pendingStudents.length === 0 || !teacher || insufficient} onClick={handleBulkConfirm} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认批量办理</button></div>
           </div>
