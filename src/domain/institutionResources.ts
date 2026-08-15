@@ -29,7 +29,7 @@ export const createInstitutionCreditEntry = ({ institution, paymentAmount, credi
   const entry: InstitutionCreditEntry = { id, institutionId: institution.id, institutionName: institution.name, paymentAmount, allocatedCredits: creditAmount, entryDate: now.toISOString().slice(0, 10), voucherNo: voucherNo.trim(), operatorName, notes: notes.trim(), createdAt: time(now), status: 'posted' };
   const updatedAt = now.toISOString().slice(0, 10);
   const updatedInstitution = { ...institution, totalQuota: institution.totalQuota + creditAmount, remainingQuota: institution.remainingQuota + creditAmount, updatedAt };
-  const ledger: OrderLedgerRecord = { id: `LEDGER-${stamp(now)}`, orderNo, institutionId: institution.id, institutionName: institution.name, type: 'credit_inflow', typeName: '机构点数入账', paymentAmount, creditChange: creditAmount, status: 'completed', operatorName, timestamp: time(now), reason: `线下入账凭证: ${entry.voucherNo}` };
+  const ledger: OrderLedgerRecord = { id: `LEDGER-${stamp(now)}`, orderNo, institutionId: institution.id, institutionName: institution.name, type: 'credit_inflow', typeName: '机构点数入账', paymentAmount, creditChange: creditAmount, status: 'completed', operatorName, timestamp: time(now), creditEntryId: entry.id, voucherNo: entry.voucherNo, reason: `线下入账凭证: ${entry.voucherNo}` };
   return { institution: updatedInstitution, entry, ledger };
 };
 
@@ -41,6 +41,6 @@ export const reverseInstitutionCreditEntry = ({ institution, original, operatorN
   const orderNo = `ORD-R-${stamp(now)}`;
   const entry: InstitutionCreditEntry = { ...original, id, paymentAmount: -original.paymentAmount, allocatedCredits: -original.allocatedCredits, status: 'reversed', reversalOf: original.id, operatorName, notes: reason.trim(), createdAt: time(now) };
   const updatedInstitution = { ...institution, totalQuota: institution.totalQuota - original.allocatedCredits, remainingQuota: institution.remainingQuota - original.allocatedCredits, updatedAt: now.toISOString().slice(0, 10) };
-  const ledger: OrderLedgerRecord = { id: `LEDGER-R-${stamp(now)}`, orderNo, institutionId: institution.id, institutionName: institution.name, type: 'reversal', typeName: '机构入账冲正', paymentAmount: -original.paymentAmount, creditChange: -original.allocatedCredits, status: 'reversed', operatorName, timestamp: time(now), originalOrderNo: `ORD-${original.id.replace(/^CE-/, '')}`, reason: reason.trim() };
+  const ledger: OrderLedgerRecord = { id: `LEDGER-R-${stamp(now)}`, orderNo, institutionId: institution.id, institutionName: institution.name, type: 'reversal', typeName: '机构入账冲正', paymentAmount: -original.paymentAmount, creditChange: -original.allocatedCredits, status: 'reversed', operatorName, timestamp: time(now), originalOrderNo: `ORD-${original.id.replace(/^CE-/, '')}`, creditEntryId: original.id, voucherNo: original.voucherNo, reason: reason.trim() };
   return { institution: updatedInstitution, entry, ledger };
 };

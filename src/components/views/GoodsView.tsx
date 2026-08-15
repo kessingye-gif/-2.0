@@ -554,12 +554,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <option value="reversal">冲正/退款流水</option>
               </select>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[12px] text-[#64748B]">所有变更均生成新的流水或冲正记录</span>
-              <button onClick={() => setIsCreditModalOpen(true)} className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer">
-                <span className="material-symbols-outlined text-[16px]">add</span>录入线下入账
-              </button>
-            </div>
+            <span className="text-[12px] text-[#64748B]">机构入账请在“机构详情 → 额度账户”录入；所有变更均生成新的流水或冲正记录</span>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -597,7 +592,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                       {ord.status === 'reversed' ? (
                         <span className="text-red-500 font-bold">已冲正 ({ord.reason})</span>
                       ) : (
-                        <span className="text-gray-600">{ord.reason || '正常交易'}</span>
+                        <div><span className="text-gray-600">{ord.reason || '正常交易'}</span>{ord.creditEntryId && <div className="mt-1 font-mono text-[10px] text-[#64748B]">{ord.creditEntryId} · {ord.voucherNo}</div>}</div>
                       )}
                     </td>
                     <td className="py-3 px-4" />

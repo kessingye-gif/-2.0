@@ -284,6 +284,8 @@ export interface OrderLedgerRecord {
   operatorName: string;
   timestamp: string;
   originalOrderNo?: string;
+  creditEntryId?: string;
+  voucherNo?: string;
   reason?: string;
 }
 
