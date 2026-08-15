@@ -2510,7 +2510,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识点结构表至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    规范包含：【学科、学段年级、教材版本、章编码/名称、节编码/名称、知识点编码/名称】
+                    规范包含：【所属学科、一级编码及名称、二级编码及名称、知识点编码及名称、适用年级、教材版本】
                   </p>
 
                   <input
@@ -2536,9 +2536,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 {/* Quick Test Import */}
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl flex items-center justify-between">
                   <div>
-                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科章、节、知识点批量导入</h5>
+                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科知识点层级批量导入</h5>
                     <p className="text-[12px] text-[#64748B] mt-0.5">
-                      模拟解析包含数学、物理、化学 3 组完整的“章 ➔ 节 ➔ 知识点”数据
+                      模拟解析包含数学、物理、化学 3 组完整的“一级 ➔ 二级 ➔ 知识点”数据
                     </p>
                   </div>
                   <button
@@ -2553,7 +2553,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               /* Specification View */
               <div className="space-y-4 text-[12.5px]">
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
-                  标准章、节、知识点表列名要求（遵照需求文档 9.0 规范）：
+                  标准知识点层级表列名要求：
                 </div>
                 <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white">
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
@@ -2588,7 +2588,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </table>
                 </div>
                 <p className="text-[11.5px] text-[#64748B]">
-                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验章、节、知识点的父子关系。
+                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验一级、二级与知识点的父子关系。
                 </p>
               </div>
             )}

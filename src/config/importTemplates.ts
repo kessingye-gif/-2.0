@@ -19,7 +19,7 @@ export const importTemplates: Record<ImportTemplateKey, ImportTemplateDefinition
   },
   knowledgePoints: {
     fileName: '知识点导入模板',
-    headers: ['学科', '年级', '教材版本', '章编码', '章名称', '节编码', '节名称', '知识点编码', '知识点名称'],
-    exampleRows: [['数学', '初一', '人教版', 'CH-001', '数与代数', 'SEC-001', '一元一次方程', 'KP-MATH-001', '方程应用']],
+    headers: ['所属学科', '一级编码及名称', '二级编码及名称', '知识点编码及名称', '适用年级', '教材版本'],
+    exampleRows: [['数学', 'KP-MATH-L1-01 数与代数', 'KP-MATH-L2-01 一元一次方程', 'KP-MATH-L3-01 方程应用', '初一', '人教版']],
   },
 };
