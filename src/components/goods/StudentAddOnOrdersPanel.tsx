@@ -55,7 +55,7 @@ export const StudentAddOnOrdersPanel: React.FC<StudentAddOnOrdersPanelProps> = (
       <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
         <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
           <div>
-            <h3 className="text-[15px] font-semibold text-[#0F172A]">学生加油包订单</h3>
+            <h3 className="text-[15px] font-semibold text-[#0F172A]">学生加油包交易</h3>
             <p className="mt-1 text-[12px] text-[#64748B]">查看支付、AI 用量到账和退款结果；未使用订单可直接原路退款。</p>
           </div>
           <input value={search} onChange={(event) => setSearch(event.target.value)} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] outline-none" placeholder="搜索订单或学生" />
