@@ -108,8 +108,7 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   const activePoint = workspaceKnowledgePoints.find((item) => item.id === activePointId) ?? workspaceKnowledgePoints[0];
 
   return <div className="space-y-4">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><h2 className="text-[24px] font-bold text-[#10231D]">内容管理</h2><p className="mt-1 text-[12px] text-[#64748B]">先选择内容包，再在该内容包的边界内维护大纲、知识点和题目。</p></div>
+    <div className="flex justify-end">
       {canCreatePackage && showNewPackageAction && <button type="button" onClick={onNewPackage} className="self-start rounded-xl bg-[#0F755A] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#0A624B]">新建内容包</button>}
     </div>
 
