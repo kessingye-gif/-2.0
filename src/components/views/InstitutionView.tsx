@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { AuthCode, ContentPackageItem, CooperationPlan, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
 import { CooperationAuthorizationSummary } from '../cooperation/CooperationAuthorizationSummary';
 import { ChoiceCard, DialogShell } from '../ui/FormPrimitives';
+import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
 interface InstitutionViewProps {
   institutions: Institution[];
@@ -59,7 +60,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     phone: '',
     email: '',
     adminAccount: '',
-    adminPassword: '123456',
+    adminPassword: generateRandomPassword(),
     initialQuota: 50000,
     status: 'active' as 'active' | 'inactive',
   });
@@ -107,7 +108,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
       phone: '',
       email: '',
       adminAccount: '',
-      adminPassword: '123456',
+      adminPassword: generateRandomPassword(),
       initialQuota: 50000,
       status: 'active',
     });
@@ -126,7 +127,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
       phone: inst.phone,
       email: inst.email,
       adminAccount: inst.adminAccount,
-      adminPassword: inst.adminPassword || '123456',
+      adminPassword: inst.adminPassword || generateRandomPassword(),
       initialQuota: inst.totalQuota,
       status: inst.status,
     });
@@ -137,7 +138,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     setSelectedInstitution(inst);
     setAccountForm({
       username: inst.adminAccount,
-      password: inst.adminPassword || '123456',
+      password: inst.adminPassword || generateRandomPassword(),
     });
     setIsAccountPasswordModalOpen(true);
   };
@@ -147,6 +148,11 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     if (!selectedInstitution) return;
     if (!accountForm.username.trim() || !accountForm.password.trim()) {
       alert('账号和密码不能为空！');
+      return;
+    }
+    const passwordMessage = getPasswordValidationMessage(accountForm.password);
+    if (passwordMessage) {
+      alert(passwordMessage);
       return;
     }
 
@@ -164,6 +170,13 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     if (!formData.name.trim() || !formData.contactPerson.trim() || !formData.phone.trim()) {
       alert('请完整填写机构名称、负责人和联系电话！');
       return;
+    }
+    if (!selectedInstitution || formData.adminPassword !== selectedInstitution.adminPassword) {
+      const passwordMessage = getPasswordValidationMessage(formData.adminPassword);
+      if (passwordMessage) {
+        alert(`机构管理员${passwordMessage}`);
+        return;
+      }
     }
 
     const regionMap: Record<RegionType, string> = {
@@ -196,7 +209,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
         phone: formData.phone,
         email: formData.email || `${formData.adminAccount || 'admin'}@school.edu.cn`,
         adminAccount: formData.adminAccount || `admin_${Date.now().toString().slice(-4)}`,
-        adminPassword: formData.adminPassword || '123456',
+        adminPassword: formData.adminPassword || generateRandomPassword(),
         totalQuota: Number(formData.initialQuota) || 50000,
         remainingQuota: Number(formData.initialQuota) || 50000,
         teacherCount: 0,
@@ -958,7 +971,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const newPass = Math.random().toString(36).slice(-8);
+                      const newPass = generateRandomPassword();
                       setAccountForm({ ...accountForm, password: newPass });
                     }}
                     className="text-[11px] font-bold text-[#16B45B] hover:underline flex items-center gap-1 cursor-pointer"
@@ -972,7 +985,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   required
                   value={accountForm.password}
                   onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
-                  placeholder="如：123456"
+                  placeholder="至少 12 位，含大小写、数字和特殊字符"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13.5px] font-mono outline-none focus:border-[#16B45B]"
                 />
               </div>
