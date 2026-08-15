@@ -498,6 +498,20 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
                   <h3 className="text-[16px] font-bold text-[#0F172A]">{cls.name}</h3>
                   <p className="text-[12px] text-[#64748B]">所属机构：{cls.institutionName}</p>
+                  {(() => {
+                    const availablePackages = filterServicePackagesForInstitution(packages, institutions, cls.institutionId);
+                    return (
+                      <div className={`rounded-xl px-3 py-2 text-[12px] ${availablePackages.length > 0 ? 'bg-[#F0FBF4] text-[#0E7D3E]' : 'bg-amber-50 text-amber-700'}`}>
+                        <div className="flex items-center justify-between gap-2 font-bold">
+                          <span>本机构可办服务</span>
+                          <span>{availablePackages.length} 个</span>
+                        </div>
+                        <p className="mt-1 truncate text-[11px] font-medium opacity-80" title={availablePackages.map((item) => item.name).join('、')}>
+                          {availablePackages.length > 0 ? availablePackages.map((item) => item.name).join('、') : '请先在机构详情配置服务包'}
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   <div className="bg-[#F8FAFC] p-3 rounded-xl grid grid-cols-3 gap-3 items-center text-[12px]">
                     <div>

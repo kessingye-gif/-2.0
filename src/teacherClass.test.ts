@@ -32,6 +32,7 @@ test('班级管理展示班主任点数并提供花名册和批量办理服务�
     });
 
   assert.match(markup, /班主任可用点数/);
+  assert.match(markup, /本机构可办服务/);
   assert.match(markup, /查看花名册/);
   assert.match(markup, /批量办理服务/);
 });
