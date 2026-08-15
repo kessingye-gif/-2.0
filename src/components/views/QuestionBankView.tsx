@@ -15,6 +15,7 @@ import { ContentPackageManager } from '../content/ContentPackageManager';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import { StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
 import { filterQuestions } from '../../utils/questionFilters';
+import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
 
 export interface SubjectItem {
   id: string;
@@ -2283,6 +2284,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   >
                     选择 Excel 题库文件
                   </label>
+                  <button type="button" onClick={() => downloadImportTemplate('精选题库导入模板', ['学段', '学科', '年级', '教材版本', '章名称', '节名称', '知识点名称', '知识点编码', '题型', '难度', '题干', '选项', '答案', '解析', '前置知识点'], [['初中', '数学', '初一', '人教版', '数与代数', '一元一次方程', '方程应用', 'KP-MATH-001', '单选题', '基础', '示例题干', 'A.1；B.2；C.3；D.4', 'A.1', '示例解析', '']])} className="ml-3 text-[12px] font-bold text-[#16B45B] hover:underline">下载 Excel 模板</button>
                 </div>
 
                 <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] p-4">
@@ -2528,6 +2530,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   >
                     选择考点 Excel 表格文件
                   </label>
+                  <button type="button" onClick={() => downloadImportTemplate('知识点导入模板', ['学科', '年级', '教材版本', '章编码', '章名称', '节编码', '节名称', '知识点编码', '知识点名称'], [['数学', '初一', '人教版', 'CH-001', '数与代数', 'SEC-001', '一元一次方程', 'KP-MATH-001', '方程应用']])} className="ml-3 text-[12px] font-bold text-[#16B45B] hover:underline">下载 Excel 模板</button>
                 </div>
 
                 {/* Quick Test Import */}
