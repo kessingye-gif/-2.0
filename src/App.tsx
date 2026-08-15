@@ -460,7 +460,7 @@ export default function App() {
               onBatchImportQuestions={handleBatchImportQuestions}
               onAddKnowledgePoint={handleAddKnowledgePoint}
               authorizedContentPackageNames={
-                currentUser.role === 'institution_admin'
+                currentUser.role === 'institution_admin' || currentUser.role === 'teacher'
                   ? institutions.find((institution) => institution.id === currentUser.institutionId)?.availableContentPackages ?? []
                   : undefined
               }

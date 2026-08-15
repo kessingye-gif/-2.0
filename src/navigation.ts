@@ -12,7 +12,7 @@ export const navGroups = [
 const roleRoutes: Record<Role, PlatformRouteId[]> = {
   super_admin: platformRoutes.map((route) => route.id),
   institution_admin: ['dashboard', 'content', 'teachers', 'classes', 'students'],
-  teacher: ['dashboard', 'classes', 'students'],
+  teacher: ['dashboard', 'content', 'classes', 'students'],
 };
 
 export const getNavGroupsForRole = (role: Role) => navGroups

@@ -22,6 +22,7 @@ test('老师只能管理自己负责的学生与学习数据', () => {
   assert.equal(can(teacher, 'learning.view', { institutionId: 'INS-1', teacherId: 'T-1' }), true);
   assert.equal(can(teacher, 'student.manage', { institutionId: 'INS-1', teacherId: 'T-2' }), false);
   assert.equal(can(teacher, 'teacher.import', { institutionId: 'INS-1' }), false);
+  assert.equal(can(teacher, 'institutionContent.manage', { institutionId: 'INS-1', teacherId: 'T-1' }), true);
 });
 
 test('所有业务操作都必须有明确机构范围', () => {
