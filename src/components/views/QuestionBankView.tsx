@@ -971,6 +971,27 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 <span>新增章 / 节 / 知识点</span>
               </button>
             </>
+          ) : activeSubTab === 'questions' ? (
+            <>
+              <button
+                onClick={() => {
+                  setImportNotice(null);
+                  setIsBatchImportOpen(true);
+                }}
+                className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] text-[#0F172A] px-2.5 py-1 rounded-lg font-bold text-[12.5px] hover:bg-gray-100 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">table_view</span>
+                <span>批量导入</span>
+              </button>
+
+              <button
+                onClick={handleOpenAddQuestion}
+                className="flex items-center gap-1 bg-[#16B45B] text-white px-3 py-1 rounded-lg font-bold text-[12.5px] shadow-xs hover:bg-[#139B4E] transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>录入试题</span>
+              </button>
+            </>
           ) : null}
         </div>
       </div>
