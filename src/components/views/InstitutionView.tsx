@@ -782,13 +782,21 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               </div>
 
               <div className="space-y-6">
+                <section>
+                  <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">开通与配置</h4><p className="mt-1 text-[11px] text-[#64748B]">先完成账号、额度和业务授权，再查看详细资料。</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#FFF7ED] text-[#B45309]'}`}>{(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? '配置已完成' : '待补充授权'}</span></div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4"><span className="material-symbols-outlined text-[20px] text-[#0E7D3E]">account_balance_wallet</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">额度账户</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">调整可用额度或录入线下入账。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">调整额度</button><button onClick={() => { onCreditEntry(selectedInstitution.id); setIsDetailDrawerOpen(false); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
+                    <div className="rounded-2xl border border-[#DCE5F5] bg-[#F6F9FF] p-4"><span className="material-symbols-outlined text-[20px] text-[#2563EB]">deployed_code</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">内容与服务授权</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">配置可用内容包和服务包。</p><button onClick={() => openAuthorizationModal(selectedInstitution)} className="mt-3 w-full rounded-lg bg-[#2563EB] px-3 py-2 text-[12px] font-bold text-white">配置授权范围</button></div>
+                    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4"><span className="material-symbols-outlined text-[20px] text-[#64748B]">manage_accounts</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">管理员账号</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">维护登录账号和机构资料。</p><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg border border-[#B8DCC6] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">账号管理</button><button onClick={() => { handleOpenEditModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-2 w-full text-[11px] font-bold text-[#475569]">编辑机构资料</button></div>
+                  </div>
+                </section>
+
                 {/* Quota Card */}
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-[13.5px] font-bold text-[#0F172A]">采购额度总览</span>
-                    <div className="flex items-center gap-2"><span className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${selectedInstitution.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-gray-200 text-gray-600'}`}>{selectedInstitution.status === 'active' ? '正常服务' : '已停用'}</span><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#D8EDE1] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#0E7D3E]">调整额度</button></div>
+                    <span className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${selectedInstitution.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-gray-200 text-gray-600'}`}>{selectedInstitution.status === 'active' ? '正常服务' : '已停用'}</span>
                   </div>
-                  <button onClick={() => { onCreditEntry(selectedInstitution.id); setIsDetailDrawerOpen(false); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">录入线下入账 →</button>
 
                   <div className="grid grid-cols-2 gap-4 text-[13px]">
                     <div className="bg-white p-3 rounded-xl border border-[#E2E8F0]">
@@ -815,7 +823,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       </h4>
                       <p className="mt-1 text-[11px] text-[#64748B]">内容包与服务包范围分别生效；模板只用于快速带入，不代替本机构已保存的权限。</p>
                     </div>
-                    <button onClick={() => openAuthorizationModal(selectedInstitution)} className="shrink-0 rounded-xl border border-[#D8EDE1] bg-[#E8F7EE] px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">修改范围</button>
                   </div>
                   <CooperationAuthorizationSummary
                     contentPackages={contentPackages}
@@ -861,7 +868,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                     <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email || '暂无'}</span></p>
                     <p>所属区域: <span className="text-[#0F172A] font-medium">{selectedInstitution.regionName}</span></p>
                   </div>
-                  <div className="flex gap-2 pt-1"><button onClick={() => { handleOpenEditModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] font-bold text-[#334155]">编辑资料</button><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="rounded-lg border border-[#E2E8F0] px-3 py-2 text-[12px] font-bold text-[#334155]">账号管理</button></div>
                 </div>
               </div>
             </div>
