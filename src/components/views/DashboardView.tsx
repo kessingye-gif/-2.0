@@ -5,7 +5,7 @@ import { DashboardSection } from '../dashboard/DashboardSection';
 
 type DashboardTab = PlatformDashboardSnapshot['sections'][number]['id'] | 'work-items';
 
-export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot; title?: string }> = ({ snapshot, title = '平台经营驾驶舱' }) => {
+export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot }> = ({ snapshot }) => {
   const [activeTab, setActiveTab] = useState<DashboardTab>(snapshot.sections[0]?.id ?? 'work-items');
   const activeSection = snapshot.sections.find((section) => section.id === activeTab);
   const navigation = [
@@ -15,7 +15,7 @@ export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot; titl
 
   return (
     <div className="mx-auto max-w-[1480px] space-y-5">
-      <div><h2 className="text-[22px] font-bold text-[#0F172A]">{title}</h2><p className="mt-1 text-[12px] text-[#64748B]">数据更新：{snapshot.updatedAt}</p></div>
+      <p className="text-[12px] text-[#64748B]">数据更新：{snapshot.updatedAt}</p>
       <nav aria-label="驾驶舱分区" className="max-w-full overflow-x-auto border-b border-[#E2E8F0]">
         <div role="tablist" className="flex min-w-max items-center gap-6">
           {navigation.map((item) => {

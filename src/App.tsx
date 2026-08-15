@@ -441,7 +441,7 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
             <div className="space-y-6">
-              <DashboardView snapshot={visibleDashboardSnapshot} title={currentUser.role === 'institution_admin' ? `${currentUser.institutionName ?? '当前机构'}运营大屏` : currentUser.role === 'teacher' ? `${currentUser.name}经营驾驶舱` : '平台经营驾驶舱'} />
+              <DashboardView snapshot={visibleDashboardSnapshot} />
               {currentUser.role === 'institution_admin' && currentUser.institutionId && <DiagnosticsView students={students.filter((item) => item.institutionId === currentUser.institutionId)} onGenerateReport={handleGenerateReport} scopeLabel="本机构" />}
               {currentUser.role === 'teacher' && currentUser.teacherId && <DiagnosticsView students={students.filter((item) => item.teacherId === currentUser.teacherId)} onGenerateReport={handleGenerateReport} scopeLabel="我的班级" />}
             </div>
