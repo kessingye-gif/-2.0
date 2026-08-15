@@ -16,8 +16,8 @@ export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot; titl
   return (
     <div className="mx-auto max-w-[1480px] space-y-5">
       <div><h2 className="text-[22px] font-bold text-[#0F172A]">{title}</h2><p className="mt-1 text-[12px] text-[#64748B]">数据更新：{snapshot.updatedAt}</p></div>
-      <nav aria-label="驾驶舱分区" className="max-w-full overflow-x-auto rounded-[24px] border border-[#DCE7E1] bg-[#EEF4F1] p-2 shadow-inner shadow-[#DCE7E1]/60">
-        <div role="tablist" className="flex min-w-max items-center gap-1">
+      <nav aria-label="驾驶舱分区" className="max-w-full overflow-x-auto border-b border-[#E2E8F0]">
+        <div role="tablist" className="flex min-w-max items-center gap-6">
           {navigation.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -27,7 +27,7 @@ export const DashboardView: React.FC<{ snapshot: PlatformDashboardSnapshot; titl
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveTab(item.id)}
-                className={`rounded-[16px] px-7 py-3 text-[16px] font-medium transition-colors ${isActive ? 'bg-white font-bold text-[#0E7D5A] shadow-sm' : 'text-[#5E6F69] hover:bg-white/70 hover:text-[#0F172A]'}`}
+                className={`pb-2 text-[13.5px] font-bold transition-colors ${isActive ? 'border-b-2 border-[#16B45B] text-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
               >
                 {item.label}
               </button>

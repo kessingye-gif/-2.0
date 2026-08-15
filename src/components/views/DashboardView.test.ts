@@ -14,6 +14,8 @@ test('驾驶舱展示四类有来源且可下钻的数据', () => {
   assert.doesNotMatch(markup, /学情总览|人员管理|交易管理/);
   assert.match(markup, /role="tablist"/);
   assert.match(markup, /aria-selected="true"/);
+  assert.match(markup, /border-b-2 border-\[#16B45B\]/);
+  assert.doesNotMatch(markup, /rounded-\[24px\]|shadow-inner/);
   assert.match(markup, /运行中机构数/);
   assert.doesNotMatch(markup, /服务中学生|学生待激活/);
   assert.doesNotMatch(markup, /平台总部 · 全局监管|数据更新于/);
