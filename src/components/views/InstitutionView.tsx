@@ -97,21 +97,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
     });
   }, [institutions, searchTerm, regionFilter, statusFilter]);
 
-  // Statistics calculation
-  const stats = useMemo(() => {
-    const activeCount = institutions.filter((i) => i.status === 'active').length;
-    const totalStudents = institutions.reduce((acc, curr) => acc + curr.studentCount, 0);
-    const alertCount = institutions.filter((i) => i.totalQuota > 0 && i.remainingQuota / i.totalQuota <= 0.15 && i.status === 'active').length;
-    const totalRemaining = institutions.reduce((acc, curr) => acc + curr.remainingQuota, 0);
-
-    return {
-      activeCount,
-      totalStudents,
-      alertCount,
-      totalRemaining: totalRemaining > 1000000 ? `${(totalRemaining / 1000000).toFixed(1)}M` : `${totalRemaining.toLocaleString()}`,
-    };
-  }, [institutions]);
-
   const handleOpenAddModal = () => {
     setFormData({
       name: '',
@@ -281,61 +266,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[12.5px] font-semibold text-[#64748B]">运行中机构数</span>
-            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
-              {stats.activeCount}
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-[#E8F7EE] text-[#16B45B] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">domain</span>
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[12.5px] font-semibold text-[#64748B]">平台剩余额度</span>
-            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
-              {stats.totalRemaining}
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">layers</span>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[12.5px] font-semibold text-[#64748B]">服务学生总数</span>
-            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
-              {stats.totalStudents.toLocaleString()}
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-[#FFFBEB] text-[#D97706] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">group</span>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[12.5px] font-semibold text-[#64748B]">低额度预警机构</span>
-            <div className="text-[26px] font-extrabold text-[#0F172A] font-mono leading-none mt-1.5">
-              {stats.alertCount}
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[22px]">warning</span>
-          </div>
-        </div>
-      </div>
-
       {/* Filter Bar */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3 flex-1 min-w-[280px]">

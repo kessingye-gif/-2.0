@@ -9,6 +9,7 @@ export interface DashboardMetric {
   definition: string;
   targetPath: string;
   tone?: 'default' | 'positive' | 'warning';
+  icon?: 'domain' | 'layers' | 'group' | 'warning';
 }
 
 export interface DashboardSection {
@@ -44,13 +45,13 @@ interface DashboardInput {
 const number = (value: number) => value.toLocaleString('zh-CN');
 
 export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, students, auditLogs }: DashboardInput): PlatformDashboardSnapshot => {
-  const allocatedQuota = institutions.reduce((sum, item) => sum + item.totalQuota, 0);
   const remainingQuota = institutions.reduce((sum, item) => sum + item.remainingQuota, 0);
-  const lowQuota = institutions.filter((item) => item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.2);
+  const activeInstitutions = institutions.filter((item) => item.status === 'active');
+  const lowQuota = activeInstitutions.filter((item) => item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15);
   const unconfigured = institutions.filter((item) => (item.availableServicePackageIds?.length ?? 0) === 0);
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const pending = authCodes.filter((item) => item.status === 'pending').length;
-  const activeStudents = students.filter((item) => item.serviceStatus === 'active').length;
+  const serviceStudents = institutions.reduce((sum, item) => sum + item.studentCount, 0);
   const studyHours = students.reduce((sum, item) => sum + item.totalStudyHours, 0);
   const questions = students.reduce((sum, item) => sum + item.totalQuestions, 0);
 
@@ -64,23 +65,21 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
     updatedAt: auditLogs[0]?.timestamp ?? '暂无更新记录',
     sections: [
       {
-        id: 'institutions', title: '机构与额度', description: '平台分配给机构的总额度与剩余情况', metrics: [
-          metric(institutions.length, { id: 'institutions', label: '机构总数', suffix: ' 家', sourceLabel: '机构档案', definition: '平台已创建的全部机构', targetPath: '/platform/institutions' }),
-          metric(allocatedQuota, { id: 'allocatedQuota', label: '已分配额度', suffix: ' 点', sourceLabel: '机构额度账户', definition: '各机构总额度之和', targetPath: '/platform/institutions?view=quota', tone: 'positive' }),
-          metric(remainingQuota, { id: 'remainingQuota', label: '机构剩余额度', suffix: ' 点', sourceLabel: '机构额度账户', definition: '各机构当前可用额度之和', targetPath: '/platform/institutions?view=quota' }),
-          metric(lowQuota.length, { id: 'lowQuota', label: '低额度机构', suffix: ' 家', sourceLabel: '机构额度账户', definition: '剩余额度不超过总额度 20%', targetPath: '/platform/institutions?quota=low', tone: 'warning' }),
+        id: 'institutions', title: '运营总览', description: '平台机构、额度与服务学生的实时汇总', metrics: [
+          metric(activeInstitutions.length, { id: 'activeInstitutions', label: '运行中机构数', sourceLabel: '机构档案', definition: '状态为正常的机构数量', targetPath: '/platform/institutions?status=active', icon: 'domain' }),
+          metric(remainingQuota, { id: 'remainingQuota', label: '平台剩余额度', sourceLabel: '机构额度账户', definition: '全部机构当前可用额度之和', targetPath: '/platform/institutions?view=quota', icon: 'layers' }),
+          metric(serviceStudents, { id: 'serviceStudents', label: '服务学生总数', sourceLabel: '机构档案', definition: '各机构服务学生数汇总', targetPath: '/platform/students', icon: 'group' }),
+          metric(lowQuota.length, { id: 'lowQuota', label: '低额度预警机构', sourceLabel: '机构额度账户', definition: '运行中且剩余额度不超过总额度 15% 的机构', targetPath: '/platform/institutions?quota=low', tone: 'warning', icon: 'warning' }),
         ],
       },
       {
         id: 'students', title: '学生与开通', description: '全平台学生的开通和激活结果', metrics: [
-          metric(students.length, { id: 'students', label: '学生总数', suffix: ' 人', sourceLabel: '机构学生档案', definition: '所有机构学生数', targetPath: '/platform/students' }),
           metric(activated, { id: 'activated', label: '已激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '状态为已激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=used', tone: 'positive' }),
           metric(pending, { id: 'pending', label: '待激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '已创建但尚未激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' }),
         ],
       },
       {
         id: 'learning', title: '学习与使用', description: '只展示学生档案中已有的学习累计数据', metrics: [
-          metric(activeStudents, { id: 'activeStudents', label: '服务中学生', suffix: ' 人', sourceLabel: '学生服务档案', definition: '服务状态为正常的学生', targetPath: '/platform/students?service=active' }),
           metric(studyHours, { id: 'studyHours', label: '累计学习时长', suffix: ' 小时', sourceLabel: '学生学习档案', definition: '学生累计学习时长之和', targetPath: '/platform/students?tab=diagnostics' }),
           metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '学生学习档案', definition: '学生累计答题数之和', targetPath: '/platform/students?tab=diagnostics' }),
         ],

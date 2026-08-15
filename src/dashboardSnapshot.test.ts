@@ -11,18 +11,18 @@ const snapshot = derivePlatformDashboardSnapshot({
   auditLogs: initialAuditLogs,
 });
 
-test('机构额度指标由机构记录求和得到', () => {
+test('运营总览指标由机构记录求和得到', () => {
   const metrics = snapshot.sections.find((section) => section.id === 'institutions')!.metrics;
-  assert.equal(metrics.find((metric) => metric.id === 'allocatedQuota')?.value, initialInstitutions.reduce((sum, item) => sum + item.totalQuota, 0));
   assert.equal(metrics.find((metric) => metric.id === 'remainingQuota')?.value, initialInstitutions.reduce((sum, item) => sum + item.remainingQuota, 0));
+  assert.equal(metrics.find((metric) => metric.id === 'activeInstitutions')?.value, initialInstitutions.filter((item) => item.status === 'active').length);
 });
 
 test('低额度和激活指标从共享记录推导', () => {
   const institutionMetrics = snapshot.sections.find((section) => section.id === 'institutions')!.metrics;
   const studentMetrics = snapshot.sections.find((section) => section.id === 'students')!.metrics;
-  const expectedLow = initialInstitutions.filter((item) => item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.2).length;
+  const expectedLow = initialInstitutions.filter((item) => item.status === 'active' && item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15).length;
   assert.equal(institutionMetrics.find((metric) => metric.id === 'lowQuota')?.value, expectedLow);
-  assert.equal(studentMetrics.find((metric) => metric.id === 'students')?.value, initialStudents.length);
+  assert.equal(institutionMetrics.find((metric) => metric.id === 'serviceStudents')?.value, initialInstitutions.reduce((sum, item) => sum + item.studentCount, 0));
   assert.equal(studentMetrics.find((metric) => metric.id === 'activated')?.value, initialAuthCodes.filter((item) => item.status === 'used').length);
 });
 
