@@ -2302,21 +2302,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <label htmlFor="qBatchImageZipInput" className="mt-3 inline-block cursor-pointer rounded-xl border border-[#2563EB] bg-white px-4 py-2 text-[12px] font-bold text-[#1E40AF]">选择图片压缩包（可选）</label>
                 </div>
 
-                {/* Quick test sample import button */}
-                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl flex items-center justify-between">
-                  <div>
-                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">试用单表同行数据一键解耦入库</h5>
-                    <p className="text-[12px] text-[#64748B] mt-0.5">
-                      自动读取 2 行包含考点与题目同行的示例数据，演示创建考点表节点及链接试题表
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleExecuteSingleTableImport()}
-                    className="px-4 py-2 bg-[#F5B700] text-[#0F172A] text-[13px] font-bold rounded-xl hover:bg-[#E0A700] cursor-pointer shadow-2xs whitespace-nowrap"
-                  >
-                    🚀 一键测试单表拆分导入
-                  </button>
-                </div>
               </div>
             ) : (
               /* Split demonstration view */
@@ -2441,10 +2426,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </div>
             )}
 
-            <div className="pt-4 mt-4 flex justify-between items-center border-t border-[#E2E8F0]">
-              <span className="text-[11px] text-[#64748B]">
-                说明：通过此解耦方式，既降低了前台人员录入难度，又保证了后台题目与知识点的关系化查询处理。
-              </span>
+            <div className="pt-4 mt-4 flex justify-end items-center border-t border-[#E2E8F0]">
               <button
                 onClick={() => setIsBatchImportOpen(false)}
                 className="px-5 py-2 bg-[#0F172A] text-white font-bold rounded-xl text-[13px] hover:bg-[#1E293B] cursor-pointer"
