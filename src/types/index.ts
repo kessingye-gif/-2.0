@@ -125,6 +125,8 @@ export interface ServicePackage {
   description: string;
   status: 'active' | 'inactive'; // 可购买 / 已下架
   subjectRequirement: 'single' | 'all';
+  selectableContentPackageIds?: string[]; // 平台可选择的内容包范围
+  selectableContentPackageCount?: number; // 用户可从范围中选择的内容包数量
 }
 
 export interface ContentPackageItem {

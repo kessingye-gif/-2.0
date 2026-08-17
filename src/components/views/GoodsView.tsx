@@ -97,6 +97,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     includedAiUsage: 200000,
     durationDays: 365,
     description: '',
+    selectableContentPackageIds: '',
+    selectableContentPackageCount: 1,
     status: 'active' as 'active' | 'inactive',
   });
 
@@ -123,6 +125,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       includedAiUsage: 200000,
       durationDays: 365,
       description: '',
+      selectableContentPackageIds: '',
+      selectableContentPackageCount: 1,
       status: 'active',
     });
     setIsPkgModalOpen(true);
@@ -138,6 +142,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       includedAiUsage: pkg.includedAiUsage,
       durationDays: pkg.durationDays || 365,
       description: pkg.description,
+      selectableContentPackageIds: (pkg.selectableContentPackageIds || []).join('、'),
+      selectableContentPackageCount: pkg.selectableContentPackageCount || 1,
       status: pkg.status,
     });
     setIsPkgModalOpen(true);
@@ -161,6 +167,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
+        selectableContentPackageIds: pkgForm.selectableContentPackageIds.split(/[、,，]/).map((item) => item.trim()).filter(Boolean),
+        selectableContentPackageCount: Number(pkgForm.selectableContentPackageCount),
         status: pkgForm.status,
       });
     } else {
@@ -173,6 +181,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
+        selectableContentPackageIds: pkgForm.selectableContentPackageIds.split(/[、,，]/).map((item) => item.trim()).filter(Boolean),
+        selectableContentPackageCount: Number(pkgForm.selectableContentPackageCount),
         status: pkgForm.status,
         subjectRequirement: pkgForm.type.startsWith('single') ? 'single' : 'all',
       });
@@ -809,17 +819,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">服务包类型</label>
-                  <select
-                    value={pkgForm.type}
-                    onChange={(e) => setPkgForm({ ...pkgForm, type: e.target.value as PackageType })}
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none cursor-pointer"
-                  >
-                    <option value="single_low">单科低量包</option>
-                    <option value="single_high">单科高量包</option>
-                    <option value="all_low">全科低量包</option>
-                    <option value="all_high">全科高量包</option>
-                  </select>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">可选内容包数量</label>
+                  <input type="number" min="1" required value={pkgForm.selectableContentPackageCount} onChange={(e) => setPkgForm({ ...pkgForm, selectableContentPackageCount: Number(e.target.value) })} className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono" />
                 </div>
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">消耗点数</label>
@@ -856,11 +857,13 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">说明描述</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">可选内容包范围</label>
                 <textarea
                   rows={2}
-                  value={pkgForm.description}
-                  onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })}
+                  required
+                  value={pkgForm.selectableContentPackageIds}
+                  onChange={(e) => setPkgForm({ ...pkgForm, selectableContentPackageIds: e.target.value })}
+                  placeholder="填写可选内容包名称，多个用、分隔"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
                 />
               </div>
