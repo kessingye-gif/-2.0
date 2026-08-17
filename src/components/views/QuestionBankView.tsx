@@ -2233,9 +2233,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <span className="material-symbols-outlined text-[#16B45B]">difference</span>
                   单表同行上传 ➔ 后台自动拆分存为两张关联表
                 </h3>
-                <p className="text-[12px] text-[#64748B] mt-0.5">
-                  填写提醒：多选答案用；分隔，选择题选项也用；分隔；填空题、解答题的选项填写 -；前置知识点没有时填写 -；没有图片留空。
-                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11.5px]">
+                  <span className="rounded-lg bg-[#E8F7EE] px-2.5 py-1 text-[#0E7D3E]"><b>多选答案</b> 用；分隔</span>
+                  <span className="rounded-lg bg-[#E8F7EE] px-2.5 py-1 text-[#0E7D3E]"><b>选择题选项</b> 用；分隔</span>
+                  <span className="rounded-lg bg-[#FFF7E6] px-2.5 py-1 text-[#9A5B00]"><b>填空/解答题</b> 选项填 -</span>
+                  <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#475569]"><b>前置知识点</b> 无则填 -</span>
+                  <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#475569]"><b>题干/选项图片</b> 无则留空</span>
+                </div>
               </div>
               <button
                 onClick={() => setIsBatchImportOpen(false)}

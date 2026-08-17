@@ -18,7 +18,7 @@ test('题库导入弹窗不向正式后台展示内部拆分原理', () => {
 
 test('题库导入在上传前明确提示分隔符和空值规则', () => {
   const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
-  assert.match(source, /多选答案用；分隔/);
-  assert.match(source, /填空题、解答题的选项填写 -/);
-  assert.match(source, /没有图片留空/);
+  assert.match(source, /多选答案<\/b> 用；分隔/);
+  assert.match(source, /填空\/解答题<\/b> 选项填 -/);
+  assert.match(source, /题干\/选项图片<\/b> 无则留空/);
 });
