@@ -1,14 +1,26 @@
+import * as XLSX from 'xlsx';
 import { importTemplates, type ImportTemplateKey } from '../config/importTemplates';
 
+export interface ImportTemplateSheet { name: string; rows: string[][]; }
+
+const questionExamples = [
+  ['初中','数学','初一','人教版','数与代数','一元一次方程','行程问题与追及方程','等式的性质','从追及问题中抽象数量关系并建立一元一次方程。','能够根据路程、速度和时间关系列出并求解追及方程。','先画线段图梳理数量关系，再组织学生对比相遇与追及问题。','单选题','提升','甲乙两车相距 180 千米，同向而行，甲车追上乙车需要几小时？','A. 9 小时；B. 4.5 小时；C. 3 小时；D. 6 小时','A. 9 小时','根据追及问题公式：(60-40)x=180，解得 x=9。','',''],
+  ['初中','数学','初二','人教版','数与代数','实数与二次根式','无理数的判定与识别','实数分类','理解无理数的定义与常见表现形式。','能够识别根式、圆周率和无限不循环小数中的无理数。','通过数轴和分类卡片活动区分有理数与无理数。','多选题','提升','下列各数中属于无理数的是（ ）','A. π；B. √2；C. 1/3；D. 0.101001...','A；B；D','π、√2 与无限不循环小数是无理数；1/3 是有理数。','',''],
+  ['初中','数学','初二','人教版','图形与几何','勾股定理','直角三角形求边长','平方根','掌握勾股定理并理解直角三角形三边关系。','能够在已知两边时正确求出第三边。','先用方格图验证勾股关系，再完成由图到式的迁移练习。','填空题','基础','直角三角形两直角边长分别为 3 和 4，则斜边长为 ___。','-','5','c=√(3²+4²)=5。填空题的“选项”填写 -。','',''],
+  ['初中','数学','初三','人教版','数与代数','一元二次方程','配方法与公式法解方程','完全平方公式','理解配方法的变形过程，并掌握一元二次方程求根公式。','能够根据题目特点选择配方法或公式法求解。','强调每一步等价变形，使用错例比较两种方法的适用条件。','解答题','压轴','用配方法解方程 x²-6x+5=0，并写出步骤。','-','x₁=1，x₂=5','移项、配方、开方、得到两个根。解答题的“选项”填写 -。','',''],
+  ['初中','物理','初二','人教版','力学基础','压强与浮力','-','-','节“压强与浮力”本身就是最小学习单元。','能够描述压强与浮力的基础概念。','结合实验观察与生活情境进行引导。','单选题','基础','下列关于压强的说法正确的是（ ）','A. 受力面积越大压强一定越大；B. 压力一定时受力面积越小压强越大','B','知识点填写 - 表示该节为最小单元；本期题目仍需绑定已有三级知识点后导入。','',''],
+];
+const fieldRules = [
+  ['学段','必填','如：初中、高中','不可为空'],['所属学科','必填','如：数学、物理','不可为空'],['适用年级','必填','如：初一、初二','不可为空'],['教材版本','必填','如：人教版','不可为空'],['章','必填','只填写名称，不填编码','不可为空'],['节','必填','只填写名称，不填编码','不可为空'],['知识点','必填','最小知识点名称','若节已是最小单元，填写 -'],['前置知识点','选填','多个用；分隔','没有前置知识点填写 -'],['核心学习内容','必填','写清核心概念、方法或能力','不可为空'],['教学目标','必填','写可观察、可评估的学习结果','不可为空'],['教学建议','必填','写教学活动、易错点或引导方式','不可为空'],['题型','必填','单选题、多选题、填空题、解答题等','不可为空'],['难度','必填','基础、提升、压轴','不可为空'],['题干','必填','完整题目内容','不可为空'],['选项','条件必填','选择题选项用；分隔','填空题、解答题填写 -'],['答案','必填','与题干、选项一致','不可为空'],['解析','必填','写出关键推理或分步解答','不可为空'],['题干图片','选填','填写图片压缩包内相对路径','没有图片留空'],['选项图片','选填','多个用、分隔','没有图片留空'],
+];
+export const buildImportTemplateSheets = (templateKey: ImportTemplateKey): ImportTemplateSheet[] => {
+  const template = importTemplates[templateKey];
+  const guide = templateKey === 'questions' ? fieldRules : fieldRules.slice(0, 11);
+  const examples = templateKey === 'questions' ? questionExamples : template.exampleRows;
+  return [{ name: '填写说明', rows: [['字段名称','是否必填','填写方式','为空时如何填写'], ...guide] }, { name: templateKey === 'questions' ? '题库导入' : '知识点导入', rows: [template.headers, ...examples] }];
+};
 export const downloadImportTemplate = (templateKey: ImportTemplateKey) => {
-  const { fileName, headers, exampleRows } = importTemplates[templateKey];
-  const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
-  const csv = [headers, ...exampleRows].map((row) => row.map(escape).join(',')).join('\r\n');
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${fileName}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  const workbook = XLSX.utils.book_new();
+  buildImportTemplateSheets(templateKey).forEach((sheet) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(sheet.rows), sheet.name));
+  XLSX.writeFile(workbook, `${importTemplates[templateKey].fileName}.xlsx`);
 };
