@@ -260,7 +260,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [importNotice, setImportNotice] = useState<string | null>(null);
 
   // Knowledge Point Batch Import state
-  const [kpImportTab, setKpImportTab] = useState<'upload' | 'preview'>('upload');
   const [kpImportNotice, setKpImportNotice] = useState<string | null>(null);
 
   // Question Form
@@ -2451,11 +2450,14 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <div>
                 <h3 className="text-[18px] font-bold text-[#0F172A] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#16B45B]">account_tree</span>
-                  批量导入章、节与知识点
+                  导入知识点
                 </h3>
-                <p className="text-[12px] text-[#64748B] mt-0.5">
-                  通过 Excel 表格按【学科 ➔ 章 ➔ 节 ➔ 知识点】标准结构批量建立目录
-                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11.5px]">
+                  <span className="rounded-lg bg-[#E8F7EE] px-2.5 py-1 text-[#0E7D3E]"><b>章、节</b> 必填</span>
+                  <span className="rounded-lg bg-[#E8F7EE] px-2.5 py-1 text-[#0E7D3E]"><b>知识点</b> 无则填 -</span>
+                  <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#475569]"><b>前置知识点</b> 无则填 -</span>
+                  <span className="rounded-lg bg-[#FFF7E6] px-2.5 py-1 text-[#A15C00]"><b>AI 补充字段</b> 需填写</span>
+                </div>
               </div>
               <button
                 onClick={() => setIsKpBatchModalOpen(false)}
@@ -2465,30 +2467,13 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </button>
             </div>
 
-            {/* Modal Tabs */}
             <div className="flex border-b border-[#E2E8F0] gap-6 mb-4">
               <button
-                onClick={() => setKpImportTab('upload')}
-                className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
-                  kpImportTab === 'upload'
-                    ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
-                }`}
+                type="button"
+                className="pb-2.5 text-[13px] font-bold flex items-center gap-1.5 text-[#16B45B] border-b-2 border-[#16B45B]"
               >
                 <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                上传 Excel 考点表格
-              </button>
-
-              <button
-                onClick={() => setKpImportTab('preview')}
-                className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
-                  kpImportTab === 'preview'
-                    ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
-                章、节、知识点表结构规范说明
+                上传 Excel 知识点
               </button>
             </div>
 
@@ -2500,16 +2485,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </div>
             )}
 
-            {kpImportTab === 'upload' ? (
-              <div className="space-y-5">
+            <div className="space-y-5">
                 {/* Upload Area */}
                 <div className="border-2 border-dashed border-[#16B45B]/40 hover:border-[#16B45B] bg-[#F8FAFC] rounded-2xl p-8 text-center transition-all cursor-pointer group">
                   <div className="w-14 h-14 bg-[#E8F7EE] rounded-2xl flex items-center justify-center mx-auto text-[#16B45B] mb-3 group-hover:scale-105 transition-transform">
                     <span className="material-symbols-outlined text-[32px]">folder_zip</span>
                   </div>
-                  <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识点结构表至此处</p>
+                  <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识点文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    规范包含：章、节、知识点及 AI 评测所需的核心学习内容、教学目标、教学建议。
+                    每一行填写学段、学科、年级、教材、章、节、知识点及 AI 补充字段。
                   </p>
 
                   <input
@@ -2527,55 +2511,11 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     htmlFor="kpBatchImportInput"
                     className="inline-block mt-4 px-5 py-2 bg-[#16B45B] text-white font-bold rounded-xl cursor-pointer hover:bg-[#139B4E] shadow-2xs text-[13px]"
                   >
-                    选择考点 Excel 表格文件
+                    选择 Excel 知识点文件
                   </label>
                   <button type="button" onClick={() => downloadImportTemplate('knowledgePoints')} className="ml-3 text-[12px] font-bold text-[#16B45B] hover:underline">下载 Excel 模板</button>
                 </div>
-
-                {/* Quick Test Import */}
-                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-xl flex items-center justify-between">
-                  <div>
-                    <h5 className="font-bold text-[#0F172A] text-[13.5px]">一键试用多学科知识点层级批量导入</h5>
-                    <p className="text-[12px] text-[#64748B] mt-0.5">
-                      模拟解析包含数学、物理、化学 3 组完整的“一级 ➔ 二级 ➔ 知识点”数据
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleExecuteKpBatchImport()}
-                    className="px-4 py-2 bg-[#F5B700] text-[#0F172A] text-[13px] font-bold rounded-xl hover:bg-[#E0A700] cursor-pointer shadow-2xs whitespace-nowrap"
-                  >
-                    🚀 一键测试考点树批量导入
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Specification View */
-              <div className="space-y-4 text-[12.5px]">
-                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-3 rounded-xl font-bold text-[#0F172A]">
-                  标准知识点层级表列名要求：
-                </div>
-                <div className="overflow-x-auto border border-[#E2E8F0] rounded-xl font-mono text-[11px] bg-white">
-                  <table className="w-full text-left divide-y divide-[#E2E8F0]">
-                    <thead className="bg-[#F1F5F9]">
-                      <tr>
-                        {knowledgePointImportFields.map((field) => <th key={field.key} className="p-2 border-r last:border-r-0">{field.label}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E2E8F0]">
-                      <tr>
-                        {['初中', '数学', '初一', '人教版', '数与代数', '二次方程', '因式分解求根', '整式乘法', '理解因式分解的基本方法', '能够选择合适方法分解因式', '通过多种分解方法对比练习巩固'].map((value, index) => <td key={index} className="p-2 border-r last:border-r-0">{value}</td>)}
-                      </tr>
-                      <tr>
-                        {['初中', '物理', '初二', '人教版', '力学基础', '压强与浮力', '液体内部压强', '压强概念', '理解液体内部压强与深度的关系', '能够运用 p=ρgh 解决基础问题', '结合实验观察压强随深度变化'].map((value, index) => <td key={index} className="p-2 border-r last:border-r-0">{value}</td>)}
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-[11.5px] text-[#64748B]">
-                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元。章、节必须填写；若节已是最小学习单元，知识点填写 <code>-</code>。
-                </p>
-              </div>
-            )}
+            </div>
 
             <div className="pt-4 mt-4 flex justify-end border-t border-[#E2E8F0]">
               <button

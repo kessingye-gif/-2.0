@@ -30,3 +30,13 @@ test('题库导入在上传前明确提示分隔符和空值规则', () => {
   assert.match(source, /填空\/解答题<\/b> 选项填 -/);
   assert.match(source, /题干\/选项图片<\/b> 无则留空/);
 });
+
+test('知识点导入保留填写提醒，隐藏内部试用和规范页', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /导入知识点/);
+  assert.match(source, /上传 Excel 知识点/);
+  assert.match(source, /知识点<\/b> 无则填 -/);
+  assert.match(source, /前置知识点<\/b> 无则填 -/);
+  assert.doesNotMatch(source, /章、节、知识点表结构规范说明/);
+  assert.doesNotMatch(source, /一键试用多学科知识点层级批量导入/);
+});
