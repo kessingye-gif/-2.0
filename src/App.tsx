@@ -119,7 +119,17 @@ export default function App() {
   },
     [institutions, authCodes, students, orders, auditLogs, resolvedWorkItemIds],
   );
-  const dashboardSnapshot = useMemo(() => derivePlatformDashboardSnapshot({ institutions, authCodes, students, orders, auditLogs }), [institutions, authCodes, students, orders, auditLogs]);
+  const dashboardSnapshot = useMemo(() => derivePlatformDashboardSnapshot({
+    institutions,
+    authCodes,
+    students,
+    orders,
+    auditLogs,
+    servicePackages: packages,
+    contentPackages: initialContentPackages,
+    knowledgePoints,
+    questions,
+  }), [institutions, authCodes, students, orders, auditLogs, packages, knowledgePoints, questions]);
   const visibleDashboardSnapshot = useMemo(() => {
     if (currentUser.role === 'institution_admin' && currentUser.institutionId) return deriveInstitutionDashboardSnapshot({ institutionId: currentUser.institutionId, institutions, teachers, students, auditLogs });
     if (currentUser.role === 'teacher' && currentUser.teacherId) return deriveTeacherDashboardSnapshot({ teacherId: currentUser.teacherId, teachers, students, auditLogs });

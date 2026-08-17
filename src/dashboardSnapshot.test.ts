@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { initialAuditLogs, initialAuthCodes, initialInstitutions, initialOrderLedger, initialStudents, initialTeachers } from './mockData';
+import { initialAuditLogs, initialAuthCodes, initialContentPackages, initialInstitutions, initialKnowledgePoints, initialOrderLedger, initialQuestions, initialServicePackages, initialStudents, initialTeachers } from './mockData';
 import { deriveInstitutionDashboardSnapshot, derivePlatformDashboardSnapshot, deriveTeacherDashboardSnapshot } from './dashboardSnapshot';
 
 const snapshot = derivePlatformDashboardSnapshot({
@@ -9,22 +9,27 @@ const snapshot = derivePlatformDashboardSnapshot({
   students: initialStudents,
   orders: initialOrderLedger,
   auditLogs: initialAuditLogs,
+  servicePackages: initialServicePackages,
+  contentPackages: initialContentPackages,
+  knowledgePoints: initialKnowledgePoints,
+  questions: initialQuestions,
 });
 
-test('运营总览指标由机构记录求和得到', () => {
-  const metrics = snapshot.sections.find((section) => section.id === 'institutions')!.metrics;
-  assert.equal(metrics.find((metric) => metric.id === 'remainingQuota')?.value, initialInstitutions.reduce((sum, item) => sum + item.remainingQuota, 0));
-  assert.equal(metrics.find((metric) => metric.id === 'activeInstitutions')?.value, initialInstitutions.filter((item) => item.status === 'active').length);
+test('平台首页优先展示服务产品、内容资产和用户使用', () => {
+  assert.deepEqual(snapshot.sections.map((section) => section.title), ['服务产品', '内容资产', '用户与使用']);
+  const ids = snapshot.sections.flatMap((section) => section.metrics.map((metric) => metric.id));
+  assert.ok(ids.includes('activeServicePackages'));
+  assert.ok(ids.includes('contentPackages'));
+  assert.ok(ids.includes('knowledgePoints'));
+  assert.equal(ids.includes('remainingQuota'), false);
 });
 
-test('低额度和激活指标从共享记录推导', () => {
-  const institutionMetrics = snapshot.sections.find((section) => section.id === 'institutions')!.metrics;
-  const studentMetrics = snapshot.sections.find((section) => section.id === 'students')!.metrics;
-  const expectedLow = initialInstitutions.filter((item) => item.status === 'active' && item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15).length;
-  assert.equal(institutionMetrics.find((metric) => metric.id === 'lowQuota')?.value, expectedLow);
-  assert.equal(institutionMetrics.find((metric) => metric.id === 'institutionStudents')?.value, initialStudents.length);
-  assert.equal(studentMetrics.find((metric) => metric.id === 'activeStudents')?.value, initialStudents.filter((item) => item.serviceStatus === 'active').length);
-  assert.equal(studentMetrics.find((metric) => metric.id === 'activated')?.value, initialAuthCodes.filter((item) => item.status === 'used').length);
+test('服务内容指标从共享产品和内容记录推导', () => {
+  const metrics = snapshot.sections.flatMap((section) => section.metrics);
+  assert.equal(metrics.find((metric) => metric.id === 'activeServicePackages')?.value, initialServicePackages.filter((item) => item.status === 'active').length);
+  assert.equal(metrics.find((metric) => metric.id === 'contentPackages')?.value, initialContentPackages.filter((item) => item.status === 'active').length);
+  assert.equal(metrics.find((metric) => metric.id === 'knowledgePoints')?.value, initialKnowledgePoints.filter((item) => item.status === 'active').length);
+  assert.equal(metrics.find((metric) => metric.id === 'questions')?.value, initialQuestions.filter((item) => item.status === 'active').length);
 });
 
 test('每个指标都说明来源、口径和下钻去向', () => {

@@ -1,4 +1,4 @@
-import type { AuditLogItem, AuthCode, Institution, OrderLedgerRecord, StudentItem, TeacherItem } from './types';
+import type { AuditLogItem, AuthCode, ContentPackageItem, Institution, KnowledgePointNode, OrderLedgerRecord, QuestionItem, ServicePackage, StudentItem, TeacherItem } from './types';
 
 export interface DashboardMetric {
   id: string;
@@ -13,7 +13,7 @@ export interface DashboardMetric {
 }
 
 export interface DashboardSection {
-  id: 'institutions' | 'students' | 'learning';
+  id: 'serviceProducts' | 'contentAssets' | 'userUsage' | 'institutions' | 'students' | 'learning';
   title: string;
   description: string;
   metrics: DashboardMetric[];
@@ -40,21 +40,26 @@ interface DashboardInput {
   students: StudentItem[];
   orders: OrderLedgerRecord[];
   auditLogs: AuditLogItem[];
+  servicePackages: ServicePackage[];
+  contentPackages: ContentPackageItem[];
+  knowledgePoints: KnowledgePointNode[];
+  questions: QuestionItem[];
 }
 
 const number = (value: number) => value.toLocaleString('zh-CN');
 
-export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, students, auditLogs }: DashboardInput): PlatformDashboardSnapshot => {
-  const remainingQuota = institutions.reduce((sum, item) => sum + item.remainingQuota, 0);
-  const activeInstitutions = institutions.filter((item) => item.status === 'active');
-  const lowQuota = activeInstitutions.filter((item) => item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15);
-  const unconfigured = institutions.filter((item) => (item.availableServicePackageIds?.length ?? 0) === 0);
+export const derivePlatformDashboardSnapshot = ({ authCodes, students, auditLogs, servicePackages, contentPackages, knowledgePoints, questions }: DashboardInput): PlatformDashboardSnapshot => {
+  const activeServicePackages = servicePackages.filter((item) => item.status === 'active');
+  const activeContentPackages = contentPackages.filter((item) => item.status === 'active');
+  const activeKnowledgePoints = knowledgePoints.filter((item) => item.status === 'active');
+  const activeQuestions = questions.filter((item) => item.status === 'active');
+  const incompleteServices = activeServicePackages.filter((item) => !(item.selectableContentPackageIds?.length) || !item.selectableContentPackageCount);
+  const incompleteContent = activeContentPackages.filter((item) => !(item.knowledgePointIds?.length));
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const pending = authCodes.filter((item) => item.status === 'pending').length;
-  const institutionStudents = students.length;
   const activeStudents = students.filter((item) => item.serviceStatus === 'active').length;
   const studyHours = students.reduce((sum, item) => sum + item.totalStudyHours, 0);
-  const questions = students.reduce((sum, item) => sum + item.totalQuestions, 0);
+  const answeredQuestions = students.reduce((sum, item) => sum + item.totalQuestions, 0);
 
   const metric = (value: number, fields: Omit<DashboardMetric, 'value' | 'displayValue'> & { suffix?: string }): DashboardMetric => ({
     ...fields,
@@ -66,31 +71,34 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
     updatedAt: auditLogs[0]?.timestamp ?? '暂无更新记录',
     sections: [
       {
-        id: 'institutions', title: '运营总览', description: '平台机构、额度与服务学生的实时汇总', metrics: [
-          metric(activeInstitutions.length, { id: 'activeInstitutions', label: '运行中机构数', sourceLabel: '机构档案', definition: '状态为正常的机构数量', targetPath: '/platform/institutions?status=active', icon: 'domain' }),
-          metric(remainingQuota, { id: 'remainingQuota', label: '平台剩余额度', sourceLabel: '机构额度账户', definition: '全部机构当前可用额度之和', targetPath: '/platform/institutions?view=quota', icon: 'layers' }),
-          metric(institutionStudents, { id: 'institutionStudents', label: '机构学生总数', sourceLabel: '学生档案', definition: '全平台机构学生档案去重数', targetPath: '/platform/students', icon: 'group' }),
-          metric(lowQuota.length, { id: 'lowQuota', label: '低额度预警机构', sourceLabel: '机构额度账户', definition: '运行中且剩余额度不超过总额度 15% 的机构', targetPath: '/platform/institutions?quota=low', tone: 'warning', icon: 'warning' }),
+        id: 'serviceProducts', title: '服务产品', description: '平台服务包及用户权益的配置与启用情况', metrics: [
+          metric(activeServicePackages.length, { id: 'activeServicePackages', label: '启用服务包', sourceLabel: '服务包', definition: '当前可用于新开通的服务包', targetPath: '/platform/goods?tab=packages', tone: 'positive', icon: 'layers' }),
+          metric(servicePackages.length, { id: 'servicePackages', label: '服务包总数', sourceLabel: '服务包', definition: '平台全部服务包数量', targetPath: '/platform/goods?tab=packages' }),
+          metric(activated, { id: 'activatedRights', label: '已生效用户权益', suffix: ' 项', sourceLabel: '用户权益', definition: '已经激活并可使用的用户权益', targetPath: '/platform/students?service=active', tone: 'positive', icon: 'group' }),
+          metric(incompleteServices.length, { id: 'incompleteServices', label: '待补充服务配置', sourceLabel: '服务包', definition: '未配置内容包范围或可选数量的启用服务包', targetPath: '/platform/goods?tab=packages', tone: 'warning', icon: 'warning' }),
         ],
       },
       {
-        id: 'students', title: '学生与开通', description: '全平台学生的开通和激活结果', metrics: [
-          metric(activeStudents, { id: 'activeStudents', label: '服务中学生', suffix: ' 人', sourceLabel: '学生服务档案', definition: '服务状态为正常的学生', targetPath: '/platform/students?service=active', tone: 'positive' }),
-          metric(activated, { id: 'activated', label: '已激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '状态为已激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=used', tone: 'positive' }),
-          metric(pending, { id: 'pending', label: '待激活', suffix: ' 人', sourceLabel: '学生权益记录', definition: '已创建但尚未激活的权益记录', targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' }),
+        id: 'contentAssets', title: '内容资产', description: '内容包、知识点与精选题库的发布规模和完整度', metrics: [
+          metric(activeContentPackages.length, { id: 'contentPackages', label: '启用内容包', sourceLabel: '内容包', definition: '当前可被服务包选择的内容包', targetPath: '/platform/content/packages', tone: 'positive', icon: 'layers' }),
+          metric(activeKnowledgePoints.length, { id: 'knowledgePoints', label: '启用知识点', sourceLabel: '知识点', definition: '当前已启用的知识点数量', targetPath: '/platform/content/resources/knowledge-points' }),
+          metric(activeQuestions.length, { id: 'questions', label: '启用精选题', sourceLabel: '精选题库', definition: '当前已启用的精选题目数量', targetPath: '/platform/content/resources/questions' }),
+          metric(incompleteContent.length, { id: 'incompleteContent', label: '待补充内容包', sourceLabel: '内容包', definition: '尚未选择知识点的启用内容包', targetPath: '/platform/content/packages', tone: 'warning', icon: 'warning' }),
         ],
       },
       {
-        id: 'learning', title: '学习与使用', description: '只展示学生档案中已有的学习累计数据', metrics: [
-          metric(studyHours, { id: 'studyHours', label: '累计学习时长', suffix: ' 小时', sourceLabel: '学生学习档案', definition: '学生累计学习时长之和', targetPath: '/platform/students?tab=diagnostics' }),
-          metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '学生学习档案', definition: '学生累计答题数之和', targetPath: '/platform/students?tab=diagnostics' }),
+        id: 'userUsage', title: '用户与使用', description: '用户服务状态、激活结果与小程序使用情况', metrics: [
+          metric(activeStudents, { id: 'activeUsers', label: '服务中用户', suffix: ' 人', sourceLabel: '用户服务', definition: '服务状态正常的用户', targetPath: '/platform/students?service=active', tone: 'positive', icon: 'group' }),
+          metric(pending, { id: 'pendingActivation', label: '待激活用户', suffix: ' 人', sourceLabel: '用户权益', definition: '已开通但尚未激活的用户权益', targetPath: '/platform/students?service=pending', tone: 'warning' }),
+          metric(studyHours, { id: 'studyHours', label: '累计使用时长', suffix: ' 小时', sourceLabel: '小程序使用记录', definition: '用户累计使用时长', targetPath: '/platform/students?tab=diagnostics' }),
+          metric(answeredQuestions, { id: 'answeredQuestions', label: '累计答题', suffix: ' 题', sourceLabel: '小程序使用记录', definition: '用户累计答题数量', targetPath: '/platform/students?tab=diagnostics' }),
         ],
       },
     ],
     workItems: [
-      ...(lowQuota.length ? [{ id: 'low-quota', title: '机构额度过低', description: '进入机构列表查看并追加额度', count: lowQuota.length, targetPath: '/platform/institutions?quota=low', tone: 'warning' as const }] : []),
-      ...(unconfigured.length ? [{ id: 'unconfigured', title: '机构未配置使用范围', description: '进入机构详情，分别配置内容包范围和服务包范围', count: unconfigured.length, targetPath: '/platform/institutions?scope=missing', tone: 'danger' as const }] : []),
-      ...(pending ? [{ id: 'pending-activation', title: '学生待激活', description: '查看对应机构、老师、学生和权益记录', count: pending, targetPath: '/platform/goods?tab=authCodes&status=pending', tone: 'warning' as const }] : []),
+      ...(incompleteServices.length ? [{ id: 'incomplete-services', title: '服务包配置待补充', description: '补充内容包范围与可选数量后再启用', count: incompleteServices.length, targetPath: '/platform/goods?tab=packages', tone: 'danger' as const }] : []),
+      ...(incompleteContent.length ? [{ id: 'incomplete-content', title: '内容包待补充', description: '为内容包选择知识点与精选题库', count: incompleteContent.length, targetPath: '/platform/content/packages', tone: 'danger' as const }] : []),
+      ...(pending ? [{ id: 'pending-activation', title: '用户待激活', description: '查看用户服务与权益记录', count: pending, targetPath: '/platform/students?service=pending', tone: 'warning' as const }] : []),
     ],
   };
 };
