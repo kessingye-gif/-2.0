@@ -2234,7 +2234,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   单表同行上传 ➔ 后台自动拆分存为两张关联表
                 </h3>
                 <p className="text-[12px] text-[#64748B] mt-0.5">
-                  上传者在 Excel 中只需维护一行数据（知识点+试题同行），后台存储时自动解耦为【知识点表】与【精选题库表】
+                  填写提醒：多选答案用；分隔，选择题选项也用；分隔；填空题、解答题的选项填写 -；前置知识点没有时填写 -；没有图片留空。
                 </p>
               </div>
               <button

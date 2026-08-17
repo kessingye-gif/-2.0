@@ -15,3 +15,10 @@ test('题库导入弹窗不向正式后台展示内部拆分原理', () => {
   assert.doesNotMatch(source, /1行数据拆分为双表原理展示/);
   assert.doesNotMatch(source, /后台存储自动拆分为两张关联表/);
 });
+
+test('题库导入在上传前明确提示分隔符和空值规则', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /多选答案用；分隔/);
+  assert.match(source, /填空题、解答题的选项填写 -/);
+  assert.match(source, /没有图片留空/);
+});
