@@ -56,6 +56,7 @@ import { allocateTeacherCredits, debitTeacherForService, reclaimTeacherCredits }
 import type { Role } from './permissions/accessControl';
 import { scopeInstitutions, scopeStudents, scopeTeachers } from './permissions/dataScope';
 import { createInstitutionCreditEntry } from './domain/institutionResources';
+import type { AccountCredential } from './domain/accountCredentials';
 
 export default function App() {
   const location = useLocation();
@@ -77,6 +78,9 @@ export default function App() {
   // State Stores
   const [stats, setStats] = useState(initialPlatformStats);
   const [institutions, setInstitutions] = useState<Institution[]>(initialInstitutions);
+  const [adminAccounts] = useState<AccountCredential[]>([
+    { id: 'SUPER-ADMIN-01', username: 'admin@kaiqiao.com', password: 'Admin@2026!x', phone: '', status: 'active' },
+  ]);
   const [packages, setPackages] = useState<ServicePackage[]>(initialServicePackages);
   const [cooperationPlans, setCooperationPlans] = useState<CooperationPlan[]>(initialCooperationPlans);
   const [authCodes, setAuthCodes] = useState<AuthCode[]>(initialAuthCodes);
@@ -404,7 +408,7 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    return <LoginView institutions={institutions} onLogin={handleLogin} />;
+    return <LoginView institutions={institutions} adminAccounts={adminAccounts} onLogin={handleLogin} />;
   }
 
   if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;

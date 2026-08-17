@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Institution, CurrentUser } from '../../types';
+import { AccountCredential, authenticateAccount } from '../../domain/accountCredentials';
 
 interface LoginViewProps {
   institutions: Institution[];
+  adminAccounts: AccountCredential[];
   onLogin: (user: CurrentUser) => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ institutions, onLogin }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ institutions, adminAccounts, onLogin }) => {
   const [username, setUsername] = useState('admin@kaiqiao.com');
-  const [password, setPassword] = useState('123456');
+  const [password, setPassword] = useState('Admin@2026!x');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,33 +31,42 @@ export const LoginView: React.FC<LoginViewProps> = ({ institutions, onLogin }) =
 
       const trimmedUser = username.trim();
 
-      // Check if matches an institution admin account
-      const matchedInst = institutions.find(
-        (i) =>
-          i.adminAccount.toLowerCase() === trimmedUser.toLowerCase() ||
-          (i.adminAccount && trimmedUser.toLowerCase().includes(i.code.toLowerCase()))
-      );
+      const loginAccounts = [
+        ...adminAccounts.map((account) => ({
+          ...account,
+          user: {
+            id: account.id,
+            name: account.username === 'admin@kaiqiao.com' ? '超级管理员' : account.username,
+            username: account.username,
+            role: 'super_admin' as const,
+            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwlJFf3rqYCHQdGUbnzIm6htn5M-2U5UiKb459aOQBJZvMuZadgZxKxWGD5YbBBg6370sr5V74N-b2qzfAeSrnCP22zzyr2NEz3RrTPirjEeoWwklqs6s4SkmZPOvC-cY_mtwVSC5EEC7qACcVVDAKRIBJDJIgARRv_ri26MDjLr-j3vbdqOd3kx0JaWD-qvv-sec8CoFp4G4E--g3DlodqLGt-PcEwzv9dbFgGrFVC-mMipoUSUs17A',
+          },
+        })),
+        ...institutions.map((institution) => ({
+          id: `INST-USER-${institution.id}`,
+          username: institution.adminAccount,
+          password: institution.adminPassword || '',
+          phone: institution.phone,
+          status: institution.status,
+          user: {
+            id: `INST-USER-${institution.id}`,
+            name: `${institution.contactPerson} (${institution.name})`,
+            username: institution.adminAccount,
+            role: 'institution_admin' as const,
+            institutionId: institution.id,
+            institutionName: institution.name,
+            avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCqF43kaxcc8_tFNcaYZUIKb_f3cZldDs5DlPffbW65W6Vv9hQwKyfYKwR-67wWTW77xfEJ3qgt41UNSheunoAWYSSfOqUT-dtyfZ7rhUVNrypClVDfaKjROfDFvDlzTtmsGG1yMRbdH_a5LtikWHMNDxFKu6KVjfGm9Y8ljuDI5iSajkGrb_2OoSarrwvIDtwj4j9lZR4pJwJyk-QjVOhrYr1HwsDCmhXnwrxYcBEQIkN5orT-rIfAw',
+          },
+        })),
+      ];
+      const matchedAccount = authenticateAccount(loginAccounts, trimmedUser, password);
 
-      if (matchedInst) {
-        onLogin({
-          id: `INST-USER-${matchedInst.id}`,
-          name: `${matchedInst.contactPerson} (${matchedInst.name})`,
-          username: trimmedUser,
-          role: 'institution_admin',
-          institutionId: matchedInst.id,
-          institutionName: matchedInst.name,
-          avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCqF43kaxcc8_tFNcaYZUIKb_f3cZldDs5DlPffbW65W6Vv9hQwKyfYKwR-67wWTW77xfEJ3qgt41UNSheunoAWYSSfOqUT-dtyfZ7rhUVNrypClVDfaKjROfDFvDlzTtmsGG1yMRbdH_a5LtikWHMNDxFKu6KVjfGm9Y8ljuDI5iSajkGrb_2OoSarrwvIDtwj4j9lZR4pJwJyk-QjVOhrYr1HwsDCmhXnwrxYcBEQIkN5orT-rIfAw',
-        });
-      } else {
-        // Super admin mode default
-        onLogin({
-          id: 'SUPER-ADMIN-01',
-          name: '超级管理员',
-          username: trimmedUser,
-          role: 'super_admin',
-          avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwlJFf3rqYCHQdGUbnzIm6htn5M-2U5UiKb459aOQBJZvMuZadgZxKxWGD5YbBBg6370sr5V74N-b2qzfAeSrnCP22zzyr2NEz3RrTPirjEeoWwklqs6s4SkmZPOvC-cY_mtwVSC5EEC7qACcVVDAKRIBJDJIgARRv_ri26MDjLr-j3vbdqOd3kx0JaWD-qvv-sec8CoFp4G4E--g3DlodqLGt-PcEwzv9dbFgGrFVC-mMipoUSUs17A',
-        });
+      if (!matchedAccount) {
+        setErrorMsg('账号或密码错误，或账号已停用');
+        return;
       }
+
+      onLogin(matchedAccount.user);
     }, 400);
   };
 
@@ -216,7 +227,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ institutions, onLogin }) =
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="请输入手机号 / 账号"
+                  placeholder="请输入登录账号"
                   className="w-full border border-[#E2E8F0] rounded-xl px-4 py-3 text-[13.5px] text-[#0F172A] placeholder-[#94A3B8] bg-[#F8FAFC] focus:bg-white outline-none focus:border-[#16B45B] focus:ring-2 focus:ring-[#16B45B]/15 transition-all"
                 />
               </div>
@@ -250,6 +261,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ institutions, onLogin }) =
                   忘记密码
                 </span>
               </div>
+              <p className="text-[11px] text-[#94A3B8]">账号密码为必备登录方式；绑定手机号后可用于验证码登录、找回密码和安全验证。</p>
 
               <button
                 type="submit"
@@ -303,4 +315,3 @@ export const LoginView: React.FC<LoginViewProps> = ({ institutions, onLogin }) =
     </div>
   );
 };
-
