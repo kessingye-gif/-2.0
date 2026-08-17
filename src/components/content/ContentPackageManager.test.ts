@@ -77,3 +77,27 @@ test('内容包工作区与知识点页使用相同操作名称', () => {
   assert.match(markup, /新增章 \/ 节 \/ 知识点/);
   assert.doesNotMatch(markup, /新建知识点/);
 });
+
+test('内容包知识点详情显示统一层级与 AI 补充字段', () => {
+  const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
+    createElement(ContentPackageWorkspace, {
+      pkg: { id: 'CP-01', code: 'CP-MATH', name: '数学包', subjectId: 'SUB-01', status: 'active', kpCount: 1, questionCount: 1, institutionCount: 1, updatedAt: '2026-08-14', description: '', knowledgePointIds: ['KP-L3-01'] },
+      subject: subjects[0],
+      knowledgePoints: [
+        { id: 'KP-L1-01', code: 'M1', name: '数与代数', level: 1, subject: '数学', grade: '初一', textbook: '人教版', questionCount: 0, status: 'active' },
+        { id: 'KP-L2-01', code: 'M2', name: '一元一次方程', level: 2, subject: '数学', grade: '初一', textbook: '人教版', parentId: 'KP-L1-01', questionCount: 0, status: 'active' },
+        { id: 'KP-L3-01', code: 'M3', name: '方程应用', level: 3, subject: '数学', grade: '初一', textbook: '人教版', parentId: 'KP-L2-01', questionCount: 1, status: 'active', coreContent: '从实际问题中建立方程', learningObjective: '能够解决方程应用题', teachingSuggestion: '结合生活情境教学' },
+      ],
+      onBack: () => undefined,
+      onNewPackage: () => undefined,
+      onOpenResource: () => undefined,
+      onViewQuestions: () => undefined,
+      onBatchImportKnowledgePoints: () => undefined,
+      onAddKnowledgePoint: () => undefined,
+      canCreatePackage: true,
+      showNewPackageAction: true,
+    })
+  ));
+  ['章', '节', '知识点'].forEach((label) => assert.match(markup, new RegExp(`<dt[^>]*>${label}</dt>`)));
+  ['核心学习内容', '教学目标', '教学建议'].forEach((label) => assert.match(markup, new RegExp(`<p[^>]*>${label}</p>`)));
+});

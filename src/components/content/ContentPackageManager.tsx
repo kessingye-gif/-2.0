@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import type { KnowledgeTypeMaster } from '../../masterData/types';
 import type { KnowledgePointNode } from '../../types';
+import { knowledgePointAiFields, knowledgePointBaseFields } from '../../domain/contentFields';
 
 export interface ContentSubjectSummary {
   id: string;
@@ -107,6 +108,14 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, pkg.knowledgePointIds);
   const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0]?.id ?? '');
   const activePoint = workspaceKnowledgePoints.find((item) => item.id === activePointId) ?? workspaceKnowledgePoints[0];
+  const activePointNode = knowledgePoints.find((point) => point.id === activePoint?.id);
+  const sectionNode = activePointNode?.parentId ? knowledgePoints.find((point) => point.id === activePointNode.parentId) : undefined;
+  const chapterNode = sectionNode?.parentId ? knowledgePoints.find((point) => point.id === sectionNode.parentId) : undefined;
+  const levelValues: Record<string, string> = {
+    chapter: chapterNode?.name ?? '-',
+    section: sectionNode?.name ?? '-',
+    knowledgePoint: activePoint?.name ?? '-',
+  };
 
   return <div className="space-y-4">
     <div className="flex justify-end">
@@ -157,13 +166,13 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
         <div className="flex items-center justify-between border-b border-[#DCE5E1] px-4 py-3"><strong className="text-[14px]">知识点详情</strong><button type="button" className="rounded-lg border border-[#DCE5E1] px-3 py-1.5 text-[12px] font-bold">编辑</button></div>
         {activePoint ? <div className="space-y-4 p-4 text-[12px] leading-5 text-[#0F172A]">
           <div><h3 className="text-[17px] font-bold">{activePoint.name}</h3><span className="mt-2 inline-block rounded-full bg-[#E3F5EC] px-2.5 py-1 text-[10px] font-medium text-[#0E7D3E]">平台内容 · 已发布</span></div>
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-3"><div><dt className="text-[#64748B]">知识点 ID</dt><dd className="mt-1 font-mono">{activePoint.id}</dd></div><div><dt className="text-[#64748B]">学科 / 学段</dt><dd className="mt-1">{subject?.name ?? '数学'} / {subject?.stage ?? '初中'}</dd></div><div><dt className="text-[#64748B]">适用年级</dt><dd className="mt-1">初一</dd></div><div><dt className="text-[#64748B]">适用地区</dt><dd className="mt-1">全国</dd></div></dl>
-          <div><p className="text-[#64748B]">大纲层级路径</p><p className="mt-1 font-medium">数与代数 / 方程与不等式 / 一元一次方程</p></div>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-3"><div><dt className="text-[#64748B]">知识点 ID</dt><dd className="mt-1 font-mono">{activePoint.id}</dd></div><div><dt className="text-[#64748B]">学科 / 学段</dt><dd className="mt-1">{subject?.name ?? '数学'} / {subject?.stage ?? '初中'}</dd></div><div><dt className="text-[#64748B]">适用年级</dt><dd className="mt-1">{activePoint.grade}</dd></div><div><dt className="text-[#64748B]">教材版本</dt><dd className="mt-1">{activePoint.textbook}</dd></div>{knowledgePointBaseFields.slice(-3).map((field) => <div key={field.key}><dt className="text-[#64748B]">{field.label}</dt><dd className="mt-1">{levelValues[field.key]}</dd></div>)}</dl>
           <div><p className="text-[#64748B]">前置知识点</p><div className="mt-1 flex flex-wrap gap-1.5">{activePoint.prerequisites.length ? activePoint.prerequisites.map((name) => <button key={name} type="button" onClick={() => { const point = workspaceKnowledgePoints.find((item) => item.name === name); if (point) setActivePointId(point.id); }} className="rounded-lg bg-[#E7F3EE] px-2 py-1 text-[11px] font-medium text-[#0F755A] hover:bg-[#D8EDE3]">{name}</button>) : <span className="text-[#64748B]">无</span>}</div></div>
           <div><p className="text-[#64748B]">知识类型</p><p className="mt-1 font-medium">{resolveKnowledgeTypeName(masterDataState.knowledgeTypes, activePoint.knowledgeTypeId)}</p></div>
-          <div><p className="text-[#64748B]">核心学习内容</p><p className="mt-1">{activePoint.content}</p></div>
-          <div><p className="text-[#64748B]">教学目标</p><p className="mt-1">{activePoint.goal}</p></div>
-          <div><p className="text-[#64748B]">教学建议</p><p className="mt-1">{activePoint.suggestion}</p></div>
+          {knowledgePointAiFields.slice(1).map((field) => {
+            const value = field.key === 'coreContent' ? activePoint.content : field.key === 'learningObjective' ? activePoint.goal : activePoint.suggestion;
+            return <div key={field.key}><p className="text-[#64748B]">{field.label}</p><p className="mt-1">{value}</p></div>;
+          })}
         </div> : <div className="p-8 text-center text-[12px] text-[#94A3B8]">当前内容包暂无可维护知识点</div>}
       </aside>
     </section>
