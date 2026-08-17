@@ -256,7 +256,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null);
 
   // Batch import preview mode inside modal
-  const [importTab, setImportTab] = useState<'upload' | 'preview'>('upload');
+  const [importTab] = useState<'upload'>('upload');
   const [importNotice, setImportNotice] = useState<string | null>(null);
 
   // Knowledge Point Batch Import state
@@ -2248,7 +2248,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             {/* Modal Tabs */}
             <div className="flex border-b border-[#E2E8F0] gap-6 mb-4">
               <button
-                onClick={() => setImportTab('upload')}
                 className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
                   importTab === 'upload'
                     ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
@@ -2259,17 +2258,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 选择 Excel 单表或一键测试
               </button>
 
-              <button
-                onClick={() => setImportTab('preview')}
-                className={`pb-2.5 text-[13px] font-bold flex items-center gap-1.5 cursor-pointer ${
-                  importTab === 'preview'
-                    ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">schema</span>
-                1行数据拆分为双表原理展示
-              </button>
             </div>
 
             {/* Notification alert */}
@@ -2404,7 +2392,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                 <div className="flex justify-center my-1 text-[#16B45B] font-bold flex-col items-center">
                   <span className="material-symbols-outlined text-[24px]">south</span>
-                  <span className="text-[11px]">后台存储自动拆分为两张关联表</span>
+                  <span className="text-[11px]">导入处理说明</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
