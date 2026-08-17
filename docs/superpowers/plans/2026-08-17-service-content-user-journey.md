@@ -4,7 +4,7 @@
 
 **Goal:** 将平台总部后台重构为“服务产品 → 内容资产 → 用户与使用 → 支撑设置”，同时保留机构管理员、教师和旧路由兼容。
 
-**Architecture:** 保留现有路由和页面组件，只针对超级管理员生成新的一级导航分组；教师和班级页面继续存在，但不再占据总部一级导航。平台首页使用服务包、内容包、知识点、题库与用户服务数据生成新的内容运营快照。
+**Architecture:** 保留现有路由和页面组件，只针对超级管理员生成新的一级导航分组；教师和班级页面继续存在，但能力收口到“用户与使用”的组织分组入口。服务开通统一由用户所属机构账户扣点，教师和班级只承担归属、筛选和批量选人职责。
 
 **Tech Stack:** React、TypeScript、React Router、node:test。
 
@@ -13,6 +13,8 @@
 - 不删除教师、班级、学生、机构数据或旧路由。
 - 教师和班级仅作为用户归属、筛选与批量操作工具。
 - 点数只在服务包规则、服务开通/续费和流水中出现。
+- 新的单个和批量服务开通必须直接扣减用户所属机构统一账户，不得扣减教师点数。
+- 用户导入时账号、密码和所属机构必填，教师与班级归属可选。
 - 机构管理员和教师端现有权限与默认首页保持可用。
 
 ---
@@ -113,7 +115,7 @@ git add src/dashboardSnapshot.ts src/dashboardSnapshot.test.ts src/App.tsx
 git commit -m "feat: make dashboard content and service focused"
 ```
 
-### Task 3: 将学生入口升级为用户与使用
+### Task 3: 将学生入口升级为用户与使用并收口导入入口
 
 **Files:**
 - Modify: `src/components/views/StudentView.tsx`
@@ -123,14 +125,16 @@ git commit -m "feat: make dashboard content and service focused"
 **Interfaces:**
 - `/platform/students` 保持旧路径，但页面对总部角色显示“用户与使用”语义。
 - 教师和班级继续作为筛选项，不拥有独立服务或点数主流程。
+- 总部页面提供“用户服务、组织分组、批量开通”三个页签。
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 test('总部用户页面以服务和使用为主，教师班级只作为归属条件', () => {
   assert.match(source, /用户与使用/);
-  assert.match(source, /服务包/);
-  assert.match(source, /教师归属|负责教师/);
+  assert.match(source, /用户服务/);
+  assert.match(source, /组织分组/);
+  assert.match(source, /批量开通/);
 });
 ```
 
@@ -142,7 +146,7 @@ Expected: FAIL because the page currently presents itself as student management.
 
 - [ ] **Step 3: Implement the page hierarchy**
 
-For super administrators, lead with user service status, current service package, selected content, expiry and usage. Keep institution, teacher, grade and class as filters or secondary metadata. Keep teacher-facing copy and permissions unchanged.
+For super administrators, lead with user service status, current service package, selected content, expiry and usage. Add auxiliary entries for teacher/class maintenance and user import, plus a batch activation workspace. Keep institution, teacher, grade and class as filters or secondary metadata. Keep teacher-facing copy and permissions unchanged.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -157,7 +161,51 @@ git add src/components/views/StudentView.tsx src/components/views/StudentView.te
 git commit -m "feat: focus user page on service usage"
 ```
 
-### Task 4: 验证旧路由、权限与整体构建
+### Task 4: 将服务开通改为所属机构统一账户扣点
+
+**Files:**
+- Modify: `src/domain/serviceFulfillment.ts`
+- Modify: `src/domain/serviceFulfillment.test.ts`
+- Modify: `src/App.tsx`
+- Modify: `src/components/fulfillment/ServiceFulfillmentPanel.tsx`
+
+**Interfaces:**
+- `fulfillStudentServices` 按学生的 `institutionId` 扣减机构 `remainingQuota`。
+- 返回结果包含成功用户、失败用户、各机构扣点汇总与更新后的机构账户。
+- 教师点数余额不再是新开通的输入或校验条件。
+
+- [ ] **Step 1: Write the failing domain tests**
+
+覆盖：单用户从所属机构扣点、同机构批量合并扣点、跨机构分别结算、单机构余额不足时该机构整组失败、重复业务键不重复扣点。
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `npm test -- src/domain/serviceFulfillment.test.ts`
+
+Expected: FAIL because fulfillment currently depends on teacher credit balances.
+
+- [ ] **Step 3: Implement institution-account settlement**
+
+Group selected users by `institutionId`, calculate `servicePackage.pointCost * userCount`, validate each institution balance, then atomically produce updated institution balances, service rights and institution ledger entries per successful institution. Preserve failure results for insufficient or missing institutions and reject duplicate idempotency keys.
+
+- [ ] **Step 4: Rewire the activation UI and App handler**
+
+Remove teacher-balance selection and messaging from the new activation path. Show user count, institution name, service package, selected content packages, per-institution point deduction, and remaining institution balance before confirmation. Keep historical teacher-credit pages readable but do not call them from new fulfillment.
+
+- [ ] **Step 5: Run focused tests**
+
+Run: `npm test -- src/domain/serviceFulfillment.test.ts src/components/views/StudentView.test.ts`
+
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/domain/serviceFulfillment.ts src/domain/serviceFulfillment.test.ts src/App.tsx src/components/fulfillment/ServiceFulfillmentPanel.tsx
+git commit -m "feat: settle service activation from institution account"
+```
+
+### Task 5: 验证旧路由、权限与整体构建
 
 **Files:**
 - Modify: `src/navigation.test.ts`
