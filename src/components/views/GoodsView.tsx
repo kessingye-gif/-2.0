@@ -1,19 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
   ServicePackage,
-  AiUsagePack,
   AuthCode,
   OrderLedgerRecord,
   Institution,
   PackageType,
 } from '../../types';
-import { initialStudentAddOnOrders } from '../goods/StudentAddOnOrdersPanel';
-import {
-  getRefundEligibility,
-  refundStudentAddOnOrder,
-  type RefundAuditEvent,
-  type StudentAddOnOrder,
-} from '../../domain/studentAddOnOrder';
 
 interface GoodsViewProps {
   mode: 'catalog' | 'fulfillment' | 'finance';
@@ -24,22 +16,15 @@ interface GoodsViewProps {
   onUpdatePackage: (id: string, updates: Partial<ServicePackage>) => void;
   onRevokeAuthCode: (codeId: string) => void;
   onCreateCreditEntry: (input: { institutionId: string; paymentAmount: number; creditAmount: number; voucherNo: string; notes: string }) => OrderLedgerRecord;
-  onAudit: (event: RefundAuditEvent) => void;
   onNotify: (message: string, tone?: 'success' | 'warning' | 'error') => void;
   creditInstitutionId?: string;
-  initialCatalogTab?: 'packages' | 'aiUsagePacks';
+  initialCatalogTab?: 'packages';
 }
-
-const initialAiUsagePacks: AiUsagePack[] = [
-  { id: 'AUP-01', code: 'AUP-1M', name: '100万 AI 用量超值加油包', usageAmount: 1000000, price: 500, status: 'active', description: '适用于重度 AI 问答与大篇幅诊断报告生成', createdAt: '2026-06-01' },
-  { id: 'AUP-02', code: 'AUP-5M', name: '500万 AI 用量机构专属包', usageAmount: 5000000, price: 2200, status: 'active', description: '适合中大型机构全学期 AI 高频使用', createdAt: '2026-06-15' },
-  { id: 'AUP-03', code: 'AUP-10M', name: '1000万 AI 用量旗舰包', usageAmount: 10000000, price: 4000, status: 'active', description: '旗舰级 AI 用量，无时间限制直至消耗完毕', createdAt: '2026-07-01' },
-];
 
 const initialLedgers: OrderLedgerRecord[] = [
   { id: 'ORD-1001', orderNo: 'ORD-20260728-001', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'credit_inflow', typeName: '机构点数入账', paymentAmount: 50000, creditChange: 50000, status: 'completed', operatorName: '超级管理员', timestamp: '2026-07-28 11:20', reason: '线下对公充值' },
   { id: 'ORD-1002', orderNo: 'ORD-20260729-014', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', type: 'package_redeem', typeName: '授权码服务包兑换', paymentAmount: 0, creditChange: -350, status: 'completed', operatorName: '王教师', timestamp: '2026-07-29 09:15', reason: '兑换高三全科冲刺包' },
-  { id: 'ORD-1003', orderNo: 'ORD-20260730-008', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', type: 'ai_usage_pack_buy', typeName: 'AI 加油包购买', paymentAmount: 500, creditChange: -500, status: 'completed', operatorName: '张管理员', timestamp: '2026-07-30 16:40', reason: '购买100万 AI 用量加油包' },
+  { id: 'ORD-1003', orderNo: 'ORD-20260730-008', institutionId: 'INS-2023045', institutionName: '上海青葱教育培训中心', type: 'ai_usage_pack_buy', typeName: '购买', paymentAmount: 500, creditChange: -500, status: 'completed', operatorName: '张管理员', timestamp: '2026-07-30 16:40', reason: '购买100万 AI 用量加油包' },
   { id: 'ORD-1004', orderNo: 'ORD-20260731-002', institutionId: 'INS-2022091', institutionName: '博雅语言学院', type: 'reversal', typeName: '点数误冲正冲销', paymentAmount: 0, creditChange: -2000, status: 'reversed', operatorName: '超级管理员', timestamp: '2026-07-31 18:00', originalOrderNo: 'ORD-20260720-005', reason: '充值金额核算纠错冲正' },
 ];
 
@@ -54,26 +39,13 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   onUpdatePackage,
   onRevokeAuthCode,
   onCreateCreditEntry,
-  onAudit,
   onNotify,
   creditInstitutionId,
   initialCatalogTab,
 }) => {
-  const [activeTab, setActiveTab] = useState<'packages' | 'aiUsagePacks' | 'authCodes' | 'ledger'>(
+  const [activeTab, setActiveTab] = useState<'packages' | 'authCodes' | 'ledger'>(
     creditInstitutionId ? 'ledger' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'ledger',
   );
-
-  // AI usage packs state
-  const [aiUsagePacks, setAiUsagePacks] = useState<AiUsagePack[]>(initialAiUsagePacks);
-  const [isAiUsageModalOpen, setIsAiUsageModalOpen] = useState(false);
-  const [editingAiUsagePack, setEditingAiUsagePack] = useState<AiUsagePack | null>(null);
-  const [aiUsageForm, setAiUsageForm] = useState({
-    name: '',
-    code: '',
-    usageAmount: 1000000,
-    price: 500,
-    description: '',
-  });
 
   // Credit Entry State
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(Boolean(creditInstitutionId));
@@ -110,9 +82,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   const [ledgers, setLedgers] = useState<OrderLedgerRecord[]>(initialLedgers);
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState('');
-  const [studentOrders, setStudentOrders] = useState<StudentAddOnOrder[]>(initialStudentAddOnOrders);
-  const [selectedStudentOrder, setSelectedStudentOrder] = useState<StudentAddOnOrder | null>(null);
-  const [refundReason, setRefundReason] = useState('');
 
   // Handlers
   const handleOpenAddPkg = () => {
@@ -190,65 +159,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     setIsPkgModalOpen(false);
   };
 
-  const handleOpenAddAiUsagePack = () => {
-    setEditingAiUsagePack(null);
-    setAiUsageForm({
-      name: '',
-      code: `AUP-${Date.now().toString().slice(-4)}`,
-      usageAmount: 1000000,
-      price: 500,
-      description: '',
-    });
-    setIsAiUsageModalOpen(true);
-  };
-
-  const handleOpenEditAiUsagePack = (pack: AiUsagePack) => {
-    setEditingAiUsagePack(pack);
-    setAiUsageForm({
-      name: pack.name,
-      code: pack.code,
-      usageAmount: pack.usageAmount,
-      price: pack.price,
-      description: pack.description,
-    });
-    setIsAiUsageModalOpen(true);
-  };
-
-  const handleSaveAiUsagePack = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingAiUsagePack) {
-      setAiUsagePacks((prev) => prev.map((pack) => pack.id === editingAiUsagePack.id ? {
-        ...pack,
-        name: aiUsageForm.name,
-        usageAmount: Number(aiUsageForm.usageAmount),
-        price: Number(aiUsageForm.price),
-        description: aiUsageForm.description,
-      } : pack));
-      onNotify('AI 加油包已更新', 'success');
-      setIsAiUsageModalOpen(false);
-      return;
-    }
-    const newPack: AiUsagePack = {
-      id: `AUP-${Date.now().toString().slice(-4)}`,
-      code: aiUsageForm.code || `AUP-${Date.now().toString().slice(-4)}`,
-      name: aiUsageForm.name,
-      usageAmount: Number(aiUsageForm.usageAmount),
-      price: Number(aiUsageForm.price),
-      description: aiUsageForm.description,
-      status: 'active',
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setAiUsagePacks((prev) => [newPack, ...prev]);
-    onNotify('AI 加油包已创建并上架', 'success');
-    setIsAiUsageModalOpen(false);
-  };
-
-  const handleToggleAiUsagePack = (pack: AiUsagePack) => {
-    const nextStatus = pack.status === 'active' ? 'inactive' : 'active';
-    setAiUsagePacks((prev) => prev.map((item) => item.id === pack.id ? { ...item, status: nextStatus } : item));
-    onNotify(nextStatus === 'active' ? 'AI 加油包已重新上架' : 'AI 加油包已下架，历史订单不受影响', nextStatus === 'active' ? 'success' : 'warning');
-  };
-
   const handleToggleServicePackage = (pkg: ServicePackage) => {
     const nextStatus = pkg.status === 'active' ? 'inactive' : 'active';
     onUpdatePackage(pkg.id, { status: nextStatus });
@@ -291,33 +201,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     });
   }, [ledgers, ledgerSearch, ledgerTypeFilter]);
 
-  const filteredStudentOrders = useMemo(() => {
-    const keyword = ledgerSearch.trim().toLowerCase();
-    if (ledgerTypeFilter && ledgerTypeFilter !== 'student_add_on') return [];
-    if (!keyword) return studentOrders;
-    return studentOrders.filter((order) => [order.id, order.student, order.institution].some((value) => value.toLowerCase().includes(keyword)));
-  }, [studentOrders, ledgerSearch, ledgerTypeFilter]);
-
-  const handleStudentOrderRefund = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedStudentOrder || !refundReason.trim()) return;
-    const now = new Date().toLocaleString('zh-CN', { hour12: false }).replaceAll('/', '-');
-    try {
-      const result = refundStudentAddOnOrder(selectedStudentOrder, refundReason.trim(), now);
-      setStudentOrders((current) => current.map((order) => order.id === result.order.id ? result.order : order));
-      onAudit(result.audit);
-      onNotify(`退款成功：¥${result.ledger.amount} 已原路退回，退款流水 ${result.ledger.id}`);
-      setSelectedStudentOrder(null);
-      setRefundReason('');
-    } catch (error) {
-      onNotify(error instanceof Error ? error.message : '退款失败', 'error');
-    }
-  };
-
   const tabs = mode === 'catalog'
       ? [
         { id: 'packages' as const, label: '服务包' },
-        { id: 'aiUsagePacks' as const, label: 'AI 加油包' },
         { id: 'ledger' as const, label: '交易流水' },
       ]
     : mode === 'fulfillment'
@@ -391,64 +277,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <div className="text-[12px] text-[#64748B] leading-5">
                   <span className="font-bold text-[#475569]">可选内容包范围：</span>
                   {(pkg.selectableContentPackageIds || []).length ? pkg.selectableContentPackageIds!.join('、') : '暂未配置'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* AI usage packs */}
-      {activeTab === 'aiUsagePacks' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#E2E8F0]">
-            <span className="text-[13px] text-[#64748B]">
-              下架后不再对新购买开放，已购买的 AI 用量和历史订单继续保留
-            </span>
-            <button
-              onClick={handleOpenAddAiUsagePack}
-              className="bg-[#16B45B] text-white px-3.5 py-1.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1 shadow-xs hover:bg-[#139B4E] cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[16px]">add</span>
-              新建 AI 加油包
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {aiUsagePacks.map((pack) => (
-              <div key={pack.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined text-[20px]">bolt</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${pack.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-[#F1F5F9] text-[#64748B]'}`}>
-                    {pack.status === 'active' ? '已上架' : '已停用'}
-                  </span>
-                </div>
-
-                <h3 className="text-[15px] font-bold text-[#0F172A]">{pack.name}</h3>
-                <p className="text-[12px] text-[#64748B]">{pack.description}</p>
-
-                <div className="border-t border-[#E2E8F0] pt-3 flex justify-between items-baseline">
-                  <div>
-                    <span className="text-[11px] text-[#64748B] block">包含算力</span>
-                    <span className="text-[16px] font-extrabold font-mono text-[#0F172A]">
-                      {(pack.usageAmount / 10000).toFixed(0)}万 AI 用量
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[11px] text-[#64748B] block">统一售价</span>
-                    <span className="text-[18px] font-extrabold text-[#16B45B] font-mono">¥{pack.price}</span>
-                  </div>
-                </div>
-                <div className="border-t border-[#E2E8F0] pt-3 flex justify-end gap-3">
-                  <button onClick={() => handleOpenEditAiUsagePack(pack)} className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer">编辑</button>
-                  <button
-                    onClick={() => handleToggleAiUsagePack(pack)}
-                    className={`hover:underline font-bold text-[12px] cursor-pointer ${pack.status === 'active' ? 'text-[#DC2626]' : 'text-[#16B45B]'}`}
-                  >
-                    {pack.status === 'active' ? '下架' : '重新上架'}
-                  </button>
                 </div>
               </div>
             ))}
@@ -556,7 +384,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                 <option value="">全部流水类型</option>
                 <option value="credit_inflow">机构点数入账</option>
                 <option value="package_redeem">服务包兑换</option>
-                <option value="ai_usage_pack_buy">AI 加油包购买</option>
+                <option value="ai_usage_pack_buy">购买</option>
                 <option value="student_add_on">学生加油包订单</option>
                 <option value="reversal">冲正/退款流水</option>
               </select>
@@ -605,37 +433,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <td className="py-3 px-4" />
                   </tr>
                 ))}
-                {filteredStudentOrders.map((order) => {
-                  const eligibility = getRefundEligibility(order);
-                  const statusText = order.status === 'refunded' ? '已退款' : order.status === 'paid' ? '已到账' : '支付失败';
-                  return (
-                    <tr key={order.id} className="hover:bg-[#F8FAFC]">
-                      <td className="py-3 px-4 font-mono font-bold text-[#0F172A]">{order.id}</td>
-                      <td className="py-3 px-4"><div className="font-bold">{order.student}</div><div className="text-[11px] text-[#94A3B8]">{order.institution}</div></td>
-                      <td className="py-3 px-4"><span className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">学生加油包</span><div className="mt-1 text-[11px] text-[#64748B]">{order.packageName}</div></td>
-                      <td className="py-3 px-4 text-right font-mono font-bold">¥{order.paidAmount}</td>
-                      <td className="py-3 px-4 text-right text-[12px] font-mono text-[#0E7D3E]">{formatUsage(order.remainingUsage)} / {formatUsage(order.grantedUsage)}</td>
-                      <td className="py-3 px-4 font-bold">{order.channel}</td>
-                      <td className="py-3 px-4 text-[12px] text-[#64748B]">{order.refundedAt ?? order.orderedAt}</td>
-                      <td className="py-3 px-4 text-[12px]"><div className={order.status === 'refunded' ? 'font-bold text-[#64748B]' : 'font-bold text-[#0E7D3E]'}>{statusText}</div>{order.refundNo ? <div className="mt-1 font-mono text-[10px] text-[#64748B]">{order.refundNo}</div> : !eligibility.allowed && <div className="mt-1 text-[11px] text-[#94A3B8]">{eligibility.reason}</div>}</td>
-                      <td className="py-3 px-4 text-right">{eligibility.allowed && <button onClick={() => setSelectedStudentOrder(order)} className="rounded-lg border border-[#0E7D3E]/30 bg-[#E8F7EE] px-3 py-1.5 text-[12px] font-semibold text-[#0E7D3E] hover:bg-[#DDF3E6]">申请退款</button>}</td>
-                    </tr>
-                  );
-                })}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {selectedStudentOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <form onSubmit={handleStudentOrderRefund} className="w-full max-w-md space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl">
-            <div><h3 className="text-[17px] font-bold text-[#0F172A]">确认原路全额退款</h3><p className="mt-1 text-[12px] text-[#64748B]">确认后将同步收回未使用的 AI 用量并生成退款流水。</p></div>
-            <div className="grid grid-cols-2 gap-3 rounded-xl bg-[#F8FAFC] p-4 text-[12px]"><div><span className="text-[#64748B]">订单号</span><strong className="mt-1 block font-mono">{selectedStudentOrder.id}</strong></div><div><span className="text-[#64748B]">退款金额</span><strong className="mt-1 block">¥{selectedStudentOrder.paidAmount}</strong></div><div><span className="text-[#64748B]">原支付渠道</span><strong className="mt-1 block">{selectedStudentOrder.channel}</strong></div><div><span className="text-[#64748B]">收回 AI 用量</span><strong className="mt-1 block">{formatUsage(selectedStudentOrder.remainingUsage)}</strong></div></div>
-            <label className="block text-[12px] font-semibold text-[#475569]">退款原因<textarea required value={refundReason} onChange={(event) => setRefundReason(event.target.value)} className="mt-1.5 min-h-20 w-full resize-none rounded-xl border border-[#E2E8F0] p-3 text-[13px] outline-none focus:border-[#16B45B]" placeholder="填写退款原因" /></label>
-            <div className="flex justify-end gap-2"><button type="button" onClick={() => { setSelectedStudentOrder(null); setRefundReason(''); }} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-semibold text-[#64748B]">取消</button><button type="submit" className="rounded-xl bg-[#0E7D3E] px-4 py-2 text-[13px] font-semibold text-white">确认退款</button></div>
-          </form>
         </div>
       )}
 
@@ -716,77 +516,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
                 >
                   确认充值入账
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* AI usage pack modal */}
-      {isAiUsageModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
-            <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">{editingAiUsagePack ? '编辑 AI 加油包' : '新建 AI 加油包'}</h3>
-            <form onSubmit={handleSaveAiUsagePack} className="space-y-4">
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">加油包名称</label>
-                <input
-                  type="text"
-                  required
-                  value={aiUsageForm.name}
-                  onChange={(e) => setAiUsageForm({ ...aiUsageForm, name: e.target.value })}
-                  placeholder="如：200万 AI 用量专项加油包"
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">包含 AI 用量</label>
-                  <input
-                    type="number"
-                    required
-                    value={aiUsageForm.usageAmount}
-                    onChange={(e) => setAiUsageForm({ ...aiUsageForm, usageAmount: Number(e.target.value) })}
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">售价 (元)</label>
-                  <input
-                    type="number"
-                    required
-                    value={aiUsageForm.price}
-                    onChange={(e) => setAiUsageForm({ ...aiUsageForm, price: Number(e.target.value) })}
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">说明描述</label>
-                <textarea
-                  rows={2}
-                  value={aiUsageForm.description}
-                  onChange={(e) => setAiUsageForm({ ...aiUsageForm, description: e.target.value })}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
-                <button
-                  type="button"
-                  onClick={() => setIsAiUsageModalOpen(false)}
-                  className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-[#64748B] text-[13px] font-bold"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E]"
-                >
-                  {editingAiUsagePack ? '保存修改' : '保存并上架'}
                 </button>
               </div>
             </form>

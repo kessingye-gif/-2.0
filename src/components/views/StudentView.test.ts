@@ -3,11 +3,11 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { initialAuthCodes, initialParentGuardianships, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
+import { initialAuthCodes, initialContentPackages, initialParentGuardianships, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
 import { MasterDataProvider } from '../../masterData/MasterDataContext';
 import { StudentServiceReminderCards, StudentView } from './StudentView';
 
-test('学生列表合并展示服务与家长状态，顶部只保留两个视图', () => {
+test('总部用户页面以服务和使用为主，教师与机构只作为归属条件', () => {
   const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
     createElement(StudentView, {
       students: initialStudents,
@@ -23,6 +23,7 @@ test('学生列表合并展示服务与家长状态，顶部只保留两个视�
         includedAiUsage: 5000000, quotaConsumed: 350, createdAt: '2026-08-12', serviceExpireAt: '2027-08-12', status: 'pending',
       }],
       packages: initialServicePackages,
+      contentPackages: initialContentPackages,
       teachers: initialTeachers,
       onFulfillService: () => undefined,
       onRevokeAuthCode: () => undefined,
@@ -31,13 +32,26 @@ test('学生列表合并展示服务与家长状态，顶部只保留两个视�
     })
   ));
 
-  assert.match(markup, /学生列表/);
-  assert.match(markup, /学情报告/);
-  assert.match(markup, /家长关系/);
-  assert.match(markup, /已绑定/);
+  assert.match(markup, /用户服务/);
+  assert.match(markup, /组织分组/);
+  assert.match(markup, /批量开通/);
+  assert.match(markup, /使用情况/);
+  assert.match(markup, /当前服务包/);
+  assert.match(markup, /已选内容包/);
+  assert.match(markup, /AI 用量/);
+  assert.match(markup, /归属信息/);
+  assert.match(markup, /负责教师/);
   assert.doesNotMatch(markup, /微信重新绑定审核/);
   assert.doesNotMatch(markup, />服务权益 \(/);
   assert.doesNotMatch(markup, />家长监护关系 \(/);
+});
+
+test('批量开通已合并为用户服务列表操作，不再作为独立页签', () => {
+  const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /setActiveTab\('bulk'\)/);
+  assert.match(source, /退出批量开通/);
+  assert.match(source, /选择内容包/);
+  assert.match(source, /实际扣除/);
 });
 
 test('办理服务属于学生页弹窗，不跳转到商品页', () => {

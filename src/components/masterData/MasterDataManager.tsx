@@ -3,7 +3,7 @@ import { useMasterData } from '../../masterData/MasterDataContext';
 import type { AnyMasterData, MasterDataEntity } from '../../masterData/types';
 import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
-const entityLabels: Record<MasterDataEntity, string> = { stages: '学段', grades: '年级', subjects: '学科', textbooks: '教材版本', knowledgeTypes: '知识类型' };
+const entityLabels: Record<MasterDataEntity, string> = { stages: '学段', grades: '年级', subjects: '学科', textbooks: '教材版本', knowledgeTypes: '知识类型', questionTypes: '题型' };
 
 interface AdminAccount {
   id: string;

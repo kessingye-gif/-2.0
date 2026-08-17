@@ -137,7 +137,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
       },
     ]);
-    alert(`已读取【${file.name}】，成功导入 2 位教师；初始额度为 0，可在教师列表单独划拨。`);
+    alert(`已读取【${file.name}】，成功导入 2 位教师；教师仅用于用户归属和分组。`);
   };
 
   // Class Roster Modal State
@@ -265,15 +265,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       studentCount: 0,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    try {
-      if (classForm.initialTeacherQuota > 0) {
-        onTransferTeacherCredits(classForm.headTeacherId, classForm.initialTeacherQuota, 'allocate', `新建班级【${classForm.name}】时给班主任分配点数`);
-      }
-      setClasses((prev) => [newC, ...prev]);
-      setIsClassModalOpen(false);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : '班级创建失败');
-    }
+    setClasses((prev) => [newC, ...prev]);
+    setIsClassModalOpen(false);
   };
 
   const handleSimulateImportStudents = () => {
@@ -388,7 +381,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       {/* Tab 1: Teachers Management */}
       {activeTab === 'teachers' && (
         <div className="space-y-4">
-          {institutionId && <div className="rounded-xl border border-[#CDE7DA] bg-[#F1FBF6] px-4 py-3 text-[13px] text-[#0E7D3E]">当前正在管理：<strong>{institutions.find((item) => item.id === institutionId)?.name ?? '所选机构'}</strong> 的已开通老师与老师额度。</div>}
+          {institutionId && <div className="rounded-xl border border-[#CDE7DA] bg-[#F1FBF6] px-4 py-3 text-[13px] text-[#0E7D3E]">当前正在管理：<strong>{institutions.find((item) => item.id === institutionId)?.name ?? '所选机构'}</strong> 的教师归属。</div>}
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center justify-between gap-4">
             <input
               type="text"
@@ -397,7 +390,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索教师姓名、账号、手机号或机构..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">新增老师后，额度须由机构管理员单独分配。</p><button type="button" onClick={() => { setTeacherForm({ name: '', account: '', phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button></div>
+            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">教师仅用于用户归属、筛选和分组；服务开通由机构账户统一结算。</p><button type="button" onClick={() => { setTeacherForm({ name: '', account: '', phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button></div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -408,7 +401,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <th className="py-3 px-4">登录账号/手机</th>
                   <th className="py-3 px-4">所属机构</th>
                   <th className="py-3 px-4 text-center">负责学生数</th>
-                  <th className="py-3 px-4 text-right">点数账户</th>
                   <th className="py-3 px-4 text-center">状态</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
@@ -423,10 +415,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     </td>
                     <td className="py-3 px-4 font-bold">{tch.institutionName}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{tch.studentCount} 人</td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="font-mono font-bold text-[#16B45B] block">剩余 {tch.remainingQuota.toLocaleString()} 点</span>
-                      <span className="mt-0.5 block text-[10.5px] text-[#94A3B8]">累计分配 {tch.allocatedQuota.toLocaleString()} · 已使用 {(tch.allocatedQuota - tch.remainingQuota).toLocaleString()}</span>
-                    </td>
                     <td className="py-3 px-4 text-center">
                       <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
                         {tch.status === 'active' ? '正常' : '停用'}
@@ -438,12 +426,6 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                         className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
                       >
                         权限
-                      </button>
-                      <button
-                        onClick={() => handleOpenQuota(tch)}
-                        className="text-amber-600 hover:underline font-bold text-[12px] cursor-pointer"
-                      >
-                        划拨点数
                       </button>
                     </td>
                   </tr>
@@ -505,8 +487,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                       <strong className="text-[#0F172A]">{cls.headTeacherName}</strong>
                     </div>
                     <div>
-                      <span className="text-[#64748B] block">班主任可用点数</span>
-                      <strong className="text-[#0E7D3E] font-mono">{(teachers.find((item) => item.id === cls.headTeacherId)?.remainingQuota ?? 0).toLocaleString()} 点</strong>
+                      <span className="text-[#64748B] block">服务结算</span>
+                      <strong className="text-[#0E7D3E]">机构统一账户</strong>
                     </div>
                     <div className="text-right">
                       <span className="text-[#64748B] block">班级学员</span>
@@ -515,6 +497,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     </div>
                   </div>
                 </div>
+
+                <p className="text-[11px] text-[#64748B]">服务开通由机构账户统一结算，班主任仅负责成员归属。</p>
 
                 <div className="pt-2">
                   <button
@@ -566,10 +550,9 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               </div>
 
               <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">手机号码</label>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">手机号码（可选）</label>
                 <input
                   type="text"
-                  required
                   value={teacherForm.phone}
                   onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })}
                   placeholder="例如：13800000000"
@@ -582,7 +565,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 {institutionId ? <div className="rounded-xl bg-[#F1FBF6] px-3 py-2 text-[13px] font-bold text-[#0E7D3E]">{institutions.find((item) => item.id === institutionId)?.name}</div> : <select value={teacherForm.institutionId} onChange={(e) => setTeacherForm({ ...teacherForm, institutionId: e.target.value })} className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold">{institutions.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}</select>}
               </div>
 
-              <p className="rounded-xl bg-[#F8FAFC] p-3 text-[12px] text-[#64748B]">老师创建后初始额度为 0；请在老师列表中由机构管理员分配额度。</p>
+              <p className="rounded-xl bg-[#F8FAFC] p-3 text-[12px] text-[#64748B]">账号和密码用于强制登录；手机号可选，用于验证码登录、找回密码和安全验证。</p>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
                 <button
@@ -594,7 +577,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </button>
                 <button
                   type="submit"
-                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.phone || !teacherForm.institutionId}
+                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.institutionId}
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                 >
                   确认保存
@@ -618,7 +601,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 { key: 'canEditContent', label: '知识点与精选题库管理', desc: '允许新增、编辑与修改考点题目' },
                 { key: 'canImportStudents', label: '维护班级花名册', desc: '允许关联已开通学生并维护班级归属' },
                 { key: 'canManageClass', label: '建立与维系班级信息', desc: '允许新建与更变负责班级' },
-                { key: 'canRedeemPackage', label: '使用点数兑换激活码', desc: '允许扣减可用点数生成学生配包码' },
+                { key: 'canRedeemPackage', label: '办理用户服务', desc: '允许选择用户发起服务开通，由所属机构账户统一扣点' },
                 { key: 'canViewReport', label: '查看学生学情诊断报告', desc: '允许生成并导出 AI 学情报告' },
               ].map((perm) => (
                 <label key={perm.key} className="flex items-start gap-3 p-2.5 rounded-xl border border-[#E2E8F0] hover:bg-[#F8FAFC] cursor-pointer">
@@ -863,32 +846,9 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-bold"
                 >
                   {teachers.filter((item) => item.institutionId === classForm.institutionId && item.status === 'active').map((t) => (
-                    <option key={t.id} value={t.id}>{t.name} · 当前 {t.remainingQuota.toLocaleString()} 点</option>
+                    <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
-              </div>
-
-              <div className="rounded-xl border border-[#DCE7E0] bg-[#F8FBF9] p-3">
-                <label className="flex items-center justify-between text-[12px] font-bold text-[#0F172A]">
-                  <span>同时给班主任分配点数（可选）</span>
-                  <span className="text-[10.5px] font-normal text-[#64748B]">从机构账户直接扣除</span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={classForm.initialTeacherQuota}
-                  onChange={(e) => setClassForm({ ...classForm, initialTeacherQuota: Math.max(0, Number(e.target.value)) })}
-                  className="mt-2 w-full rounded-xl border border-[#D5E2DA] bg-white px-3 py-2 text-[13px] font-mono font-bold outline-none focus:border-[#16B45B]"
-                />
-                {(() => {
-                  const institution = institutions.find((item) => item.id === classForm.institutionId);
-                  const teacher = teachers.find((item) => item.id === classForm.headTeacherId);
-                  const amount = classForm.initialTeacherQuota;
-                  return <div className={`mt-2 text-[11px] ${institution && amount > institution.remainingQuota ? 'text-red-600' : 'text-[#64748B]'}`}>
-                    机构现有 {institution?.remainingQuota.toLocaleString() ?? 0} 点 → 分配后 {(institution ? institution.remainingQuota - amount : 0).toLocaleString()} 点；{teacher?.name || '班主任'}现有 {teacher?.remainingQuota.toLocaleString() ?? 0} 点 → 分配后 {((teacher?.remainingQuota ?? 0) + amount).toLocaleString()} 点
-                  </div>;
-                })()}
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
@@ -1117,12 +1077,13 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
       {isBulkServiceOpen && rosterClass && (() => {
         const teacher = teachers.find((item) => item.id === rosterClass.headTeacherId);
+        const institution = institutions.find((item) => item.id === rosterClass.institutionId);
         const availablePackages = filterServicePackagesForInstitution(packages, institutions, rosterClass.institutionId);
         const selectedPackage = availablePackages.find((item) => item.id === bulkPackageId) ?? availablePackages[0];
         const pendingRosterIds = new Set(classRoster.filter((item) => item.classId === rosterClass.id && item.serviceStatus === 'none').map((item) => item.id));
         const pendingStudents = students.filter((item) => pendingRosterIds.has(item.id) && item.teacherId === rosterClass.headTeacherId);
         const totalQuota = (selectedPackage?.quotaCost ?? 0) * pendingStudents.length;
-        const insufficient = Boolean(teacher && totalQuota > teacher.remainingQuota);
+        const insufficient = Boolean(institution && totalQuota > institution.remainingQuota);
         const handleBulkConfirm = () => {
           if (!teacher || !selectedPackage || pendingStudents.length === 0 || insufficient) return;
           try {
@@ -1136,8 +1097,8 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         };
         return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-xl rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between border-b border-[#E2E8F0] pb-4"><div><h3 className="text-[16px] font-bold text-[#0F172A]">批量办理学生服务</h3><p className="mt-1 text-[12px] text-[#64748B]">{rosterClass.name} · 统一从班主任 {rosterClass.headTeacherName} 账户扣点</p></div><button onClick={() => setIsBulkServiceOpen(false)} className="text-[#64748B]">✕</button></div>
-            <div className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F8FAFC] p-3 text-[12px]"><div><span className="text-[#64748B]">待配包学生</span><strong className="mt-1 block text-[16px]">{pendingStudents.length} 人</strong></div><div><span className="text-[#64748B]">教师可用点数</span><strong className="mt-1 block text-[16px] text-[#0E7D3E]">{teacher?.remainingQuota.toLocaleString() ?? 0} 点</strong></div><div><span className="text-[#64748B]">本次预计扣除</span><strong className={`mt-1 block text-[16px] ${insufficient ? 'text-red-600' : 'text-[#0F172A]'}`}>{totalQuota.toLocaleString()} 点</strong></div></div>
+            <div className="flex items-start justify-between border-b border-[#E2E8F0] pb-4"><div><h3 className="text-[16px] font-bold text-[#0F172A]">批量办理学生服务</h3><p className="mt-1 text-[12px] text-[#64748B]">{rosterClass.name} · 统一从所属机构账户扣点</p></div><button onClick={() => setIsBulkServiceOpen(false)} className="text-[#64748B]">✕</button></div>
+            <div className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-[#F8FAFC] p-3 text-[12px]"><div><span className="text-[#64748B]">待配包学生</span><strong className="mt-1 block text-[16px]">{pendingStudents.length} 人</strong></div><div><span className="text-[#64748B]">机构统一账户</span><strong className="mt-1 block text-[16px] text-[#0E7D3E]">{institution?.remainingQuota.toLocaleString() ?? 0} 点</strong></div><div><span className="text-[#64748B]">本次预计扣除</span><strong className={`mt-1 block text-[16px] ${insufficient ? 'text-red-600' : 'text-[#0F172A]'}`}>{totalQuota.toLocaleString()} 点</strong></div></div>
             <label className="mt-4 block text-[12px] font-bold text-[#475569]">选择服务包</label>
             {availablePackages.length > 0 ? (
               <select value={selectedPackage?.id ?? ''} onChange={(event) => setBulkPackageId(event.target.value)} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
@@ -1147,9 +1108,9 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-700">当前机构暂无已授权且启用的服务包，请先在机构详情完成服务包配置。</div>
             )}
             <div className={`mt-4 rounded-xl px-3 py-2 text-[12px] ${insufficient ? 'bg-red-50 text-red-700' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}>
-              {availablePackages.length === 0 ? '当前机构尚未配置可办理的服务包。' : pendingStudents.length === 0 ? '当前班级没有可批量办理的待配包学生。' : insufficient ? `教师点数不足，还差 ${(totalQuota - (teacher?.remainingQuota ?? 0)).toLocaleString()} 点，请先给班主任追加点数。` : `确认后将扣除 ${totalQuota.toLocaleString()} 点，并为每名学生独立生成学生授权码、家长绑定码和服务权益。`}
+              {availablePackages.length === 0 ? '当前机构尚未配置可办理的服务包。' : pendingStudents.length === 0 ? '当前班级没有可批量办理的待配包学生。' : insufficient ? `机构统一账户点数不足，还差 ${(totalQuota - (institution?.remainingQuota ?? 0)).toLocaleString()} 点。` : `确认后将从所属机构账户扣除 ${totalQuota.toLocaleString()} 点，并为每名学生独立生成学生授权码、家长绑定码和服务权益。`}
             </div>
-            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setIsBulkServiceOpen(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button disabled={!selectedPackage || pendingStudents.length === 0 || !teacher || insufficient} onClick={handleBulkConfirm} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认批量办理</button></div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setIsBulkServiceOpen(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button disabled={!selectedPackage || pendingStudents.length === 0 || !teacher || !institution || insufficient} onClick={handleBulkConfirm} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认批量办理</button></div>
           </div>
         </div>;
       })()}

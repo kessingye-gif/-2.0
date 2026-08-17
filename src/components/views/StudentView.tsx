@@ -10,6 +10,9 @@ import {
   ServicePackage,
   ServiceFulfillmentResult,
   TeacherItem,
+  Institution,
+  ContentPackageItem,
+  BulkServiceFulfillmentOutcome,
 } from '../../types';
 import { DiagnosticsView } from './DiagnosticsView';
 import { deriveStudentRights } from '../../utils/studentCodeManagement';
@@ -20,6 +23,7 @@ import { ServiceFulfillmentPanel } from '../fulfillment/ServiceFulfillmentPanel'
 import { mergeStudentServiceRights } from '../../domain/studentRights';
 import { deriveStudentServiceReminders, type StudentServiceReminder } from '../../domain/serviceReminders';
 import type { Role } from '../../permissions/accessControl';
+import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
 
 interface StudentViewProps {
   students: StudentItem[];
@@ -29,7 +33,12 @@ interface StudentViewProps {
   serviceRights: StudentServiceRight[];
   packages: ServicePackage[];
   teachers: TeacherItem[];
+  institutions?: Institution[];
+  contentPackages?: ContentPackageItem[];
   onFulfillService: (result: ServiceFulfillmentResult) => void;
+  onFulfillServices?: (results: ServiceFulfillmentResult[]) => BulkServiceFulfillmentOutcome;
+  onOpenTeachers?: () => void;
+  onOpenClasses?: () => void;
   onRevokeAuthCode: (codeId: string) => void;
   onUpdateGuardianshipStatus: (id: string, status: GuardianshipStatus) => void;
   onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void;
@@ -57,8 +66,12 @@ export const StudentView: React.FC<StudentViewProps> = ({
   guardianBindingCodes,
   serviceRights,
   packages,
-  teachers,
+  institutions = [],
+  contentPackages = [],
   onFulfillService,
+  onFulfillServices,
+  onOpenTeachers,
+  onOpenClasses,
   onRevokeAuthCode,
   onUpdateGuardianshipStatus,
   onGenerateReport,
@@ -66,7 +79,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
   viewerRole = 'super_admin',
 }) => {
   const { getActiveGrades } = useMasterData();
-  const [activeTab, setActiveTab] = useState<'roster' | 'diagnostics'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'roster' | 'organization' | 'diagnostics'>(initialTab);
+  const [bulkMode, setBulkMode] = useState(false);
 
   // Roster Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,6 +92,11 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [detailStudent, setDetailStudent] = useState<StudentItem | null>(null);
   const [dismissedReminderIds, setDismissedReminderIds] = useState<Set<string>>(() => new Set());
   const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(hiddenRebindRequests);
+  const [selectedBulkStudentIds, setSelectedBulkStudentIds] = useState<Set<string>>(() => new Set());
+  const activePackages = useMemo(() => packages.filter((item) => item.status === 'active'), [packages]);
+  const [bulkPackageId, setBulkPackageId] = useState(() => activePackages[0]?.id ?? '');
+  const [bulkContentPackageIds, setBulkContentPackageIds] = useState<string[]>([]);
+  const [bulkMessage, setBulkMessage] = useState('');
   const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
   const mergedServiceRights = useMemo(() => mergeStudentServiceRights(serviceRights, authCodes, packages), [serviceRights, authCodes, packages]);
   const serviceReminders = useMemo(() => deriveStudentServiceReminders(mergedServiceRights, new Date()), [mergedServiceRights]);
@@ -97,12 +116,56 @@ export const StudentView: React.FC<StudentViewProps> = ({
   }, [filterOptions.grades, getActiveGrades]);
   const filteredStudents = useMemo(() => filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter }), [students, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, gradeFilter]);
   const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || gradeFilter);
+  const selectedBulkStudents = students.filter((item) => selectedBulkStudentIds.has(item.id));
+  const selectedBulkPackage = activePackages.find((item) => item.id === bulkPackageId) ?? activePackages[0];
+  const bulkContentOptions = contentPackages.filter((item) => item.status === 'active' && (!selectedBulkPackage?.selectableContentPackageIds?.length || selectedBulkPackage.selectableContentPackageIds.includes(item.id)));
+  const bulkRequiredContentCount = selectedBulkPackage?.selectableContentPackageCount ?? 1;
+  const selectedBulkContentPackages = bulkContentOptions.filter((item) => bulkContentPackageIds.includes(item.id));
+  const bulkInstitutionGroups = [...new Set(selectedBulkStudents.map((item) => item.institutionId))].map((institutionId) => {
+    const institution = institutions.find((item) => item.id === institutionId);
+    const users = selectedBulkStudents.filter((item) => item.institutionId === institutionId);
+    const requiredQuota = (selectedBulkPackage?.quotaCost ?? 0) * users.length;
+    const authorized = Boolean(selectedBulkPackage && institution?.availableServicePackageIds?.includes(selectedBulkPackage.id));
+    const contentAuthorized = selectedBulkContentPackages.every((content) => (institution?.availableContentPackages ?? []).some((value) => value === content.id || value === content.name));
+    return { institutionId, institution, users, requiredQuota, authorized, contentAuthorized, canSettle: Boolean(institution && authorized && contentAuthorized && institution.status === 'active' && institution.remainingQuota >= requiredQuota) };
+  });
+
+  const handleBulkFulfill = () => {
+    if (!selectedBulkPackage || selectedBulkStudents.length === 0 || !onFulfillServices) return;
+    try {
+      const duplicateStudents = selectedBulkStudents.filter((student) => mergedServiceRights.some((right) => right.studentId === student.id && right.packageId === selectedBulkPackage.id && right.status === 'pending'));
+      const eligibleStudents = selectedBulkStudents.filter((student) => !duplicateStudents.some((duplicate) => duplicate.id === student.id));
+      if (eligibleStudents.length === 0) {
+        setBulkMessage(`未执行：${duplicateStudents.map((item) => item.name).join('、')}已有待激活的同款服务。`);
+        return;
+      }
+      const batch = createBulkServiceFulfillments({
+        students: eligibleStudents,
+        servicePackage: selectedBulkPackage,
+        now: new Date(),
+        nonce: Math.random().toString().slice(2, 6).padEnd(4, '0'),
+        contentPackages: selectedBulkContentPackages,
+        existingRights: mergedServiceRights,
+      });
+      const outcome = onFulfillServices(batch.results);
+      const failedStudentIds = [...outcome.failed.flatMap((item) => item.studentIds), ...duplicateStudents.map((item) => item.id)];
+      const failureDescriptions = [
+        ...outcome.failed.map((item) => `${item.institutionName}：${item.reason}`),
+        ...(duplicateStudents.length ? [`${duplicateStudents.map((item) => item.name).join('、')}：已有待激活的同款服务`] : []),
+      ];
+      setBulkMessage(`成功 ${outcome.succeededStudentIds.length} 人，失败 ${failedStudentIds.length} 人，实际扣除 ${outcome.totalQuotaConsumed.toLocaleString()} 点。${failureDescriptions.length ? ` ${failureDescriptions.join('；')}` : ''}`);
+      setSelectedBulkStudentIds(new Set(failedStudentIds));
+    } catch (caught) {
+      setBulkMessage(caught instanceof Error ? caught.message : '批量开通失败');
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap border-b border-[#E2E8F0] gap-x-6 gap-y-2 text-[13.5px] font-bold">
-        <button onClick={() => setActiveTab('roster')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>学生列表 ({students.length})</button>
-        <button onClick={() => setActiveTab('diagnostics')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>学情报告</button>
+        <button onClick={() => setActiveTab('roster')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'roster' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>{viewerRole === 'super_admin' ? '用户服务' : '学生列表'} ({students.length})</button>
+        {viewerRole === 'super_admin' && <button onClick={() => setActiveTab('organization')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'organization' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>组织分组</button>}
+        <button onClick={() => setActiveTab('diagnostics')} className={`pb-2 flex items-center gap-1.5 transition-all cursor-pointer ${activeTab === 'diagnostics' ? 'text-[#16B45B] border-b-2 border-[#16B45B]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>{viewerRole === 'super_admin' ? '使用情况' : '学情报告'}</button>
       </div>
 
       {/* Tab 1: Student Roster */}
@@ -114,7 +177,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="搜索学生姓名、账号、负责教师或机构..."
+                placeholder="搜索用户姓名、账号、负责教师或机构..."
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
               />
               {viewerRole === 'super_admin' && <select value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
@@ -131,47 +194,45 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 <option value="expired">已到期</option>
               </select>
             </div>
-            <div className="flex items-center justify-between gap-3"><span className="text-[12px] text-[#64748B]">当前显示 {filteredStudents.length} / {students.length} 名学生</span>{hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除筛选</button>}</div>
+            <div className="flex items-center justify-between gap-3"><span className="text-[12px] text-[#64748B]">当前显示 {filteredStudents.length} / {students.length} 名用户</span><div className="flex items-center gap-3">{hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除筛选</button>}{viewerRole === 'super_admin' && <button type="button" onClick={() => setBulkMode((value) => !value)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white">{bulkMode ? '退出批量开通' : '批量开通'}</button>}</div></div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
             <table className="w-full text-left text-[13px]">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
                 <tr>
-                  <th className="py-3 px-4">学生姓名</th>
-                  <th className="py-3 px-4">登录账号/微信绑定</th>
-                  <th className="py-3 px-4">所属机构</th>
-                  <th className="py-3 px-4">负责教师</th>
-                  <th className="py-3 px-4">年级/开通内容包</th>
-                  <th className="py-3 px-4 text-center">服务包状态</th>
-                  <th className="py-3 px-4 text-center">家长关系</th>
-                  <th className="py-3 px-4 text-center">到期时间</th>
+                  {bulkMode && <th className="py-3 px-4"><input type="checkbox" aria-label="选择当前用户" checked={filteredStudents.length > 0 && filteredStudents.every((item) => selectedBulkStudentIds.has(item.id))} onChange={(event) => setSelectedBulkStudentIds(event.target.checked ? new Set(filteredStudents.map((item) => item.id)) : new Set())} /></th>}
+                  <th className="py-3 px-4">用户</th>
+                  <th className="py-3 px-4">登录账号</th>
+                  <th className="py-3 px-4">当前服务包</th>
+                  <th className="py-3 px-4">已选内容包</th>
+                  <th className="py-3 px-4">AI 用量</th>
+                  <th className="py-3 px-4 text-center">服务状态</th>
+                  <th className="py-3 px-4">归属信息</th>
+                  <th className="py-3 px-4 text-center">有效期至</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {filteredStudents.length === 0 ? <tr><td colSpan={9} className="px-6 py-12 text-center text-[#64748B]">当前筛选条件下暂无学生</td></tr> : filteredStudents.map((stu) => {
-                  const guardian = guardianships.find((item) => item.studentId === stu.id);
-                  const bindingCode = guardianBindingCodes.find((item) => item.studentId === stu.id);
-                  const guardianStatus = guardian?.status === 'active' ? '已绑定' : bindingCode?.status === 'pending' || guardian?.status === 'pending' ? '待绑定' : '未绑定';
+                {filteredStudents.length === 0 ? <tr><td colSpan={bulkMode ? 10 : 9} className="px-6 py-12 text-center text-[#64748B]">当前筛选条件下暂无用户</td></tr> : filteredStudents.map((stu) => {
                   const latestRight = mergedServiceRights.find((item) => item.studentId === stu.id);
                   const serviceStatus = latestRight?.status ?? (stu.serviceStatus === 'none' ? 'pending' : stu.serviceStatus);
                   const serviceStatusLabel = { pending: latestRight ? '待激活' : '待办理', active: '服务中', expired: '已到期', revoked: '已撤销' }[serviceStatus];
                   return (
                   <tr key={stu.id} className="hover:bg-[#F8FAFC]">
+                    {bulkMode && <td className="py-3 px-4"><input type="checkbox" aria-label={`选择${stu.name}`} checked={selectedBulkStudentIds.has(stu.id)} onChange={(event) => setSelectedBulkStudentIds((current) => { const next = new Set(current); event.target.checked ? next.add(stu.id) : next.delete(stu.id); return next; })} /></td>}
                     <td className="py-3 px-4"><button onClick={() => setDetailStudent(stu)} className="font-bold text-[#0F172A] hover:text-[#16B45B]">{stu.name}</button></td>
                     <td className="py-3 px-4 font-mono text-[12px]">
                       <div>{stu.account}</div>
-                      <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded">微信已绑</span>
+                      <span className={`px-1.5 py-0.5 text-[10px] rounded ${guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700'}`}>{guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? '家长已绑' : '家长待绑'}</span>
                     </td>
-                    <td className="py-3 px-4 font-bold">{stu.institutionName}</td>
-                    <td className="py-3 px-4">{stu.teacherName}</td>
+                    <td className="py-3 px-4 font-bold text-[#0E7D3E]">{latestRight?.packageName || '未开通'}</td>
                     <td className="py-3 px-4">
-                      <span className="font-bold text-[#0F172A] mr-2">{stu.grade}</span>
                       <span className="text-[11px] text-[#16B45B] font-bold bg-[#E8F7EE] px-2 py-0.5 rounded">
-                        {stu.subjects.map(s => s.includes('包') ? s : `${s}内容包`).join(' / ')}
+                        {latestRight?.contentPackageNames?.length ? latestRight.contentPackageNames.join(' / ') : '未选择'}
                       </span>
                     </td>
+                    <td className="py-3 px-4 font-mono text-[12px]">{latestRight ? latestRight.includedAiUsage.toLocaleString() : '-'}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                         serviceStatus === 'active' ? 'bg-green-100 text-green-700' : serviceStatus === 'expired' || serviceStatus === 'revoked' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
@@ -179,7 +240,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                         {serviceStatusLabel}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center"><span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${guardianStatus === '已绑定' ? 'bg-green-100 text-green-700' : guardianStatus === '待绑定' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{guardianStatus}</span></td>
+                    <td className="py-3 px-4 text-[11px] text-[#64748B]"><div className="font-bold text-[#475569]">{stu.institutionName}</div><div className="mt-0.5">负责教师：{stu.teacherName} · {stu.grade}</div></td>
                     <td className="py-3 px-4 text-center text-[#64748B] font-mono text-[12px]">
                       {latestRight?.serviceExpireAt || stu.serviceExpireAt || (serviceStatus === 'pending' ? '激活后计算' : '待定')}
                     </td>
@@ -189,6 +250,50 @@ export const StudentView: React.FC<StudentViewProps> = ({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'organization' && viewerRole === 'super_admin' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
+            <h3 className="text-[16px] font-bold text-[#0F172A]">先建立归属，再导入用户</h3>
+            <p className="mt-1 text-[12px] text-[#64748B]">推荐顺序：导入教师 → 建立或导入班级 → 导入用户。用户的账号、密码和所属机构必填，负责教师与班级可选。</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <button type="button" onClick={onOpenTeachers} className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-5 text-left hover:border-[#16B45B]">
+                <span className="material-symbols-outlined text-[#16B45B]">person_add</span>
+                <strong className="mt-3 block text-[15px] text-[#0F172A]">导入与维护教师</strong>
+                <span className="mt-1 block text-[12px] text-[#64748B]">教师用于负责人归属和筛选，不再分配或扣除点数。</span>
+              </button>
+              <button type="button" onClick={onOpenClasses} className="rounded-2xl border border-[#D8E6FF] bg-[#F4F8FF] p-5 text-left hover:border-[#2563EB]">
+                <span className="material-symbols-outlined text-[#2563EB]">groups</span>
+                <strong className="mt-3 block text-[15px] text-[#0F172A]">导入班级与用户</strong>
+                <span className="mt-1 block text-[12px] text-[#64748B]">在班级花名册中批量导入用户，也可以先建班级后再补充成员。</span>
+              </button>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">教师和班级只负责组织归属；用户服务开通统一从用户所属机构账户扣点。</div>
+        </div>
+      )}
+
+      {activeTab === 'roster' && bulkMode && viewerRole === 'super_admin' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div><h3 className="text-[16px] font-bold text-[#0F172A]">批量开通用户服务</h3><p className="mt-1 text-[12px] text-[#64748B]">在上方用户服务列表选人；系统按所属机构分别校验授权、余额并扣点。</p></div>
+              <label className="text-[12px] font-bold text-[#475569]">服务包
+                <select value={selectedBulkPackage?.id ?? ''} onChange={(event) => { setBulkPackageId(event.target.value); setBulkContentPackageIds([]); }} className="ml-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none">
+                  {activePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-center justify-between"><h4 className="text-[14px] font-bold">选择内容包</h4><span className="text-[11px] text-[#64748B]">需选 {bulkRequiredContentCount} 个</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{bulkContentOptions.map((item) => <label key={item.id} className={`rounded-xl border p-3 text-[12px] ${bulkContentPackageIds.includes(item.id) ? 'border-[#16B45B] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><input className="mr-2" type="checkbox" checked={bulkContentPackageIds.includes(item.id)} onChange={(event) => setBulkContentPackageIds((current) => event.target.checked ? (current.length < bulkRequiredContentCount ? [...current, item.id] : current) : current.filter((id) => id !== item.id))} />{item.name}</label>)}</div></div>
+          {selectedBulkStudents.length > 0 && <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
+            <h4 className="text-[14px] font-bold text-[#0F172A]">机构结算预览</h4>
+            <div className="mt-3 space-y-2">{bulkInstitutionGroups.map((group) => <div key={group.institutionId} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-[12px] ${group.canSettle ? 'bg-[#F0FBF4]' : 'bg-red-50'}`}><div><strong>{group.institution?.name ?? group.users[0]?.institutionName}</strong><span className="ml-2 text-[#64748B]">{group.users.length} 人 × {selectedBulkPackage?.quotaCost ?? 0} 点</span></div><div className={group.canSettle ? 'text-[#0E7D3E]' : 'text-red-700'}>{!group.institution ? '未找到机构账户' : !group.authorized ? '该机构未授权此服务包' : !group.contentAuthorized ? '该机构未授权所选内容包' : group.institution.remainingQuota < group.requiredQuota ? `余额不足，还差 ${(group.requiredQuota - group.institution.remainingQuota).toLocaleString()} 点` : `扣除 ${group.requiredQuota.toLocaleString()} 点，剩余 ${(group.institution.remainingQuota - group.requiredQuota).toLocaleString()} 点`}</div></div>)}</div>
+            {bulkMessage && <div className="mt-3 rounded-xl bg-[#F8FAFC] px-3 py-2 text-[12px] text-[#475569]">{bulkMessage}</div>}
+            <div className="mt-4 flex justify-end"><button type="button" disabled={!onFulfillServices || bulkContentPackageIds.length !== bulkRequiredContentCount || bulkInstitutionGroups.every((group) => !group.canSettle)} onClick={handleBulkFulfill} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认开通并按机构扣点</button></div>
+          </div>}
         </div>
       )}
 
@@ -351,7 +456,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
         const rights = mergedServiceRights.filter((item) => item.studentId === detailStudent.id);
         const guardian = guardianships.find((item) => item.studentId === detailStudent.id);
         const bindingCode = guardianBindingCodes.find((item) => item.studentId === detailStudent.id);
-        const teacher = teachers.find((item) => item.id === detailStudent.teacherId);
+        const institution = institutions.find((item) => item.id === detailStudent.institutionId);
         const reminders = serviceReminders.filter((item) => item.studentId === detailStudent.id && !dismissedReminderIds.has(item.id));
         return <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true" aria-label={`学生详情 · ${detailStudent.name}`}>
           <button className="flex-1 cursor-default" aria-label="关闭学生详情" onClick={() => setDetailStudent(null)} />
@@ -363,11 +468,11 @@ export const StudentView: React.FC<StudentViewProps> = ({
             <div className="space-y-4 p-5">
               <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
                 <h4 className="text-[14px] font-bold text-[#0F172A]">基本资料</h4>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]"><div><span className="text-[#94A3B8]">登录账号</span><p className="mt-1 font-mono font-bold">{detailStudent.account}</p></div><div><span className="text-[#94A3B8]">服务状态</span><p className="mt-1 font-bold">{detailStudent.serviceStatus === 'active' ? '服务中' : detailStudent.serviceStatus === 'expired' ? '已到期' : '待办理'}</p></div><div><span className="text-[#94A3B8]">负责教师可用点数</span><p className="mt-1 font-mono font-bold text-[#0E7D3E]">{teacher ? `${teacher.remainingQuota.toLocaleString()} 点` : '未找到教师账户'}</p></div></div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-[12px]"><div><span className="text-[#94A3B8]">登录账号</span><p className="mt-1 font-mono font-bold">{detailStudent.account}</p></div><div><span className="text-[#94A3B8]">服务状态</span><p className="mt-1 font-bold">{rights.some((item) => item.status === 'active') ? '服务中' : rights.some((item) => item.status === 'pending') ? '待激活' : detailStudent.serviceStatus === 'expired' ? '已到期' : '待办理'}</p></div><div><span className="text-[#94A3B8]">所属机构统一账户</span><p className="mt-1 font-mono font-bold text-[#0E7D3E]">{institution ? `${institution.remainingQuota.toLocaleString()} 点` : '未找到机构账户'}</p></div></div>
               </section>
               <StudentServiceReminderCards reminders={reminders} onDismiss={(id) => setDismissedReminderIds((current) => new Set([...current, id]))} />
               <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留；办理或额度操作由负责教师在班级内完成。</p></div>
+                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留；开通服务直接从所属机构统一账户扣点。</p></div>
                 <div className="mt-3 space-y-2">{rights.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-4 text-[12px] text-[#94A3B8]">暂无服务权益</div> : rights.map((right) => {
                   const authCode = authCodes.find((item) => item.id === right.authCodeId);
                   const rightStatus = { pending: '待激活', active: '服务中', expired: '已到期', revoked: '已撤销' }[right.status];
@@ -375,7 +480,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   const guardianStatus = bindingCode ? { pending: '待绑定', bound: '已绑定', expired: '已失效' }[bindingCode.status] : '待生成';
                   return <div key={right.id} className="rounded-xl border border-[#E2E8F0] p-3">
                     <div className="flex justify-between gap-3"><strong className="text-[13px]">{right.packageName}</strong><span className={`text-[11px] font-bold ${right.status === 'active' ? 'text-[#0E7D3E]' : right.status === 'pending' ? 'text-amber-700' : 'text-[#64748B]'}`}>{rightStatus}</span></div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#64748B]"><span>AI 用量 {right.includedAiUsage.toLocaleString()}</span><span>到期 {right.serviceExpireAt || (right.status === 'pending' ? '激活后计算' : '长期有效')}</span><span className="font-mono text-[#0E7D3E]">学生授权码 {authCode?.code || '待生成'} · {authStatus}</span><span className="font-mono text-[#0E7D3E]">家长绑定码 {bindingCode?.code || '待生成'} · {guardianStatus}</span></div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#64748B]"><span>AI 用量 {right.includedAiUsage.toLocaleString()}</span><span>到期 {right.serviceExpireAt || '长期有效'}</span><span>内容包 {(right.contentPackageNames ?? []).join(' / ') || '历史权益未记录'}</span><span>{right.fulfillmentKind === 'renewal' ? '续费' : '开通'}</span><span className="font-mono text-[#0E7D3E]">学生授权码 {authCode?.code || '待生成'} · {authStatus}</span><span className="font-mono text-[#0E7D3E]">家长绑定码 {bindingCode?.code || '待生成'} · {guardianStatus}</span></div>
                   </div>;
                 })}</div>
               </section>
@@ -394,7 +499,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
           description={`${serviceStudent.institutionName} · 负责教师 ${serviceStudent.teacherName}`}
           onClose={() => setServiceStudent(null)}
         >
-          <ServiceFulfillmentPanel student={serviceStudent} packages={packages} teacherRemainingQuota={teachers.find((item) => item.id === serviceStudent.teacherId)?.remainingQuota} onFulfill={onFulfillService} compact />
+          <ServiceFulfillmentPanel student={serviceStudent} packages={packages} institution={institutions.find((item) => item.id === serviceStudent.institutionId)} institutionRemainingQuota={institutions.find((item) => item.id === serviceStudent.institutionId)?.remainingQuota} contentPackages={contentPackages} existingRights={mergedServiceRights} onFulfill={onFulfillService} compact />
         </DialogShell>
       )}
     </div>

@@ -17,9 +17,14 @@ test('业务页面不向客户展示技术词 Token', () => {
 test('商品与权益页明确区分四个业务对象', () => {
   const source = read('./components/views/GoodsView.tsx');
   assert.match(source, /服务包/);
-  assert.match(source, /AI 加油包/);
   assert.match(source, /机构点数/);
   assert.match(source, /授权码记录/);
+});
+
+test('商品页不再提供 AI 加油包商品与学生加油包退款入口', () => {
+  const source = read('./components/views/GoodsView.tsx');
+  assert.doesNotMatch(source, /加油包/);
+  assert.doesNotMatch(source, /AiUsagePack|aiUsagePacks|StudentAddOnOrder/);
 });
 
 test('服务包视图不维护内容包绑定字段', () => {

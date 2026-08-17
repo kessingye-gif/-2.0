@@ -23,4 +23,11 @@ export const initialMasterData: MasterDataState = {
     { id: 'KT-02', code: 'METHOD', name: '方法应用', applicableSubjectIds: [], status: 'active', usageCount: 8, sortOrder: 2 },
     { id: 'KT-03', code: 'COMPREHENSIVE', name: '综合能力', applicableSubjectIds: [], status: 'active', usageCount: 0, sortOrder: 3 },
   ],
+  questionTypes: ['单选题', '多选题', '选择题', '填空题', '解答题', '判断题', '综合题'].map((name, index) => ({
+    id: `QUESTION-TYPE-${index + 1}`,
+    code: ['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'CHOICE', 'FILL_BLANK', 'SOLUTION', 'TRUE_FALSE', 'COMPREHENSIVE'][index],
+    name,
+    status: 'active' as const,
+    sortOrder: index + 1,
+  })),
 };

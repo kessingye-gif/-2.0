@@ -345,7 +345,7 @@ export const initialOrderLedger: OrderLedgerRecord[] = [
     institutionId: 'INS-2023045',
     institutionName: '上海青葱教育培训中心',
     type: 'ai_usage_pack_buy',
-    typeName: 'AI 加油包购买',
+    typeName: '购买',
     paymentAmount: 2999,
     creditChange: 50000,
     status: 'completed',

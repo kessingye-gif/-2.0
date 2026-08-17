@@ -40,3 +40,11 @@ test('知识点导入保留填写提醒，隐藏内部试用和规范页', () =>
   assert.doesNotMatch(source, /章、节、知识点表结构规范说明/);
   assert.doesNotMatch(source, /一键试用多学科知识点层级批量导入/);
 });
+
+test('题库筛选和录入统一使用公共题型字典组件', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /QuestionTypeSelect/);
+  assert.equal(source.match(/<QuestionTypeSelect/g)?.length, 2);
+  assert.doesNotMatch(source, /<option value="单选题">/);
+  assert.doesNotMatch(source, /<option value="多选题">/);
+});

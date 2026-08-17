@@ -9,6 +9,7 @@ interface MasterDataContextValue {
   getActiveGrades: (stageId?: string) => MasterDataState['grades'];
   getActiveSubjects: (stageId?: string) => MasterDataState['subjects'];
   getActiveTextbooks: (stageId?: string) => MasterDataState['textbooks'];
+  getActiveQuestionTypes: () => MasterDataState['questionTypes'];
   addItem: (entity: MasterDataEntity, item: AnyMasterData) => string | null;
   updateItem: (entity: MasterDataEntity, id: string, changes: Partial<AnyMasterData>) => string | null;
   toggleStatus: (entity: MasterDataEntity, id: string) => void;
@@ -24,6 +25,7 @@ export const MasterDataProvider: React.FC<React.PropsWithChildren> = ({ children
     getActiveGrades: (stageId) => selectActiveGrades(state, stageId),
     getActiveSubjects: (stageId) => selectActiveByStage(state.subjects, stageId),
     getActiveTextbooks: (stageId) => selectActiveByStage(state.textbooks, stageId),
+    getActiveQuestionTypes: () => selectActive(state.questionTypes),
     addItem: (entity, item) => {
       const error = validateMasterDataItem(state[entity], item);
       if (!error) dispatch({ type: 'add', entity, item });

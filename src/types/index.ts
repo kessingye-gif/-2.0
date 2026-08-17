@@ -197,7 +197,7 @@ export interface AuthCode {
 export type QuestionDifficulty = '基础' | '提升' | '压轴';
 
 // 题型
-export type QuestionType = '单选题' | '多选题' | '选择题' | '填空题' | '解答题' | '判断题' | '综合题';
+export type QuestionType = string;
 
 // 章 / 节 / 知识点三级结构
 export interface KnowledgePointNode {
@@ -243,17 +243,6 @@ export interface QuestionItem {
   knowledgePointPathName: string; // 数学 > 一元一次方程 > 解方程基本步骤
   status: 'active' | 'inactive';
   imageUrl?: string;
-  createdAt: string;
-}
-
-export interface AiUsagePack {
-  id: string;
-  name: string;
-  code: string;
-  usageAmount: number;
-  price: number; // e.g. 500 元
-  status: 'active' | 'inactive';
-  description: string;
   createdAt: string;
 }
 
@@ -445,6 +434,10 @@ export interface StudentServiceRight {
   teacherName: string;
   packageId: string;
   packageName: string;
+  contentPackageIds?: string[];
+  contentPackageNames?: string[];
+  fulfillmentKind?: 'activation' | 'renewal';
+  idempotencyKey?: string;
   authCodeId: string;
   includedAiUsage: number;
   quotaConsumed: number;
@@ -457,6 +450,12 @@ export interface ServiceFulfillmentResult {
   authCode: AuthCode;
   guardianBindingCode: GuardianBindingCode;
   right: StudentServiceRight;
+}
+
+export interface BulkServiceFulfillmentOutcome {
+  succeededStudentIds: string[];
+  failed: { institutionId: string; institutionName: string; studentIds: string[]; reason: string }[];
+  totalQuotaConsumed: number;
 }
 
 export interface AuditLogItem {

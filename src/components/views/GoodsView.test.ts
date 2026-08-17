@@ -11,11 +11,10 @@ const handlers = {
   onRevokeAuthCode: () => undefined,
   onGenerateAuthCode: () => undefined,
   onAdjustQuota: () => undefined,
-  onAudit: () => undefined,
   onNotify: () => undefined,
 };
 
-const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance', initialCatalogTab?: 'packages' | 'aiUsagePacks') => renderToStaticMarkup(createElement(GoodsView, {
+const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance', initialCatalogTab?: 'packages') => renderToStaticMarkup(createElement(GoodsView, {
   mode,
   initialCatalogTab,
   packages: initialServicePackages,
@@ -48,11 +47,10 @@ test('服务包有明确的启停操作和历史保留说明', () => {
   assert.match(markup, /不影响已生效的学生权益和历史记录/);
 });
 
-test('AI 加油包可编辑、下架和重新上架', () => {
-  const markup = renderMode('catalog', 'aiUsagePacks');
-  assert.match(markup, />编辑</);
-  assert.match(markup, />下架</);
-  assert.match(markup, /下架后不再对新购买开放/);
+test('目录不再提供 AI 加油包商品标签', () => {
+  const markup = renderMode('catalog');
+  assert.doesNotMatch(markup, /加油包/);
+  assert.doesNotMatch(markup, /下架后不再对新购买开放/);
 });
 
 test('授权码生命周期只查询和作废，不能脱离学生直接生成', () => {
@@ -85,11 +83,11 @@ test('finance mode opens on the unified order ledger', () => {
   assert.doesNotMatch(markup, /订单与资金|商业履约 · 资金结算/);
   assert.match(markup, /交易流水/);
   assert.doesNotMatch(markup, />资产流水</);
-  assert.match(markup, /PAY-20260808-0192/);
-  assert.match(markup, /申请退款/);
+  assert.doesNotMatch(markup, /PAY-20260808-0192/);
+  assert.doesNotMatch(markup, /申请退款/);
 });
 
-test('机构入账和学生加油包交易合并为一个交易流水入口', () => {
+test('机构入账统一到一个交易流水入口', () => {
   const markup = renderToStaticMarkup(createElement(GoodsView, {
     mode: 'catalog', packages: initialServicePackages, authCodes: initialAuthCodes, institutions: initialInstitutions,
     creditInstitutionId: initialInstitutions[0].id, ...handlers,
@@ -99,9 +97,9 @@ test('机构入账和学生加油包交易合并为一个交易流水入口', ()
   assert.doesNotMatch(markup, />权益流水</);
   assert.match(markup, /全部流水类型/);
   assert.match(markup, />录入线下入账</);
-  assert.match(markup, /PAY-20260808-0192/);
-  assert.match(markup, /张伟强/);
-  assert.match(markup, /申请退款/);
+  assert.doesNotMatch(markup, /PAY-20260808-0192/);
+  assert.doesNotMatch(markup, /张伟强/);
+  assert.doesNotMatch(markup, /申请退款/);
   assert.doesNotMatch(markup, /学生加油包交易/);
 });
 

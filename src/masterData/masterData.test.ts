@@ -21,3 +21,9 @@ test('reducer 统一处理新增、编辑和启停', () => {
   const toggled = masterDataReducer(edited, { type: 'toggleStatus', entity: 'textbooks', id: 'TB-NEW' });
   assert.equal(toggled.textbooks.at(-1)?.status, 'inactive');
 });
+
+test('题型作为公共基础字典维护', () => {
+  assert.deepEqual(initialMasterData.questionTypes.map((item) => item.name), ['单选题', '多选题', '选择题', '填空题', '解答题', '判断题', '综合题']);
+  const disabled = masterDataReducer(initialMasterData, { type: 'toggleStatus', entity: 'questionTypes', id: 'QUESTION-TYPE-7' });
+  assert.equal(disabled.questionTypes.find((item) => item.id === 'QUESTION-TYPE-7')?.status, 'inactive');
+});

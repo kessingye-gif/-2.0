@@ -9,3 +9,4 @@ export const StageSelect = (props: SelectProps) => { const { activeStages } = us
 export const GradeSelect = ({ stageId, ...props }: SelectProps & { stageId?: string }) => { const { getActiveGrades } = useMasterData(); return <MasterSelect {...props} items={getActiveGrades(stageId)} />; };
 export const SubjectSelect = ({ stageId, ...props }: SelectProps & { stageId?: string }) => { const { getActiveSubjects } = useMasterData(); return <MasterSelect {...props} items={getActiveSubjects(stageId)} />; };
 export const TextbookSelect = ({ stageId, ...props }: SelectProps & { stageId?: string }) => { const { getActiveTextbooks } = useMasterData(); return <MasterSelect {...props} items={getActiveTextbooks(stageId)} />; };
+export const QuestionTypeSelect = (props: SelectProps) => { const { getActiveQuestionTypes } = useMasterData(); return <MasterSelect {...props} items={getActiveQuestionTypes()} valueMode="name" />; };

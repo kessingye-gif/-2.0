@@ -13,7 +13,7 @@ import { formatEducationMetadata, getEducationStage } from '../../utils/educatio
 import { getContentRoutePath, getContentRouteState } from '../../router/contentRoutes';
 import { ContentPackageManager } from '../content/ContentPackageManager';
 import { useMasterData } from '../../masterData/MasterDataContext';
-import { StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
+import { QuestionTypeSelect, StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
 import { filterQuestions } from '../../utils/questionFilters';
 import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
 import { knowledgePointImportFields } from '../../domain/contentFields';
@@ -1190,20 +1190,12 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
             <div className="w-36">
               <label className="block text-[11px] font-bold text-[#64748B] mb-1">题型</label>
-              <select
+              <QuestionTypeSelect
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                onChange={setTypeFilter}
+                emptyLabel="全部题型"
                 className="w-full border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-[13px] outline-none cursor-pointer focus:border-[#16B45B]"
-              >
-                <option value="">全部题型</option>
-                <option value="单选题">单选题</option>
-                <option value="多选题">多选题</option>
-                <option value="选择题">全部选择题</option>
-                <option value="填空题">填空题</option>
-                <option value="解答题">解答题</option>
-                <option value="判断题">判断题</option>
-                <option value="综合题">综合题</option>
-              </select>
+              />
             </div>
 
             <div className="flex-1 min-w-[200px]">
@@ -1920,18 +1912,12 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">题型</label>
-                  <select
+                  <QuestionTypeSelect
                     value={qForm.type}
-                    onChange={(e) => setQForm({ ...qForm, type: e.target.value as QuestionType })}
+                    onChange={(value) => setQForm({ ...qForm, type: value as QuestionType })}
+                    emptyLabel="请选择题型"
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[13px] outline-none cursor-pointer"
-                  >
-                    <option value="单选题">单选题 (默认)</option>
-                    <option value="多选题">多选题</option>
-                    <option value="填空题">填空题</option>
-                    <option value="解答题">解答题</option>
-                    <option value="判断题">判断题</option>
-                    <option value="综合题">综合题</option>
-                  </select>
+                  />
                 </div>
               </div>
 

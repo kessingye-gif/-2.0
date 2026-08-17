@@ -5,18 +5,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { initialServicePackages, initialStudents } from '../../mockData';
 import { ServiceFulfillmentPanel } from './ServiceFulfillmentPanel';
 
-test('办理服务明确展示教师余额并在余额不足时禁用提交', () => {
-  const servicePackage = initialServicePackages.find((item) => item.quotaCost === 120)!;
+test('办理服务明确展示所属机构统一账户的扣点结果', () => {
   const markup = renderToStaticMarkup(createElement(ServiceFulfillmentPanel, {
     student: initialStudents[0],
-    packages: [servicePackage],
-    teacherRemainingQuota: 80,
+    packages: initialServicePackages,
+    institutionRemainingQuota: 75402,
     onFulfill: () => undefined,
     compact: true,
   }));
 
-  assert.match(markup, /教师可用点数/);
-  assert.match(markup, /80 点/);
-  assert.match(markup, /还差 40 点/);
-  assert.match(markup, /disabled=""/);
+  assert.match(markup, /机构统一账户/);
+  assert.match(markup, /本次扣除/);
+  assert.doesNotMatch(markup, /教师可用点数/);
 });

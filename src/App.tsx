@@ -52,7 +52,8 @@ import {
   InstitutionCreditEntry,
 } from './types';
 import { deriveLegacyServiceRights } from './domain/studentRights';
-import { allocateTeacherCredits, debitTeacherForService, reclaimTeacherCredits } from './domain/teacherCredits';
+import { allocateTeacherCredits, reclaimTeacherCredits } from './domain/teacherCredits';
+import { settleInstitutionServiceFulfillments } from './domain/serviceFulfillment';
 import type { Role } from './permissions/accessControl';
 import { scopeInstitutions, scopeStudents, scopeTeachers } from './permissions/dataScope';
 import { createInstitutionCreditEntry } from './domain/institutionResources';
@@ -105,7 +106,7 @@ export default function App() {
     })),
   );
   const [serviceRights, setServiceRights] = useState<StudentServiceRight[]>(() => deriveLegacyServiceRights(initialAuthCodes, initialServicePackages));
-  const [orders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
+  const [orders, setOrders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
   const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
 
@@ -210,55 +211,74 @@ export default function App() {
   };
 
   const handleFulfillService = (result: ServiceFulfillmentResult) => {
-    const teacher = teachers.find((item) => item.id === result.right.teacherId);
-    if (!teacher) throw new Error('未找到负责教师的点数账户');
     const institution = institutions.find((item) => item.id === result.right.institutionId);
-    if (!institution?.availableServicePackageIds?.includes(result.right.packageId)) throw new Error('该机构未获授权使用此服务包');
-    const debit = debitTeacherForService({
-      teacher,
-      amount: result.right.quotaConsumed,
-      studentId: result.right.studentId,
-      studentName: result.right.studentName,
-      packageId: result.right.packageId,
-      packageName: result.right.packageName,
+    if (!institution) throw new Error('未找到用户所属机构账户');
+    const settlement = settleInstitutionServiceFulfillments({
+      institution,
+      results: [result],
+      existingRightIds: serviceRights.map((item) => item.id),
+      existingRights: serviceRights,
+      operatorName: currentUser.name,
       now: new Date(),
       nonce: Math.random().toString().slice(2, 6).padEnd(4, '0'),
     });
-    setTeachers((current) => current.map((item) => (item.id === teacher.id ? debit.teacher : item)));
-    setTeacherCreditLedger((current) => [debit.entry, ...current]);
+    setInstitutions((current) => current.map((item) => (item.id === institution.id ? settlement.institution : item)));
+    setOrders((current) => [settlement.order, ...current]);
     setAuthCodes((current) => [result.authCode, ...current]);
     setGuardianBindingCodes((current) => [result.guardianBindingCode, ...current]);
     setServiceRights((current) => [result.right, ...current]);
-    addAuditLog('办理学生服务', result.right.studentName, `开通服务包【${result.right.packageName}】，已同步生成授权码与家长绑定码。`, '额度授权码');
-    handleNotify(`已完成${result.right.studentName}的服务办理`);
+    addAuditLog('办理学生服务', result.right.studentName, `开通服务包【${result.right.packageName}】，所属机构账户扣除 ${settlement.totalQuotaConsumed.toLocaleString()} 点，已同步生成授权码与家长绑定码。`, '额度授权码');
+    handleNotify(`已完成${result.right.studentName}的服务办理，${institution.name}账户剩余 ${settlement.institution.remainingQuota.toLocaleString()} 点`);
   };
 
   const handleFulfillServices = (results: ServiceFulfillmentResult[]) => {
     if (results.length === 0) return;
-    const first = results[0];
-    if (results.some((item) => item.right.teacherId !== first.right.teacherId)) throw new Error('批量办理必须属于同一负责教师');
-    const teacher = teachers.find((item) => item.id === first.right.teacherId);
-    if (!teacher) throw new Error('未找到负责教师的点数账户');
-    const institution = institutions.find((item) => item.id === first.right.institutionId);
-    if (!institution?.availableServicePackageIds?.includes(first.right.packageId)) throw new Error('该机构未获授权使用此服务包');
-    const totalQuota = results.reduce((sum, item) => sum + item.right.quotaConsumed, 0);
-    const debit = debitTeacherForService({
-      teacher,
-      amount: totalQuota,
-      studentId: `BULK-${Date.now()}`,
-      studentName: `${results.length} 名班级学生`,
-      packageId: first.right.packageId,
-      packageName: `${first.right.packageName} × ${results.length}`,
-      now: new Date(),
-      nonce: Math.random().toString().slice(2, 6).padEnd(4, '0'),
+    const grouped = new Map<string, ServiceFulfillmentResult[]>();
+    results.forEach((result) => grouped.set(result.right.institutionId, [...(grouped.get(result.right.institutionId) ?? []), result]));
+    const settlements: ReturnType<typeof settleInstitutionServiceFulfillments>[] = [];
+    const failures: string[] = [];
+    grouped.forEach((institutionResults, institutionId) => {
+      const institution = institutions.find((item) => item.id === institutionId);
+      if (!institution) {
+        failures.push(`${institutionResults[0]?.right.institutionName ?? institutionId}：未找到机构账户`);
+        return;
+      }
+      try {
+        settlements.push(settleInstitutionServiceFulfillments({
+          institution,
+          results: institutionResults,
+          existingRightIds: serviceRights.map((item) => item.id),
+          existingRights: serviceRights,
+          operatorName: currentUser.name,
+          now: new Date(),
+          nonce: `${Math.random().toString().slice(2, 6).padEnd(4, '0')}-${institutionId}`,
+        }));
+      } catch (caught) {
+        failures.push(`${institution.name}：${caught instanceof Error ? caught.message : '结算失败'}`);
+      }
     });
-    setTeachers((current) => current.map((item) => (item.id === teacher.id ? debit.teacher : item)));
-    setTeacherCreditLedger((current) => [debit.entry, ...current]);
-    setAuthCodes((current) => [...results.map((item) => item.authCode), ...current]);
-    setGuardianBindingCodes((current) => [...results.map((item) => item.guardianBindingCode), ...current]);
-    setServiceRights((current) => [...results.map((item) => item.right), ...current]);
-    addAuditLog('班级批量办理学生服务', teacher.name, `为 ${results.length} 名学生办理【${first.right.packageName}】，教师账户扣除 ${totalQuota.toLocaleString()} 点并生成全部双码。`, '额度授权码');
-    handleNotify(`已为 ${results.length} 名学生批量办理服务，${teacher.name}剩余 ${debit.teacher.remainingQuota.toLocaleString()} 点`);
+    if (settlements.length === 0) return {
+      succeededStudentIds: [],
+      failed: [...grouped.entries()].map(([institutionId, institutionResults], index) => ({ institutionId, institutionName: institutionResults[0]?.right.institutionName ?? institutionId, studentIds: institutionResults.map((item) => item.right.studentId), reason: failures[index]?.split('：').slice(1).join('：') || '结算失败' })),
+      totalQuotaConsumed: 0,
+    };
+
+    const updatedInstitutions = new Map(settlements.map((item) => [item.institution.id, item.institution]));
+    const successfulResults = settlements.flatMap((item) => item.results);
+    setInstitutions((current) => current.map((item) => updatedInstitutions.get(item.id) ?? item));
+    setOrders((current) => [...settlements.map((item) => item.order), ...current]);
+    setAuthCodes((current) => [...successfulResults.map((item) => item.authCode), ...current]);
+    setGuardianBindingCodes((current) => [...successfulResults.map((item) => item.guardianBindingCode), ...current]);
+    setServiceRights((current) => [...successfulResults.map((item) => item.right), ...current]);
+    const totalQuota = settlements.reduce((sum, item) => sum + item.totalQuotaConsumed, 0);
+    addAuditLog('批量办理用户服务', `${successfulResults.length} 名用户`, `按 ${settlements.length} 个所属机构账户共扣除 ${totalQuota.toLocaleString()} 点并生成全部双码。${failures.length > 0 ? `未处理：${failures.join('；')}` : ''}`, '额度授权码');
+    handleNotify(`已为 ${successfulResults.length} 名用户开通服务${failures.length > 0 ? `；${failures.length} 个机构未处理` : ''}`, failures.length > 0 ? 'warning' : 'success');
+    const successfulInstitutionIds = new Set(settlements.map((item) => item.institution.id));
+    return {
+      succeededStudentIds: successfulResults.map((item) => item.right.studentId),
+      failed: [...grouped.entries()].filter(([institutionId]) => !successfulInstitutionIds.has(institutionId)).map(([institutionId, institutionResults]) => ({ institutionId, institutionName: institutionResults[0]?.right.institutionName ?? institutionId, studentIds: institutionResults.map((item) => item.right.studentId), reason: failures.find((item) => item.startsWith(`${institutionResults[0]?.right.institutionName ?? institutionId}：`))?.split('：').slice(1).join('：') || '结算失败' })),
+      totalQuotaConsumed: totalQuota,
+    };
   };
 
   const handleAddTeachers = (newTeachers: TeacherItem[]) => {
@@ -466,13 +486,13 @@ export default function App() {
               key={currentTab}
               mode="catalog"
               packages={packages}
+              contentPackages={initialContentPackages}
               authCodes={authCodes}
               institutions={institutions}
               onAddPackage={handleAddPackage}
               onUpdatePackage={handleUpdatePackage}
               onRevokeAuthCode={handleRevokeAuthCode}
               onCreateCreditEntry={handleCreateInstitutionCreditEntry}
-              onAudit={(event) => addAuditLog(event.action, event.target, event.details, '系统设置')}
               onNotify={handleNotify}
             />
           )}
@@ -560,8 +580,13 @@ export default function App() {
               guardianBindingCodes={guardianBindingCodes}
               serviceRights={serviceRights}
               packages={packages}
+              contentPackages={initialContentPackages}
               teachers={visibleTeachers}
+              institutions={visibleInstitutions}
               onFulfillService={handleFulfillService}
+              onFulfillServices={handleFulfillServices}
+              onOpenTeachers={() => setCurrentTab('teachers')}
+              onOpenClasses={() => setCurrentTab('classes')}
               onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
               onGenerateReport={handleGenerateReport}
