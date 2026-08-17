@@ -600,20 +600,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                    机构管理员账号
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="admin_zjdfz"
-                    value={formData.adminAccount}
-                    disabled={!!selectedInstitution}
-                    onChange={(e) => setFormData({ ...formData, adminAccount: e.target.value })}
-                    className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] bg-[#F8FAFC] font-mono outline-none"
-                  />
-                </div>
-
                 {!selectedInstitution && (
                   <div>
                     <label className="block text-[12px] font-bold text-[#475569] mb-1">
@@ -772,7 +758,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                     </span>
                   </div>
                   <p className="text-[12px] text-[#64748B] mt-1">
-                    管理员账号：{selectedInstitution.adminAccount} | 创建于 {selectedInstitution.createdAt}
+                    创建于 {selectedInstitution.createdAt}
                   </p>
                 </div>
                 <button
@@ -789,7 +775,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4"><span className="material-symbols-outlined text-[20px] text-[#0E7D3E]">account_balance_wallet</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">额度账户</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">调整可用额度或录入线下入账。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">调整额度</button><button onClick={() => { setCreditEntryForm({ paymentAmount: 10000, creditAmount: 10000, voucherNo: '', notes: '' }); setIsCreditEntryOpen(true); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
                     <div className="rounded-2xl border border-[#DCE5F5] bg-[#F6F9FF] p-4"><span className="material-symbols-outlined text-[20px] text-[#2563EB]">deployed_code</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">内容与服务授权</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">配置可用内容包和服务包。</p><button onClick={() => openAuthorizationModal(selectedInstitution)} className="mt-3 w-full rounded-lg bg-[#2563EB] px-3 py-2 text-[12px] font-bold text-white">配置授权范围</button></div>
-                    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4"><span className="material-symbols-outlined text-[20px] text-[#64748B]">manage_accounts</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">管理员账号</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">维护登录账号和机构资料。</p><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg border border-[#B8DCC6] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">账号管理</button><button onClick={() => { handleOpenEditModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-2 w-full text-[11px] font-bold text-[#475569]">编辑机构资料</button></div>
                   </div>
                 </section>
 
@@ -864,7 +849,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                   </h4>
                   <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-[#64748B]">
                     <p>机构编码: <span className="text-[#0F172A] font-mono">{selectedInstitution.id}</span></p>
-                    <p>管理员账号: <span className="text-[#0F172A] font-mono">@{selectedInstitution.adminAccount || '未设置'}</span></p>
                     <p>负责人姓名: <span className="text-[#0F172A] font-medium">{selectedInstitution.contactPerson}</span></p>
                     <p>联系电话: <span className="text-[#0F172A] font-mono">{selectedInstitution.phone}</span></p>
                     <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email || '暂无'}</span></p>
