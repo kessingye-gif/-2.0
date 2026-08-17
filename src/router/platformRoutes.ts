@@ -17,8 +17,8 @@ export interface PlatformRoute {
 
 export const platformRoutes: PlatformRoute[] = [
   { id: 'dashboard', path: '/platform/dashboard', label: '经营驾驶舱', icon: 'space_dashboard' },
-  { id: 'goods', path: '/platform/goods', label: '商品与权益', icon: 'inventory_2' },
   { id: 'content', path: '/platform/content', label: '内容管理', icon: 'library_books' },
+  { id: 'goods', path: '/platform/goods', label: '商品与权益', icon: 'inventory_2' },
   { id: 'institutions', path: '/platform/institutions', label: '机构管理', icon: 'domain' },
   { id: 'teachers', path: '/platform/teachers', label: '教师管理', icon: 'school' },
   { id: 'classes', path: '/platform/classes', label: '班级管理', icon: 'groups' },
