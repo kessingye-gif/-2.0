@@ -21,5 +21,13 @@ export const buildImportTemplateSheets = (templateKey: ImportTemplateKey): Impor
 export const downloadImportTemplate = (templateKey: ImportTemplateKey) => {
   const workbook = XLSX.utils.book_new();
   buildImportTemplateSheets(templateKey).forEach((sheet) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(sheet.rows), sheet.name));
-  XLSX.writeFile(workbook, `${importTemplates[templateKey].fileName}.xlsx`);
+  const file = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const url = URL.createObjectURL(new Blob([file], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${importTemplates[templateKey].fileName}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 };
