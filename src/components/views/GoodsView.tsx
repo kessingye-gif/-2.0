@@ -356,10 +356,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               <div key={pkg.id} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs space-y-4 relative">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
-                      {pkg.typeName}
-                    </span>
-                    <h3 className="text-[16px] font-bold text-[#0F172A] mt-1.5">{pkg.name}</h3>
+                    <h3 className="text-[16px] font-bold text-[#0F172A]">{pkg.name}</h3>
                     <p className="text-[11px] font-mono text-[#94A3B8]">{pkg.code}</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -387,14 +384,14 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <strong className="text-[#0F172A]">{pkg.durationDays ? `${pkg.durationDays} 天` : '长期有效'}</strong>
                   </div>
                   <div>
-                    <span className="text-[#64748B] block">状态</span>
-                    <span className={`font-bold ${pkg.status === 'active' ? 'text-green-600' : 'text-gray-400'}`}>
-                      {pkg.status === 'active' ? '可采购兑换' : '已停用'}
-                    </span>
+                    <span className="text-[#64748B] block">可选内容包数量</span>
+                    <strong className="text-[#0F172A] text-[14px] font-mono">{pkg.selectableContentPackageCount || 1} 个</strong>
                   </div>
                 </div>
-
-                <p className="text-[12px] text-[#64748B]">{pkg.description || '无详细配置说明'}</p>
+                <div className="text-[12px] text-[#64748B] leading-5">
+                  <span className="font-bold text-[#475569]">可选内容包范围：</span>
+                  {(pkg.selectableContentPackageIds || []).length ? pkg.selectableContentPackageIds!.join('、') : '暂未配置'}
+                </div>
               </div>
             ))}
           </div>
