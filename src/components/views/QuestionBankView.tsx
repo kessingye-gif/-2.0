@@ -16,6 +16,7 @@ import { useMasterData } from '../../masterData/MasterDataContext';
 import { StageSelect, SubjectSelect, TextbookSelect } from '../masterData/MasterDataSelects';
 import { filterQuestions } from '../../utils/questionFilters';
 import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
+import { knowledgePointImportFields } from '../../domain/contentFields';
 
 export interface SubjectItem {
   id: string;
@@ -68,6 +69,10 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     level2Name: '一元一次方程应用',
     level3Name: '行程问题与追及方程',
     level3Code: 'KP-MATH-301',
+    prerequisiteKnowledgePoints: '等式的性质',
+    coreContent: '从追及问题中抽象数量关系并建立一元一次方程。',
+    learningObjective: '能够根据路程、速度和时间关系列出并求解追及方程。',
+    teachingSuggestion: '先画线段图梳理数量关系，再组织学生对比相遇与追及问题。',
     title: '行程追及一元一次方程典型题',
     content: '甲乙两车相距 180 千米，甲车速度 60km/h，乙车速度 40km/h，同向而行，求甲车追上乙车所需的时间？',
     options: ['A. 9 小时', 'B. 4.5 小时', 'C. 3 小时', 'D. 6 小时'],
@@ -87,6 +92,10 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     level2Name: '实数与二次根式',
     level3Name: '无理数的判定与识别',
     level3Code: 'KP-MATH-303',
+    prerequisiteKnowledgePoints: '实数分类',
+    coreContent: '理解无理数的定义与常见表现形式。',
+    learningObjective: '能够识别根式、圆周率和无限不循环小数中的无理数。',
+    teachingSuggestion: '通过数轴和分类卡片活动区分有理数与无理数。',
     title: '无理数概念与常见类型判断',
     content: '下列各数中属于无理数的是（ ）',
     options: ['A. π', 'B. √2', 'C. 1/3', 'D. 0.101001...'],
@@ -106,6 +115,10 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     level2Name: '勾股定理',
     level3Name: '直角三角形求边长',
     level3Code: 'KP-MATH-304',
+    prerequisiteKnowledgePoints: '平方根',
+    coreContent: '掌握勾股定理并理解直角三角形三边关系。',
+    learningObjective: '能够在已知两边时正确求出第三边。',
+    teachingSuggestion: '先用方格图验证勾股关系，再完成由图到式的迁移练习。',
     title: '勾股定理已知两直角边求斜边',
     content: '直角三角形两直角边长分别为 3 和 4，则该直角三角形斜边长为 ___。',
     options: [],
@@ -125,6 +138,10 @@ const sampleSingleTableRows: SingleTableRowInput[] = [
     level2Name: '一元二次方程',
     level3Name: '配方法与公式法解方程',
     level3Code: 'KP-MATH-305',
+    prerequisiteKnowledgePoints: '完全平方公式',
+    coreContent: '理解配方法的变形过程，并掌握一元二次方程求根公式。',
+    learningObjective: '能够根据题目特点选择配方法或公式法求解。',
+    teachingSuggestion: '强调每一步等价变形，使用错例比较两种方法的适用条件。',
     title: '一元二次方程配方法解题与分步演算',
     content: '已知一元二次方程 x² - 6x + 5 = 0，请用配方法求该方程的解，并列出完整解答与演算步骤。',
     options: [],
@@ -2272,7 +2289,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 题库表格文件至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    单表模式要求：每一行分别填写【学段、所属学科、适用年级、教材版本、一级/二级/知识点编码及名称】以及【题型、难度、题干、选项、答案、解析、前置知识点、题干图片、选项图片】
+                    单表模式要求：每一行填写【学段、学科、年级、教材、章、节、知识点、前置知识点、核心学习内容、教学目标、教学建议】以及题目字段。
                   </p>
 
                   <input
@@ -2318,13 +2335,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
                     <thead className="bg-[#F1F5F9]">
                       <tr>
-                        <th className="p-2 border-r">学段</th>
-                        <th className="p-2 border-r">所属学科</th>
-                        <th className="p-2 border-r">适用年级</th>
-                        <th className="p-2 border-r">教材版本</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">一级编码及名称</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">二级编码及名称</th>
-                        <th className="p-2 border-r text-[#16B45B] font-bold">知识点编码及名称</th>
+                        {knowledgePointImportFields.map((field) => <th key={field.key} className="p-2 border-r text-[#16B45B] font-bold">{field.label}</th>)}
                         <th className="p-2 border-r">题型</th>
                         <th className="p-2 border-r">难度</th>
                         <th className="p-2 border-r">完整题干</th>
@@ -2339,15 +2350,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                     <tbody className="divide-y divide-[#E2E8F0]">
                       {sampleSingleTableRows.map((row, idx) => (
                         <tr key={idx} className="hover:bg-[#F8FAFC]">
-                          <td className="p-2 border-r whitespace-nowrap">
-                            <span className="font-bold text-[#0F172A]">{row.stage}</span>
-                          </td>
+                          <td className="p-2 border-r whitespace-nowrap"><span className="font-bold text-[#0F172A]">{row.stage}</span></td>
                           <td className="p-2 border-r font-bold text-[#0F172A]">{row.subject}</td>
                           <td className="p-2 border-r">{row.grade}</td>
                           <td className="p-2 border-r">{row.textbook}</td>
-                          <td className="p-2 border-r text-[#475569]">{row.level1Code} {row.level1Name}</td>
-                          <td className="p-2 border-r text-[#475569]">{row.level2Code} {row.level2Name}</td>
-                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.level3Code} {row.level3Name}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level1Name}</td>
+                          <td className="p-2 border-r text-[#475569]">{row.level2Name}</td>
+                          <td className="p-2 border-r font-bold text-[#16B45B]">{row.level3Name}</td>
+                          <td className="p-2 border-r text-[#64748B]">{row.prerequisiteKnowledgePoints}</td>
+                          <td className="p-2 border-r max-w-[180px] truncate" title={row.coreContent}>{row.coreContent}</td>
+                          <td className="p-2 border-r max-w-[180px] truncate" title={row.learningObjective}>{row.learningObjective}</td>
+                          <td className="p-2 border-r max-w-[180px] truncate" title={row.teachingSuggestion}>{row.teachingSuggestion}</td>
                           <td className="p-2 border-r font-medium text-[#0F172A]">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               row.type === '多选题'
@@ -2504,7 +2517,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   </div>
                   <p className="font-bold text-[#0F172A] text-[15px]">拖拽 Excel (.xlsx) 知识点结构表至此处</p>
                   <p className="text-[12px] text-[#64748B] mt-1 max-w-md mx-auto">
-                    规范包含：【所属学科、一级编码及名称、二级编码及名称、知识点编码及名称、适用年级、教材版本】
+                    规范包含：章、节、知识点及 AI 评测所需的核心学习内容、教学目标、教学建议。
                   </p>
 
                   <input
@@ -2553,36 +2566,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                   <table className="w-full text-left divide-y divide-[#E2E8F0]">
                     <thead className="bg-[#F1F5F9]">
                       <tr>
-                        <th className="p-2 border-r">所属学科</th>
-                        <th className="p-2 border-r">一级编码及名称</th>
-                        <th className="p-2 border-r">二级编码及名称</th>
-                        <th className="p-2 border-r">知识点编码及名称</th>
-                        <th className="p-2 border-r">适用年级</th>
-                        <th className="p-2">教材版本</th>
+                        {knowledgePointImportFields.map((field) => <th key={field.key} className="p-2 border-r last:border-r-0">{field.label}</th>)}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E2E8F0]">
                       <tr>
-                        <td className="p-2 border-r">数学</td>
-                        <td className="p-2 border-r">KP-MATH-L1-01 数与代数</td>
-                        <td className="p-2 border-r">KP-MATH-L2-02 二次方程</td>
-                        <td className="p-2 border-r text-[#16B45B] font-bold">KP-MATH-L3-05 因式分解求根</td>
-                        <td className="p-2 border-r">初一</td>
-                        <td className="p-2">人教版</td>
+                        {['初中', '数学', '初一', '人教版', '数与代数', '二次方程', '因式分解求根', '整式乘法', '理解因式分解的基本方法', '能够选择合适方法分解因式', '通过多种分解方法对比练习巩固'].map((value, index) => <td key={index} className="p-2 border-r last:border-r-0">{value}</td>)}
                       </tr>
                       <tr>
-                        <td className="p-2 border-r">物理</td>
-                        <td className="p-2 border-r">KP-PHYS-L1-01 力学基础</td>
-                        <td className="p-2 border-r">KP-PHYS-L2-01 压强与浮力</td>
-                        <td className="p-2 border-r text-[#16B45B] font-bold">KP-PHYS-L3-01 液体内部压强 p=ρgh</td>
-                        <td className="p-2 border-r">初二</td>
-                        <td className="p-2">人教版</td>
+                        {['初中', '物理', '初二', '人教版', '力学基础', '压强与浮力', '液体内部压强', '压强概念', '理解液体内部压强与深度的关系', '能够运用 p=ρgh 解决基础问题', '结合实验观察压强随深度变化'].map((value, index) => <td key={index} className="p-2 border-r last:border-r-0">{value}</td>)}
                       </tr>
                     </tbody>
                   </table>
                 </div>
                 <p className="text-[11.5px] text-[#64748B]">
-                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元，导入时系统将自动校验一级、二级与知识点的父子关系。
+                  知识点是学生做题验证、错题打标和 AI 诊断图谱的最小归因单元。章、节必须填写；若节已是最小学习单元，知识点填写 <code>-</code>。
                 </p>
               </div>
             )}

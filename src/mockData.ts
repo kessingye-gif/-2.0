@@ -407,6 +407,9 @@ export const initialKnowledgePoints: KnowledgePointNode[] = [
     parentId: 'KP-L2-01',
     questionCount: 18,
     status: 'active',
+    coreContent: '理解移项与合并同类项的依据，掌握一元一次方程的标准求解步骤。',
+    learningObjective: '能够独立完成移项、合并同类项并检验方程解。',
+    teachingSuggestion: '用等式两边同时进行相同运算的直观模型，配合易错题进行对比练习。',
   },
   {
     id: 'KP-L3-02',
@@ -419,6 +422,9 @@ export const initialKnowledgePoints: KnowledgePointNode[] = [
     parentId: 'KP-L2-01',
     questionCount: 10,
     status: 'active',
+    coreContent: '掌握去括号、去分母的运算法则及其在方程中的应用。',
+    learningObjective: '能够规范地运用去括号与去分母解决一元一次方程。',
+    teachingSuggestion: '先训练符号变化，再通过分步书写和回代检验巩固运算准确性。',
   },
   // 级别 1 (物理)
   {
@@ -455,6 +461,9 @@ export const initialKnowledgePoints: KnowledgePointNode[] = [
     parentId: 'KP-L2-02',
     questionCount: 0, // 提示无可练题
     status: 'active',
+    coreContent: '理解超重、失重现象与加速度方向之间的关系。',
+    learningObjective: '能够根据运动状态判断物体的超重或失重状态。',
+    teachingSuggestion: '结合电梯、过山车等生活情境，引导学生先判断加速度方向再分析支持力。',
   },
 ];
 

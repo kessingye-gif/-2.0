@@ -14,6 +14,10 @@ export interface SingleTableRowInput {
   level2Name: string;
   level3Name: string;
   level3Code: string;
+  prerequisiteKnowledgePoints?: string;
+  coreContent?: string;
+  learningObjective?: string;
+  teachingSuggestion?: string;
   // Question fields
   title: string;
   content: string;
@@ -121,6 +125,9 @@ export function splitSingleTableData(
         parentId: l2.id,
         questionCount: 1,
         status: 'active',
+        coreContent: row.coreContent,
+        learningObjective: row.learningObjective,
+        teachingSuggestion: row.teachingSuggestion,
       };
       kps.push(l3);
       newCreatedKps.push(l3);
