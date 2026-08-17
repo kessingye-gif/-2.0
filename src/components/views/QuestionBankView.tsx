@@ -2231,7 +2231,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               <div>
                 <h3 className="text-[18px] font-bold text-[#0F172A] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#16B45B]">difference</span>
-                  单表同行上传 ➔ 后台自动拆分存为两张关联表
+                  导入精选题库
                 </h3>
                 <div className="mt-2 flex flex-wrap gap-2 text-[11.5px]">
                   <span className="rounded-lg bg-[#E8F7EE] px-2.5 py-1 text-[#0E7D3E]"><b>多选答案</b> 用；分隔</span>
@@ -2259,7 +2259,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                选择 Excel 单表或一键测试
+                上传 Excel 题库
               </button>
 
             </div>

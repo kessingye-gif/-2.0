@@ -16,6 +16,14 @@ test('题库导入弹窗不向正式后台展示内部拆分原理', () => {
   assert.doesNotMatch(source, /后台存储自动拆分为两张关联表/);
 });
 
+test('题库导入使用面向操作的文案', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /导入精选题库/);
+  assert.match(source, /上传 Excel 题库/);
+  assert.doesNotMatch(source, /单表同行上传 ➔ 后台自动拆分存为两张关联表/);
+  assert.doesNotMatch(source, /选择 Excel 单表或一键测试/);
+});
+
 test('题库导入在上传前明确提示分隔符和空值规则', () => {
   const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
   assert.match(source, /多选答案<\/b> 用；分隔/);
