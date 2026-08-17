@@ -5,8 +5,13 @@ export type NavTab = PlatformRouteId;
 
 export const navGroups = [
   { items: [getPlatformRoute('dashboard')] },
-  { title: '内容与业务配置', items: platformRoutes.slice(1, 7) },
-  { title: '系统', items: [getPlatformRoute('system')] },
+  { title: '核心运营', items: [getPlatformRoute('goods'), getPlatformRoute('content'), getPlatformRoute('students')] },
+  { title: '支撑设置', items: [getPlatformRoute('institutions'), getPlatformRoute('system')] },
+];
+
+const workspaceNavGroups = [
+  { items: [getPlatformRoute('dashboard')] },
+  { title: '工作台', items: [getPlatformRoute('content'), getPlatformRoute('teachers'), getPlatformRoute('classes'), getPlatformRoute('students')] },
 ];
 
 const roleRoutes: Record<Role, PlatformRouteId[]> = {
@@ -15,7 +20,7 @@ const roleRoutes: Record<Role, PlatformRouteId[]> = {
   teacher: ['dashboard', 'content', 'classes', 'students'],
 };
 
-export const getNavGroupsForRole = (role: Role) => navGroups
+export const getNavGroupsForRole = (role: Role) => (role === 'super_admin' ? navGroups : workspaceNavGroups)
   .map((group) => ({ ...group, items: group.items.filter((item) => roleRoutes[role].includes(item.id)) }))
   .filter((group) => group.items.length > 0);
 
