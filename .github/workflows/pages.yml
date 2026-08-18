@@ -37,11 +37,3 @@ jobs:
           git add .
           git commit -m "Deploy ${GITHUB_SHA}"
           git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
-      - name: Use gh-pages as Pages source
-        run: |
-          curl --fail-with-body --request PUT \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" \
-            --data '{"source":{"branch":"gh-pages","path":"/"}}'
