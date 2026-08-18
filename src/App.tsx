@@ -3,7 +3,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { canAccessRoute, getDefaultRouteForRole, type NavTab } from './navigation';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getPlatformRoute, getPlatformRouteId } from './router/platformRoutes';
-import { Header } from './components/layout/Header';
+import { Header, type HeaderNotificationAlert } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
 import { GoodsView } from './components/views/GoodsView';
@@ -141,6 +141,32 @@ export default function App() {
   const visibleInstitutions = useMemo(() => scopeInstitutions(institutions, currentUser), [institutions, currentUser]);
   const visibleTeachers = useMemo(() => scopeTeachers(teachers, currentUser), [teachers, currentUser]);
   const visibleStudents = useMemo(() => scopeStudents(students, currentUser), [students, currentUser]);
+  const notificationAlerts = useMemo<HeaderNotificationAlert[]>(() => {
+    if (currentUser.role !== 'super_admin') return [];
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const daysUntil = (date?: string | null) => {
+      if (!date) return null;
+      const target = new Date(`${date.slice(0, 10)}T00:00:00`);
+      return Math.ceil((target.getTime() - now.getTime()) / 86_400_000);
+    };
+    const lowQuotaAlerts: HeaderNotificationAlert[] = institutions
+      .filter((institution) => institution.status === 'active' && institution.totalQuota > 0 && institution.remainingQuota / institution.totalQuota < 0.15)
+      .map((institution) => ({ id: `quota-${institution.id}`, type: 'low_quota', title: institution.name, detail: `机构额度仅剩 ${institution.remainingQuota.toLocaleString('zh-CN')} 点（${Math.round(institution.remainingQuota / institution.totalQuota * 100)}%），请及时补充。`, targetTab: 'institutions' }));
+    const contractAlerts: HeaderNotificationAlert[] = institutions.flatMap((institution) => {
+      const days = daysUntil(institution.contractExpireAt);
+      return institution.status === 'active' && days !== null && days >= 0 && days <= 30
+        ? [{ id: `contract-${institution.id}`, type: 'expiring' as const, title: `${institution.name}合同即将到期`, detail: `${institution.contractExpireAt} 到期，剩余 ${days} 天。`, targetTab: 'institutions' as const }]
+        : [];
+    });
+    const serviceAlerts: HeaderNotificationAlert[] = students.flatMap((student) => {
+      const days = daysUntil(student.serviceExpireAt);
+      return student.serviceStatus === 'active' && days !== null && days >= 0 && days <= 30
+        ? [{ id: `service-${student.id}`, type: 'expiring' as const, title: `${student.name}服务即将到期`, detail: `${student.institutionName} · ${student.serviceExpireAt} 到期，剩余 ${days} 天。`, targetTab: 'students' as const }]
+        : [];
+    });
+    return [...lowQuotaAlerts, ...contractAlerts, ...serviceAlerts];
+  }, [currentUser.role, institutions, students]);
 
   const handleSelectSearchResult = (tab: NavTab) => {
     setCurrentTab(tab);
@@ -495,7 +521,8 @@ export default function App() {
           onSearchChange={setSearchQuery}
           currentUser={currentUser}
           onLogout={handleLogout}
-          onOpenNotifications={() => alert('通知面板：全平台无待处理崩溃报错，目前 5 家机构额度告急已预警。')}
+          notificationAlerts={notificationAlerts}
+          onSelectNotification={setCurrentTab}
           onOpenSettings={() => setIsHelpModalOpen(true)}
           searchResults={searchResults}
           onSelectSearchResult={handleSelectSearchResult}

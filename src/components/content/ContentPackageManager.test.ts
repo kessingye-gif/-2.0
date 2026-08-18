@@ -25,7 +25,7 @@ test('内容包列表提供可追溯详情和明确新增流程', () => {
   assert.match(markup, /可使用/);
   assert.doesNotMatch(markup, /待完善/);
   assert.doesNotMatch(markup, /尚未选择知识点范围/);
-  assert.match(markup, /编辑/);
+  assert.doesNotMatch(markup, />编辑</);
   assert.match(markup, /停用/);
   assert.match(markup, /启用/);
   assert.doesNotMatch(markup, /继续完善/);

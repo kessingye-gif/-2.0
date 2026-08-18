@@ -222,7 +222,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const selectedBulkStudents = students.filter((item) => selectedBulkStudentIds.has(item.id));
   const selectedBulkPackage = activePackages.find((item) => item.id === bulkPackageId) ?? activePackages[0];
   const bulkContentOptions = contentPackages.filter((item) => item.status === 'active' && (!selectedBulkPackage?.selectableContentPackageIds?.length || selectedBulkPackage.selectableContentPackageIds.includes(item.id)));
-  const bulkRequiredContentCount = selectedBulkPackage?.selectableContentPackageCount ?? 1;
   const selectedBulkContentPackages = bulkContentOptions.filter((item) => bulkContentPackageIds.includes(item.id));
   const bulkInstitutionGroups = [...new Set(selectedBulkStudents.map((item) => item.institutionId))].map((institutionId) => {
     const institution = institutions.find((item) => item.id === institutionId);
@@ -286,8 +285,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
             {canManageServices && <div className="mx-auto mt-7 grid max-w-2xl gap-3 text-left sm:grid-cols-3">{[['1', '创建教师', '建立教师登录账号'], ['2', '导入学生', '表格填写负责教师'], ['3', '办理服务', '学生激活后开始计时']].map(([step, title, desc]) => <div key={step} className="rounded-xl bg-[#F8FAFC] p-3"><span className="text-[11px] font-bold text-[#16B45B]">步骤 {step}</span><strong className="mt-1 block text-[12px] text-[#0F172A]">{title}</strong><span className="mt-1 block text-[11px] text-[#64748B]">{desc}</span></div>)}</div>}
           </div> : <>
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
               <input
                 type="text"
                 value={searchTerm}
@@ -312,6 +311,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
               <button type="button" onClick={() => setShowAdvancedFilters((value) => !value)} className="rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">{showAdvancedFilters ? '收起筛选' : '更多筛选'}</button>
               {showAdvancedFilters && <><select aria-label="按班级筛选" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部班级</option>{filterOptions.classes.map((value) => <option key={value} value={value}>{value}</option>)}</select><select aria-label="按年级筛选" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></>}
               {hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setClassFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除</button>}
+              </div>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
               {canManageServices && onAddStudents && <button type="button" onClick={() => setActiveTab('organization')} className="rounded-lg border border-[#86D6A5] bg-white px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E]">导入学生</button>}
               {canManageServices && <button type="button" onClick={() => setBulkMode((value) => !value)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white">{bulkMode ? '退出批量' : '批量办理'}</button>}
               </div>
@@ -385,12 +386,12 @@ export const StudentView: React.FC<StudentViewProps> = ({
               </label>
             </div>
           </div>
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-center justify-between"><h4 className="text-[14px] font-bold">选择内容包</h4><span className="text-[11px] text-[#64748B]">需选 {bulkRequiredContentCount} 个</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{bulkContentOptions.map((item) => <label key={item.id} className={`rounded-xl border p-3 text-[12px] ${bulkContentPackageIds.includes(item.id) ? 'border-[#16B45B] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><input className="mr-2" type="checkbox" checked={bulkContentPackageIds.includes(item.id)} onChange={(event) => setBulkContentPackageIds((current) => event.target.checked ? (current.length < bulkRequiredContentCount ? [...current, item.id] : current) : current.filter((id) => id !== item.id))} />{item.name}</label>)}</div></div>
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-center justify-between"><h4 className="text-[14px] font-bold">选择内容包</h4><span className="text-[11px] text-[#64748B]">可多选，至少选 1 个</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{bulkContentOptions.map((item) => <label key={item.id} className={`rounded-xl border p-3 text-[12px] ${bulkContentPackageIds.includes(item.id) ? 'border-[#16B45B] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><input className="mr-2" type="checkbox" checked={bulkContentPackageIds.includes(item.id)} onChange={(event) => setBulkContentPackageIds((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} />{item.name}</label>)}</div></div>
           {selectedBulkStudents.length > 0 && <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
             <h4 className="text-[14px] font-bold text-[#0F172A]">机构结算预览</h4>
             <div className="mt-3 space-y-2">{bulkInstitutionGroups.map((group) => <div key={group.institutionId} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-[12px] ${group.canSettle ? 'bg-[#F0FBF4]' : 'bg-red-50'}`}><div><strong>{group.institution?.name ?? group.users[0]?.institutionName}</strong><span className="ml-2 text-[#64748B]">{group.users.length} 人 × {selectedBulkPackage?.quotaCost ?? 0} 点</span></div><div className={group.canSettle ? 'text-[#0E7D3E]' : 'text-red-700'}>{!group.institution ? '未找到机构账户' : !group.authorized ? '该机构未授权此服务包' : !group.contentAuthorized ? '该机构未授权所选内容包' : group.institution.remainingQuota < group.requiredQuota ? `余额不足，还差 ${(group.requiredQuota - group.institution.remainingQuota).toLocaleString()} 点` : `扣除 ${group.requiredQuota.toLocaleString()} 点，剩余 ${(group.institution.remainingQuota - group.requiredQuota).toLocaleString()} 点`}</div></div>)}</div>
             {bulkMessage && <div className="mt-3 rounded-xl bg-[#F8FAFC] px-3 py-2 text-[12px] text-[#475569]">{bulkMessage}</div>}
-            <div className="mt-4 flex justify-end"><button type="button" disabled={!onFulfillServices || bulkContentPackageIds.length !== bulkRequiredContentCount || bulkInstitutionGroups.every((group) => !group.canSettle)} onClick={handleBulkFulfill} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认开通并按机构扣点</button></div>
+            <div className="mt-4 flex justify-end"><button type="button" disabled={!onFulfillServices || (bulkContentOptions.length > 0 && bulkContentPackageIds.length === 0) || bulkInstitutionGroups.every((group) => !group.canSettle)} onClick={handleBulkFulfill} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认开通并按机构扣点</button></div>
           </div>}
         </div>
       )}

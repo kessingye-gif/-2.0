@@ -48,8 +48,7 @@ export function createServiceFulfillment({ student, servicePackage, now, nonce, 
     ? servicePackage.selectableContentPackageIds
     : contentPackages.map((item) => item.id);
   if (contentPackages.some((item) => item.status !== 'active' || !allowedContentIds.includes(item.id))) throw new Error('所选内容包不在服务包可选范围内');
-  const requiredCount = servicePackage.selectableContentPackageCount ?? 1;
-  if (allowedContentIds.length > 0 && contentPackages.length !== requiredCount) throw new Error(`请选择 ${requiredCount} 个内容包`);
+  if (allowedContentIds.length > 0 && contentPackages.length === 0) throw new Error('请至少选择 1 个内容包');
   const latestActiveRight = existingRights
     .filter((item) => item.studentId === student.id && item.status === 'active')
     .sort((a, b) => (b.serviceExpireAt ?? '').localeCompare(a.serviceExpireAt ?? ''))[0];

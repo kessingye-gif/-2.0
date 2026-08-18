@@ -10,18 +10,12 @@ const number = (value: number) => value.toLocaleString('zh-CN');
 
 const PlatformOverview: React.FC<{ snapshot: PlatformDashboardSnapshot; students: StudentItem[]; onGenerateReport: (studentId: string, subject: string, startDate: string, endDate: string) => void }> = ({ snapshot, students, onGenerateReport }) => {
   const overview = snapshot.platformOverview!;
-  const [activeTab, setActiveTab] = useState<'institutions' | 'services' | 'learning' | 'content' | 'work' | 'usage'>('institutions');
+  const [activeTab, setActiveTab] = useState<'institutions' | 'users' | 'content' | 'work' | 'usage'>('institutions');
   const contentSection = snapshot.sections.find((section) => section.id === 'contentAssets');
-  const loopSteps = [
-    { label: '完成练习', value: overview.learningLoop.answeredQuestions, color: 'bg-[#2563EB]' },
-    { label: '产生错题', value: overview.learningLoop.wrongQuestions, color: 'bg-[#F59E0B]' },
-    { label: '完成复习', value: overview.learningLoop.reviewedWrongQuestions, color: 'bg-[#16B45B]' },
-  ];
 
   const tabs = [
     { id: 'institutions' as const, label: '机构运营' },
-    { id: 'services' as const, label: '用户服务' },
-    { id: 'learning' as const, label: '学生学习' },
+    { id: 'users' as const, label: '用户与使用' },
     { id: 'content' as const, label: '内容管理' },
     { id: 'work' as const, label: `待办异常 (${snapshot.workItems.length})` },
     { id: 'usage' as const, label: '使用情况' },
@@ -37,16 +31,14 @@ const PlatformOverview: React.FC<{ snapshot: PlatformDashboardSnapshot; students
 
   return <div className="mx-auto max-w-[1480px] space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><h2 className="text-[20px] font-extrabold text-[#0F172A]">平台运营总览</h2><p className="mt-1 text-[12px] text-[#64748B]">分类查看机构、用户服务、小程序学习和内容管理。</p></div>
+      <div><h2 className="text-[20px] font-extrabold text-[#0F172A]">平台运营总览</h2><p className="mt-1 text-[12px] text-[#64748B]">分类查看机构运营、用户与使用、内容管理和待办情况。</p></div>
       <p className="text-[11px] text-[#94A3B8]">数据更新：{snapshot.updatedAt}</p>
     </div>
     <nav aria-label="平台运营分类" className="overflow-x-auto border-b border-[#E2E8F0]"><div role="tablist" className="flex min-w-max gap-7">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} className={`pb-2 text-[13.5px] font-bold ${activeTab === tab.id ? 'border-b-2 border-[#16B45B] text-[#16B45B]' : 'text-[#64748B]'}`}>{tab.label}</button>)}</div></nav>
 
-    {activeTab === 'institutions' && <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{overview.institutionMetrics.map((metric) => <MetricLink key={metric.id} metric={metric} />)}</div><section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><h3 className="text-[15px] font-bold text-[#0F172A]">机构额度概况</h3><div className="mt-4 grid gap-4 sm:grid-cols-3"><div><span className="text-[11px] text-[#64748B]">累计分配额度</span><strong className="mt-1 block text-[20px]">{number(overview.quota.total)} 点</strong></div><div><span className="text-[11px] text-[#64748B]">当前剩余额度</span><strong className="mt-1 block text-[20px] text-[#0E7D3E]">{number(overview.quota.remaining)} 点</strong></div><div><span className="text-[11px] text-[#64748B]">服务办理消耗</span><strong className="mt-1 block text-[20px]">{number(overview.quota.consumed)} 点</strong></div></div></section>{institutionTable}</>}
+    {activeTab === 'institutions' && <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{overview.institutionMetrics.map((metric) => <MetricLink key={metric.id} metric={metric} />)}</div><section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><h3 className="text-[15px] font-bold text-[#0F172A]">机构额度概况</h3><div className="mt-4 grid gap-4 sm:grid-cols-3"><div><span className="text-[11px] text-[#64748B]">累计分配额度</span><strong className="mt-1 block text-[20px]">{number(overview.quota.total)} 点</strong></div><div><span className="text-[11px] text-[#64748B]">当前剩余额度</span><strong className="mt-1 block text-[20px] text-[#0E7D3E]">{number(overview.quota.remaining)} 点</strong></div><div><span className="text-[11px] text-[#64748B]">服务办理消耗</span><strong className="mt-1 block text-[20px]">{number(overview.quota.consumed)} 点</strong></div></div></section></>}
 
-    {activeTab === 'services' && <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{overview.serviceMetrics.map((metric) => <MetricLink key={metric.id} metric={metric} />)}</div><div className="grid gap-4 xl:grid-cols-2"><section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><h3 className="text-[15px] font-bold">开通与续费</h3><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-[#F0FBF4] p-4"><span className="text-[11px] text-[#64748B]">首次开通</span><strong className="mt-1 block text-[24px] text-[#0E7D3E]">{overview.serviceSummary.openings}</strong></div><div className="rounded-xl bg-[#F8FAFC] p-4"><span className="text-[11px] text-[#64748B]">续费顺延</span><strong className="mt-1 block text-[24px] text-[#0F172A]">{overview.serviceSummary.renewals}</strong></div></div></section><section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><h3 className="text-[15px] font-bold">服务包分布</h3><div className="mt-4 space-y-3">{overview.packageDistribution.length ? overview.packageDistribution.map((item) => { const max = Math.max(...overview.packageDistribution.map((entry) => entry.count), 1); return <div key={item.name}><div className="flex justify-between text-[11px]"><span>{item.name}</span><strong>{item.count} 人</strong></div><div className="mt-1 h-2 rounded-full bg-[#EEF2F6]"><div className="h-full rounded-full bg-[#16B45B]" style={{ width: `${item.count / max * 100}%` }} /></div></div>; }) : <p className="py-8 text-center text-[12px] text-[#94A3B8]">暂无服务办理记录</p>}</div></section></div></>}
-
-    {activeTab === 'learning' && <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{overview.coreMetrics.map((metric) => <MetricLink key={metric.id} metric={metric} />)}</div><div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">{coveragePanel}<section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><h3 className="text-[15px] font-bold text-[#0F172A]">精选题学习闭环</h3><p className="mt-1 text-[11px] text-[#64748B]">累计练习、错题与复习结果。</p><div className="mt-5 space-y-4">{loopSteps.map((item, index) => { const width = index === 0 ? 100 : overview.learningLoop.answeredQuestions ? Math.max(4, item.value / overview.learningLoop.answeredQuestions * 100) : 0; return <div key={item.label}><div className="mb-1.5 flex justify-between text-[12px]"><span>{item.label}</span><strong>{number(item.value)}</strong></div><div className="h-2.5 rounded-full bg-[#EEF2F6]"><div className={`h-full rounded-full ${item.color}`} style={{ width: `${width}%` }} /></div></div>; })}</div><div className="mt-5 rounded-xl bg-[#F0FBF4] px-4 py-3"><span className="text-[11px] text-[#4B8060]">错题复习完成率</span><strong className="ml-3 text-[20px] text-[#0E7D3E]">{overview.learningLoop.reviewRate}%</strong></div></section></div></>}
+    {activeTab === 'users' && institutionTable}
 
     {activeTab === 'content' && <>{contentSection && <DashboardSection section={contentSection} />}<div className="grid gap-3 sm:grid-cols-3">{overview.contentHealth.map((item) => <Link key={item.label} to={item.targetPath} className={`rounded-xl border bg-white p-4 ${item.tone === 'warning' ? 'border-amber-200' : 'border-[#E2E8F0]'}`}><div className="flex justify-between"><span className="text-[12px] font-semibold text-[#64748B]">{item.label}</span><strong className={item.tone === 'warning' ? 'text-amber-600' : ''}>{item.value}</strong></div><p className="mt-2 text-[10px] text-[#94A3B8]">{item.description}</p></Link>)}</div>{coveragePanel}</>}
 

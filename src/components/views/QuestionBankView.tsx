@@ -194,9 +194,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const [packageForm, setPackageForm] = useState({
     name: '',
     code: '',
-    subjectId: 'SUB-01',
-    subject: '初中数学',
-    stage: '初中',
+    stageId: '',
+    subjectMasterId: '',
+    textbookId: '',
     description: '',
     status: 'active' as 'active' | 'inactive',
   });
@@ -557,9 +557,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     setPackageForm({
       name: '',
       code: `CP-${Date.now().toString().slice(-4)}`,
-      subjectId: 'SUB-01',
-      subject: '初中数学',
-      stage: '初中',
+      stageId: '',
+      subjectMasterId: '',
+      textbookId: '',
       description: '',
       status: 'active',
     });
@@ -567,13 +567,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   };
 
   const handleOpenEditPackage = (pkg: ContentPackageItem) => {
+    const stage = masterDataState.stages.find((item) => item.name === pkg.stage);
+    const subject = masterDataState.subjects.find((item) => pkg.subject.includes(item.name));
+    const textbook = masterDataState.textbooks.find((item) => item.name === pkg.textbook)
+      ?? getActiveTextbooks(stage?.id)[0];
     setEditingPackage(pkg);
     setPackageForm({
       name: pkg.name,
       code: pkg.code,
-      subjectId: pkg.subjectId,
-      subject: pkg.subject,
-      stage: pkg.stage,
+      stageId: stage?.id ?? '',
+      subjectMasterId: subject?.id ?? '',
+      textbookId: textbook?.id ?? '',
       description: pkg.description,
       status: pkg.status,
     });
@@ -582,7 +586,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   const handleSavePackage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!packageForm.name.trim()) return;
+    const selectedStage = masterDataState.stages.find((item) => item.id === packageForm.stageId);
+    const selectedSubject = masterDataState.subjects.find((item) => item.id === packageForm.subjectMasterId);
+    const selectedTextbook = masterDataState.textbooks.find((item) => item.id === packageForm.textbookId);
+    if (!packageForm.name.trim() || !selectedStage || !selectedSubject || !selectedTextbook) return;
+    const sourceSubject = sharedSubjects.find((item) => item.stage === selectedStage.name && item.name.includes(selectedSubject.name));
+    const contentSource = {
+      subjectId: sourceSubject?.id ?? `${selectedSubject.id}-${selectedStage.id}`,
+      subject: `${selectedStage.name}${selectedSubject.name}`,
+      stage: selectedStage.name,
+      textbook: selectedTextbook.name,
+    };
 
     if (editingPackage) {
       setContentPackages((prev) =>
@@ -592,9 +606,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 ...p,
                 name: packageForm.name,
                 code: packageForm.code,
-                subjectId: packageForm.subjectId,
-                subject: packageForm.subject,
-                stage: packageForm.stage,
+                ...contentSource,
                 description: packageForm.description,
                 status: packageForm.status,
               }
@@ -606,9 +618,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         id: `CP-${Date.now().toString().slice(-5)}`,
         name: packageForm.name,
         code: packageForm.code || `CP-${Date.now().toString().slice(-4)}`,
-        subjectId: packageForm.subjectId,
-        subject: packageForm.subject,
-        stage: packageForm.stage,
+        ...contentSource,
         description: packageForm.description,
         kpCount: 0,
         questionCount: 0,
@@ -2118,7 +2128,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       {/* Add KP Modal */}
       {isKpModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E2E8F0]">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-[#E2E8F0]">
             <div className="flex justify-between items-center pb-3 border-b border-[#E2E8F0] mb-4">
               <h3 className="text-[17px] font-bold text-[#0F172A]">
                 新增章 / 节 / 知识点
@@ -2647,33 +2657,21 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">内容来源学科 <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={packageForm.subjectId}
-                    onChange={(e) => {
-                      const selectedSubject = subjects.find((subject) => subject.id === e.target.value);
-                      if (!selectedSubject) return;
-                      setPackageForm({
-                        ...packageForm,
-                        subjectId: selectedSubject.id,
-                        subject: selectedSubject.name,
-                        stage: selectedSubject.stage,
-                      });
-                    }}
-                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none focus:border-[#16B45B] cursor-pointer"
-                  >
-                    {subjects.filter((subject) => subject.status === 'active').map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name} · {subject.stage} · {subject.textbook}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-[11px] text-[#64748B]">内容包自动引用该学科下已发布的知识点与题目；学段和版本由学科主数据统一提供。</p>
+              <fieldset>
+                <legend className="block text-[12px] font-bold text-[#475569] mb-2">内容来源 <span className="text-red-500">*</span></legend>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <label className="block text-[12px] font-bold text-[#475569]">学段
+                    <StageSelect required value={packageForm.stageId} onChange={(stageId) => setPackageForm({ ...packageForm, stageId, subjectMasterId: '', textbookId: '' })} emptyLabel="请选择学段" className="mt-1" />
+                  </label>
+                  <label className="block text-[12px] font-bold text-[#475569]">学科
+                    <SubjectSelect required stageId={packageForm.stageId || undefined} value={packageForm.subjectMasterId} onChange={(subjectMasterId) => setPackageForm({ ...packageForm, subjectMasterId })} emptyLabel="请选择学科" className="mt-1" />
+                  </label>
+                  <label className="block text-[12px] font-bold text-[#475569]">教材版本
+                    <TextbookSelect required stageId={packageForm.stageId || undefined} value={packageForm.textbookId} onChange={(textbookId) => setPackageForm({ ...packageForm, textbookId })} emptyLabel="请选择版本" className="mt-1" />
+                  </label>
                 </div>
-              </div>
+                <p className="mt-2 text-[11px] leading-5 text-[#64748B]">三个字段均读取系统管理－基础字典，可以分别选择；选择学段后，学科和教材版本会自动缩小到适用范围。</p>
+              </fieldset>
 
               <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">说明描述</label>

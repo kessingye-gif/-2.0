@@ -136,6 +136,7 @@ export interface ContentPackageItem {
   subjectId: string;
   subject: string;
   stage: string;
+  textbook?: string;
   kpCount: number;
   questionCount: number;
   status: 'active' | 'inactive';

@@ -32,7 +32,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 }) => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [regionFilter, setRegionFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   // Modals state
@@ -90,15 +89,14 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
         item.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.phone.includes(searchTerm);
 
-      const matchesRegion = !regionFilter || item.region === regionFilter;
       const matchesStatus =
         statusFilter === 'all' ||
         (statusFilter === 'active' && item.status === 'active') ||
         (statusFilter === 'inactive' && item.status === 'inactive');
 
-      return matchesSearch && matchesRegion && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [institutions, searchTerm, regionFilter, statusFilter]);
+  }, [institutions, searchTerm, statusFilter]);
 
   const stats = useMemo(() => {
     const activeCount = institutions.filter((item) => item.status === 'active').length;
@@ -331,21 +329,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
             />
           </div>
 
-          {/* Region */}
-          <select
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            aria-label="按区域筛选"
-            className="cursor-pointer rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-[13px] text-[#334155] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"
-          >
-            <option value="">全部区域</option>
-            <option value="huadong">华东地区</option>
-            <option value="huabei">华北地区</option>
-            <option value="huanan">华南地区</option>
-            <option value="central">华中地区</option>
-            <option value="xinan">西南地区</option>
-          </select>
-
           {/* Status Tabs */}
           <div className="flex bg-[#F1F5F9] rounded-xl p-0.5 border border-[#E2E8F0]/50">
             <button
@@ -389,7 +372,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
           <button
             onClick={() => {
               setSearchTerm('');
-              setRegionFilter('');
               setStatusFilter('all');
             }}
             aria-label="重置机构筛选"
@@ -461,7 +443,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                             </span>
                             {isInactive && <span className="rounded-full bg-[#F1F5F9] px-2 py-0.5 text-[10.5px] font-medium text-[#64748B]">已停用</span>}
                           </div>
-                          <p className="mt-0.5 text-[10.5px] text-[#94A3B8] font-mono">{inst.code} · {inst.regionName}</p>
+                          <p className="mt-0.5 text-[10.5px] text-[#94A3B8] font-mono">{inst.code}</p>
                         </div>
                       </td>
 
@@ -569,8 +551,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">
                     机构编码
                   </label>
@@ -580,24 +561,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] bg-[#F8FAFC] font-mono outline-none"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                    所属区域
-                  </label>
-                  <select
-                    value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value as RegionType })}
-                    className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-[14px] outline-none cursor-pointer focus:border-[#16B45B]"
-                  >
-                    <option value="huadong">华东地区</option>
-                    <option value="huabei">华北地区</option>
-                    <option value="huanan">华南地区</option>
-                    <option value="central">华中地区</option>
-                    <option value="xinan">西南地区</option>
-                  </select>
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -795,7 +758,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                 <section className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
                   <h4 className="text-[13px] font-bold text-[#0F172A]">基本资料</h4>
                   <dl className="mt-3 grid gap-x-6 gap-y-3 text-[12px] sm:grid-cols-2">
-                    <div><dt className="text-[#94A3B8]">所属区域</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.regionName}</dd></div>
                     <div><dt className="text-[#94A3B8]">负责人</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.contactPerson}</dd></div>
                     <div><dt className="text-[#94A3B8]">联系电话</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.phone || '未填写'}</dd></div>
                     <div><dt className="text-[#94A3B8]">管理员账号</dt><dd className="mt-1 font-mono font-medium text-[#334155]">{selectedInstitution.adminAccount || '未配置'}</dd></div>

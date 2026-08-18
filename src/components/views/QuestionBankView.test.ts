@@ -57,6 +57,16 @@ test('题库学科筛选读取基础字典公共组件', () => {
   assert.doesNotMatch(filterSource, /<option/);
 });
 
+test('新增内容包将学段、学科和教材版本拆为三个基础字典字段', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  const modalSource = source.slice(source.indexOf('{/* Add / Edit Package Modal */}'));
+  assert.match(modalSource, /<StageSelect required/);
+  assert.match(modalSource, /<SubjectSelect required stageId=\{packageForm\.stageId \|\| undefined\}/);
+  assert.match(modalSource, /<TextbookSelect required stageId=\{packageForm\.stageId \|\| undefined\}/);
+  assert.doesNotMatch(modalSource, /disabled=\{!packageForm\.stageId\}/);
+  assert.doesNotMatch(modalSource, /\{subject\.name\} · \{subject\.stage\} · \{subject\.textbook\}/);
+});
+
 test('知识点默认按内容包式树状层级展开', () => {
   const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
   assert.match(source, /useState<'table' \| 'tree'>\('tree'\)/);

@@ -263,7 +263,6 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
                 <div className="flex items-start justify-between gap-3">
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone}`}>{completenessLabel}</span>
                   {canCreatePackage && <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setSelected(pkg)} className="cursor-pointer text-[12px] font-bold text-[#16B45B] hover:underline">编辑</button>
                     <button type="button" onClick={() => setStatusChangeTarget({ pkg, nextStatus: pkg.status === 'inactive' ? 'active' : 'inactive' })} className={`cursor-pointer text-[12px] font-bold hover:underline ${pkg.status === 'inactive' ? 'text-[#16B45B]' : 'text-[#DC2626]'}`}>{pkg.status === 'inactive' ? '启用' : '停用'}</button>
                   </div>}
                 </div>

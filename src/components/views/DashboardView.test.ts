@@ -8,12 +8,15 @@ import { deriveInstitutionDashboardSnapshot, derivePlatformDashboardSnapshot, de
 import { initialAuditLogs, initialAuthCodes, initialContentPackages, initialInstitutions, initialKnowledgePoints, initialOrderLedger, initialQuestions, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
 import { DashboardView } from './DashboardView';
 
-test('平台运营首页按机构、服务、学习、内容和待办分类展示', () => {
+test('平台运营首页将用户服务与学生学习合并为用户与使用', () => {
   const snapshot = derivePlatformDashboardSnapshot({ institutions: initialInstitutions, authCodes: initialAuthCodes, students: initialStudents, orders: initialOrderLedger, auditLogs: initialAuditLogs, servicePackages: initialServicePackages, contentPackages: initialContentPackages, knowledgePoints: initialKnowledgePoints, questions: initialQuestions });
   const markup = renderToStaticMarkup(createElement(MemoryRouter, {}, createElement(DashboardView, { snapshot })));
-  ['平台运营总览', '机构运营', '用户服务', '学生学习', '内容管理', '待办异常', '使用情况', '合作机构', '正常机构', '机构剩余额度', '累计服务消耗', '机构用户与使用汇总'].forEach((text) => assert.match(markup, new RegExp(text)));
+  ['平台运营总览', '机构运营', '用户与使用', '内容管理', '待办异常', '使用情况', '合作机构', '正常机构', '机构剩余额度', '累计服务消耗'].forEach((text) => assert.match(markup, new RegExp(text)));
+  assert.doesNotMatch(markup, />用户服务</);
+  assert.doesNotMatch(markup, />学生学习</);
   const source = readFileSync(new URL('./DashboardView.tsx', import.meta.url), 'utf8');
-  ['开通与续费', '服务包分布', '精选题学习闭环', 'DiagnosticsView'].forEach((text) => assert.match(source, new RegExp(text)));
+  ['机构用户与使用汇总', "activeTab === 'users' && institutionTable", 'DiagnosticsView'].forEach((text) => assert.match(source, new RegExp(text)));
+  assert.doesNotMatch(source, /activeTab === 'services'|activeTab === 'learning'/);
   const usageSource = readFileSync(new URL('./DiagnosticsView.tsx', import.meta.url), 'utf8');
   ['小程序累积刷题量', '平台整体正确率', '高频易错考点 Top 5', 'AI 学伴提问类型分布', '学生个体 AI 智能诊断档案'].forEach((text) => assert.match(usageSource, new RegExp(text)));
   const overviewJson = JSON.stringify(snapshot.platformOverview);

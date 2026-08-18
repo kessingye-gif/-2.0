@@ -27,6 +27,7 @@ test('机构列表区分查看详情和开通配置入口', () => {
   assert.doesNotMatch(markup, />入账</);
   assert.doesNotMatch(markup, />划拨</);
   assert.doesNotMatch(markup, /组织与权限|机构管理|维护机构账号/);
+  assert.doesNotMatch(markup, /全部区域|按区域筛选|华东地区|所属区域/);
 });
 
 test('机构列表展示机构自身的内容包和服务包范围，不伪装成统一合作方案', () => {
