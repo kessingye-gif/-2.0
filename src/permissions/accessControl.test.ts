@@ -17,12 +17,14 @@ test('机构管理员只能管理本机构', () => {
   assert.equal(can(institutionAdmin, 'teacher.import', { institutionId: 'INS-2' }), false);
 });
 
-test('老师只能管理自己负责的学生与学习数据', () => {
-  assert.equal(can(teacher, 'student.manage', { institutionId: 'INS-1', teacherId: 'T-1' }), true);
+test('老师只能查看自己负责的学生与学习数据', () => {
+  assert.equal(can(teacher, 'student.manage', { institutionId: 'INS-1', teacherId: 'T-1' }), false);
   assert.equal(can(teacher, 'learning.view', { institutionId: 'INS-1', teacherId: 'T-1' }), true);
   assert.equal(can(teacher, 'student.manage', { institutionId: 'INS-1', teacherId: 'T-2' }), false);
   assert.equal(can(teacher, 'teacher.import', { institutionId: 'INS-1' }), false);
-  assert.equal(can(teacher, 'institutionContent.manage', { institutionId: 'INS-1', teacherId: 'T-1' }), true);
+  assert.equal(can(teacher, 'class.manage', { institutionId: 'INS-1', teacherId: 'T-1' }), false);
+  assert.equal(can(teacher, 'institutionContent.manage', { institutionId: 'INS-1' }), true);
+  assert.equal(can(teacher, 'institutionContent.manage', { institutionId: 'INS-2' }), false);
 });
 
 test('所有业务操作都必须有明确机构范围', () => {

@@ -38,16 +38,15 @@ export const validateContentPackageDraft = (draft: ContentPackageDraft) => {
   const errors: string[] = [];
   if (!draft.name.trim()) errors.push('请填写内容包名称');
   if (!draft.subjectId) errors.push('请选择学科');
-  if (draft.kpCount < 1 && draft.questionCount < 1) errors.push('请选择至少一个知识点或一道题目');
   return errors;
 };
 
 const seedPackages: ContentPackageRecord[] = [
-  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', status: 'active', kpCount: 156, questionCount: 1280, institutionCount: 4, updatedAt: '2026-08-08 16:20', description: '显式选择初中数学知识点与题目', knowledgePointIds: ['KP-L3-01', 'KP-L3-02'] },
-  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', status: 'active', kpCount: 98, questionCount: 840, institutionCount: 3, updatedAt: '2026-08-07 11:10', description: '显式选择物理知识点与题目', knowledgePointIds: ['KP-L3-03'] },
-  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', status: 'active', kpCount: 75, questionCount: 620, institutionCount: 2, updatedAt: '2026-08-06 09:45', description: '尚未配置知识点', knowledgePointIds: [] },
-  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', status: 'active', kpCount: 210, questionCount: 1850, institutionCount: 1, updatedAt: '2026-08-05 18:30', description: '尚未配置知识点', knowledgePointIds: [] },
-  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', status: 'inactive', kpCount: 110, questionCount: 950, institutionCount: 0, updatedAt: '2026-08-03 14:00', description: '尚未配置知识点', knowledgePointIds: [] },
+  { id: 'CP-01', code: 'CP-MATH-CZ', name: '人教版初中数学全套内容包', subjectId: 'SUB-01', status: 'active', kpCount: 156, questionCount: 1280, institutionCount: 4, updatedAt: '2026-08-08 16:20', description: '自动引用初中数学下已发布的知识点与题目', knowledgePointIds: ['KP-L3-01', 'KP-L3-02'] },
+  { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', status: 'active', kpCount: 98, questionCount: 840, institutionCount: 3, updatedAt: '2026-08-07 11:10', description: '自动引用初中物理下已发布的知识点与题目', knowledgePointIds: ['KP-L3-03'] },
+  { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', status: 'active', kpCount: 75, questionCount: 620, institutionCount: 2, updatedAt: '2026-08-06 09:45', description: '自动引用初中化学下已发布的知识点与题目', knowledgePointIds: [] },
+  { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', status: 'active', kpCount: 210, questionCount: 1850, institutionCount: 1, updatedAt: '2026-08-05 18:30', description: '自动引用高中数学下已发布的知识点与题目', knowledgePointIds: [] },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', status: 'inactive', kpCount: 110, questionCount: 950, institutionCount: 0, updatedAt: '2026-08-03 14:00', description: '自动引用初中英语下已发布的知识点与题目', knowledgePointIds: [] },
 ];
 
 interface ContentPackageManagerProps {
@@ -62,9 +61,7 @@ interface ContentPackageManagerProps {
   showNewPackageAction?: boolean;
 }
 
-type PackageWizardStep = 'basics' | 'content' | 'review';
-
-const statusLabel = { draft: '草稿', active: '已发布', inactive: '已停用' } as const;
+type PackageWizardStep = 'basics' | 'review';
 
 export const resolveKnowledgeTypeName = (knowledgeTypes: KnowledgeTypeMaster[], knowledgeTypeId: string) =>
   knowledgeTypes.find((item) => item.id === knowledgeTypeId && item.status === 'active')?.name ?? '未配置';
@@ -105,7 +102,10 @@ interface ContentPackageWorkspaceProps {
 
 export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage, showNewPackageAction }) => {
   const { state: masterDataState } = useMasterData();
-  const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, pkg.knowledgePointIds);
+  const automaticallyReferencedIds = knowledgePoints
+    .filter((point) => point.level === 3 && point.status === 'active' && Boolean(subject?.name.includes(point.subject)))
+    .map((point) => point.id);
+  const workspaceKnowledgePoints = getPackageWorkspaceKnowledgePoints(knowledgePoints, automaticallyReferencedIds);
   const [activePointId, setActivePointId] = useState(workspaceKnowledgePoints[0]?.id ?? '');
   const activePoint = workspaceKnowledgePoints.find((item) => item.id === activePointId) ?? workspaceKnowledgePoints[0];
   const activePointNode = knowledgePoints.find((point) => point.id === activePoint?.id);
@@ -163,7 +163,7 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
       </div>
 
       <aside className="min-w-0">
-        <div className="flex items-center justify-between border-b border-[#DCE5E1] px-4 py-3"><strong className="text-[14px]">知识点详情</strong><button type="button" className="rounded-lg border border-[#DCE5E1] px-3 py-1.5 text-[12px] font-bold">编辑</button></div>
+        <div className="border-b border-[#DCE5E1] px-4 py-3"><strong className="text-[14px]">知识点详情</strong></div>
         {activePoint ? <div className="space-y-4 p-4 text-[12px] leading-5 text-[#0F172A]">
           <div><h3 className="text-[17px] font-bold">{activePoint.name}</h3><span className="mt-2 inline-block rounded-full bg-[#E3F5EC] px-2.5 py-1 text-[10px] font-medium text-[#0E7D3E]">平台内容 · 已发布</span></div>
           <dl className="grid grid-cols-2 gap-x-5 gap-y-3"><div><dt className="text-[#64748B]">知识点 ID</dt><dd className="mt-1 font-mono">{activePoint.id}</dd></div><div><dt className="text-[#64748B]">学科 / 学段</dt><dd className="mt-1">{subject?.name ?? '数学'} / {subject?.stage ?? '初中'}</dd></div><div><dt className="text-[#64748B]">适用年级</dt><dd className="mt-1">{activePoint.grade}</dd></div><div><dt className="text-[#64748B]">教材版本</dt><dd className="mt-1">{activePoint.textbook}</dd></div>{knowledgePointBaseFields.slice(-3).map((field) => <div key={field.key}><dt className="text-[#64748B]">{field.label}</dt><dd className="mt-1">{levelValues[field.key]}</dd></div>)}</dl>
@@ -181,9 +181,18 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
 
 export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true }) => {
   const [packages, setPackages] = useState(seedPackages);
-  const visiblePackages = filterAuthorizedContentPackages<ContentPackageRecord>(packages, authorizedPackageNames);
+  const [packageSearch, setPackageSearch] = useState('');
+  const [packageStatus, setPackageStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const authorizedPackages = filterAuthorizedContentPackages<ContentPackageRecord>(packages, authorizedPackageNames);
+  const visiblePackages = authorizedPackages.filter((pkg) => {
+    const matchesSearch = !packageSearch || pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) || pkg.code.toLowerCase().includes(packageSearch.toLowerCase());
+    const matchesStatus = packageStatus === 'all' || pkg.status === packageStatus;
+    return matchesSearch && matchesStatus;
+  });
   const [selected, setSelected] = useState<ContentPackageRecord | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [statusChangeTarget, setStatusChangeTarget] = useState<{ pkg: ContentPackageRecord; nextStatus: 'active' | 'inactive' } | null>(null);
   const [step, setStep] = useState<PackageWizardStep>('basics');
   const [draft, setDraft] = useState<ContentPackageDraft>({ name: '', subjectId: subjects[0]?.id ?? '', kpCount: 0, questionCount: 0 });
 
@@ -195,23 +204,35 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
     setWizardOpen(true);
   };
 
-  const publish = (status: 'draft' | 'active') => {
+  const publish = () => {
     const subject = subjectById(draft.subjectId);
-    if (!subject || (status === 'active' && validateContentPackageDraft(draft).length)) return;
+    if (!subject || validateContentPackageDraft(draft).length) return;
+    const referencedKnowledgePointIds = knowledgePoints
+      .filter((point) => point.level === 3 && point.status === 'active' && subject.name.includes(point.subject))
+      .map((point) => point.id);
     setPackages((current) => [{
       id: `CP-${Date.now().toString().slice(-5)}`,
       code: `CP-${subject.id.replace('SUB-', '')}-${Date.now().toString().slice(-3)}`,
       name: draft.name || `${subject.name}内容包草稿`,
       subjectId: subject.id,
-      status,
-      kpCount: draft.kpCount,
-      questionCount: draft.questionCount,
+      status: 'active',
+      kpCount: subject.kpCount,
+      questionCount: subject.questionCount,
       institutionCount: 0,
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 16),
-      description: `引用${subject.name}下已发布的知识点与题目`,
-      knowledgePointIds: [],
+      description: `自动引用${subject.name}下已发布的知识点与题目`,
+      knowledgePointIds: referencedKnowledgePointIds,
     }, ...current]);
     setWizardOpen(false);
+    setNotice(`内容包已创建，已自动引用${subject.name}下已发布的知识点与题目。`);
+  };
+
+  const confirmStatusChange = () => {
+    if (!statusChangeTarget) return;
+    const { pkg, nextStatus } = statusChangeTarget;
+    setPackages((current) => current.map((item) => item.id === pkg.id ? { ...item, status: nextStatus, updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 16) } : item));
+    setNotice(nextStatus === 'inactive' ? `“${pkg.name}”已停用，新的机构授权将不再使用该内容包。` : `“${pkg.name}”已重新启用，可以继续授权给机构。`);
+    setStatusChangeTarget(null);
   };
 
   if (selected) {
@@ -220,31 +241,38 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
 
   return (
     <div className="space-y-4">
+      {notice && <div role="status" aria-live="polite" className="flex items-center justify-between rounded-xl border border-[#A7E4BE] bg-[#F0FBF4] px-4 py-3 text-[12px] font-medium text-[#0E7D3E]"><span>{notice}</span><button type="button" onClick={() => setNotice('')} className="rounded-lg px-2 py-1 font-bold hover:bg-[#DFF4E7]">知道了</button></div>}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-3">
+        <div className="flex flex-wrap items-center gap-2"><input aria-label="搜索内容包" value={packageSearch} onChange={(event) => setPackageSearch(event.target.value)} placeholder="搜索内容包名称或编码…" className="w-64 rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]" /><select aria-label="按状态筛选内容包" value={packageStatus} onChange={(event) => setPackageStatus(event.target.value as typeof packageStatus)} className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="all">全部状态</option><option value="active">可使用</option><option value="inactive">已停用</option></select></div>
       {canCreatePackage && showNewPackageAction && <div className="flex justify-end">
         <button type="button" onClick={openWizard} className="flex items-center justify-center gap-1 rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#139B4E] cursor-pointer">
-          <span className="material-symbols-outlined text-[18px]">add</span>新增内容包
+          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">add</span>新增内容包
         </button>
       </div>}
+      </div>
 
       {visiblePackages.length > 0 ? (
         <div data-content-package-grid="true" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visiblePackages.map((pkg) => {
             const subject = subjectById(pkg.subjectId);
-            const statusTone = pkg.status === 'active'
-              ? 'bg-[#E8F7EE] text-[#0E7D3E]'
-              : pkg.status === 'draft'
-                ? 'bg-[#FFF4DD] text-[#B86608]'
-                : 'bg-[#F1F5F9] text-[#64748B]';
+            const completenessLabel = pkg.status === 'inactive' ? '已停用' : '可使用';
+            const statusTone = pkg.status === 'inactive' ? 'bg-[#F1F5F9] text-[#64748B]' : 'bg-[#E8F7EE] text-[#0E7D3E]';
 
             return (
               <article key={pkg.id} className="flex min-h-[292px] flex-col rounded-2xl border border-[#DCE5E1] bg-white p-4 shadow-2xs transition hover:-translate-y-0.5 hover:border-[#B7D7C7] hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone}`}>{statusLabel[pkg.status]}</span>
-                  <span className="font-mono text-[10px] text-[#94A3B8]">{pkg.code}</span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone}`}>{completenessLabel}</span>
+                  {canCreatePackage && <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setSelected(pkg)} className="cursor-pointer text-[12px] font-bold text-[#16B45B] hover:underline">编辑</button>
+                    <button type="button" onClick={() => setStatusChangeTarget({ pkg, nextStatus: pkg.status === 'inactive' ? 'active' : 'inactive' })} className={`cursor-pointer text-[12px] font-bold hover:underline ${pkg.status === 'inactive' ? 'text-[#16B45B]' : 'text-[#DC2626]'}`}>{pkg.status === 'inactive' ? '启用' : '停用'}</button>
+                  </div>}
                 </div>
 
                 <div className="mt-3 min-h-[66px]">
-                  <h3 className="text-[16px] font-bold leading-6 text-[#0F172A]">{pkg.name}</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-[16px] font-bold leading-6 text-[#0F172A]">{pkg.name}</h3>
+                    <span className="shrink-0 font-mono text-[10px] text-[#94A3B8]">{pkg.code}</span>
+                  </div>
                   <p className="mt-1 text-[12px] text-[#64748B]">{subject?.name ?? '未关联学科'} · {subject?.stage ?? '未设置学段'} · {subject?.textbook ?? '未设置教材'}</p>
                 </div>
 
@@ -263,17 +291,21 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
                   </div>
                 </dl>
 
-                <button type="button" onClick={() => setSelected(pkg)} className="mt-3 w-fit cursor-pointer rounded-lg border border-[#D6E2DC] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] transition hover:border-[#16B45B] hover:bg-[#EAF7EF]">
-                  进入内容包
-                </button>
+                <div className={`mt-3 rounded-lg px-3 py-2 text-[11px] ${pkg.status === 'inactive' ? 'bg-[#F8FAFC] text-[#64748B]' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}><strong>内容来源：</strong>{pkg.status === 'inactive' ? '已停用，当前不能授权给新机构' : `自动同步${subject?.name ?? '来源学科'}下已发布的知识点与精选题`}</div>
+
+                <div className="mt-3">
+                  <button type="button" onClick={() => setSelected(pkg)} className="cursor-pointer rounded-lg border border-[#D6E2DC] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] transition hover:border-[#16B45B] hover:bg-[#EAF7EF]">
+                    进入内容包
+                  </button>
+                </div>
               </article>
             );
           })}
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-14 text-center">
-          <p className="font-bold text-[#334155]">当前机构暂无已授权内容包</p>
-          <p className="mt-1 text-[12px] text-[#94A3B8]">请联系平台超级管理员在“商品与权益”中完成内容授权。</p>
+          <p className="font-bold text-[#334155]">{authorizedPackages.length ? '没有符合当前条件的内容包' : '当前机构暂无已授权内容包'}</p>
+          <p className="mt-1 text-[12px] text-[#94A3B8]">{authorizedPackages.length ? '请调整搜索词或状态筛选。' : '请联系平台超级管理员完成内容授权。'}</p>
         </div>
       )}
 
@@ -282,13 +314,14 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
         机构只能使用平台已授权的内容包；机构内部维护的知识点和题目仅在自身范围内生效。
       </div>
 
+      {statusChangeTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="dialog" aria-modal="true" aria-labelledby="content-status-dialog-title" className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl"><h3 id="content-status-dialog-title" className="text-[17px] font-bold text-[#0F172A]">{statusChangeTarget.nextStatus === 'inactive' ? '确认停用内容包？' : '确认重新启用？'}</h3><p className="mt-2 text-[12px] leading-5 text-[#64748B]">{statusChangeTarget.nextStatus === 'inactive' ? `停用“${statusChangeTarget.pkg.name}”后，将不能继续授权给新机构；已有数据不会删除，可以随时重新启用。` : `重新启用“${statusChangeTarget.pkg.name}”后，可以继续授权给机构。`}</p><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setStatusChangeTarget(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC]">取消</button><button type="button" onClick={confirmStatusChange} className={`rounded-xl px-4 py-2 text-[13px] font-bold text-white ${statusChangeTarget.nextStatus === 'inactive' ? 'bg-[#DC2626] hover:bg-[#B91C1C]' : 'bg-[#16B45B] hover:bg-[#139B4E]'}`}>{statusChangeTarget.nextStatus === 'inactive' ? '确认停用' : '确认启用'}</button></div></div></div>}
+
       {wizardOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-[640px] rounded-2xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between"><div><p className="text-[11px] font-bold text-[#0E7D3E]">{step === 'basics' ? '第 1 步，共 3 步' : step === 'content' ? '第 2 步，共 3 步' : '第 3 步，共 3 步'}</p><h3 className="mt-1 text-[18px] font-bold">{step === 'basics' ? '填写基本信息' : step === 'content' ? '选择内容范围' : '确认并发布'}</h3></div><button type="button" onClick={() => setWizardOpen(false)} className="cursor-pointer text-[#64748B]"><span className="material-symbols-outlined">close</span></button></div>
-        <div className="my-5 grid grid-cols-3 gap-2">{['basics', 'content', 'review'].map((item, index) => <div key={item} className={`h-1.5 rounded-full ${['basics', 'content', 'review'].indexOf(step) >= index ? 'bg-[#16B45B]' : 'bg-[#E2E8F0]'}`} />)}</div>
-        {step === 'basics' && <div className="space-y-4"><label className="block text-[12px] font-bold text-[#475569]">内容包名称<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} className="mt-1 block w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[14px] outline-none focus:border-[#16B45B]" placeholder="如：人教版初中数学基础包" /></label><label className="block text-[12px] font-bold text-[#475569]">来源学科<select value={draft.subjectId} onChange={(event) => setDraft({ ...draft, subjectId: event.target.value, kpCount: 0, questionCount: 0 })} className="mt-1 block w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[14px]">{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.stage} · {subject.name} · {subject.textbook}</option>)}</select></label></div>}
-        {step === 'content' && <div><p className="text-[12px] text-[#64748B]">从该学科已发布资源中选择内容范围。演示版使用整科范围，数量来自内容资源。</p><div className="mt-4 grid grid-cols-2 gap-3">{(() => { const subject = subjectById(draft.subjectId); return <><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4"><input type="checkbox" checked={draft.kpCount > 0} onChange={(event) => setDraft({ ...draft, kpCount: event.target.checked ? subject?.kpCount ?? 0 : 0 })} /><span><strong className="block">全部已发布知识点</strong><span className="text-[12px] text-[#64748B]">{subject?.kpCount ?? 0} 个</span></span></label><label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E2E8F0] p-4"><input type="checkbox" checked={draft.questionCount > 0} onChange={(event) => setDraft({ ...draft, questionCount: event.target.checked ? subject?.questionCount ?? 0 : 0 })} /><span><strong className="block">全部已发布题目</strong><span className="text-[12px] text-[#64748B]">{subject?.questionCount ?? 0} 道</span></span></label></>; })()}</div>{draft.kpCount < 1 && draft.questionCount < 1 && <p className="mt-3 text-[12px] font-medium text-[#C2410C]">请选择至少一个知识点或一道题目</p>}</div>}
-        {step === 'review' && <div className="rounded-xl bg-[#F8FAFC] p-4 text-[13px]"><h4 className="font-bold text-[#0F172A]">{draft.name}</h4><p className="mt-2 text-[#64748B]">来源：{subjectById(draft.subjectId)?.name} · {subjectById(draft.subjectId)?.textbook}</p><p className="mt-1 text-[#64748B]">范围：{draft.kpCount} 个知识点 · {draft.questionCount} 道题目</p></div>}
-        <div className="mt-6 flex items-center justify-between border-t border-[#E2E8F0] pt-4"><button type="button" onClick={() => step === 'basics' ? setWizardOpen(false) : setStep(step === 'review' ? 'content' : 'basics')} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold cursor-pointer">{step === 'basics' ? '取消' : '上一步'}</button><div className="flex gap-2">{step === 'review' && <button type="button" onClick={() => publish('draft')} className="rounded-xl border border-[#16B45B] px-4 py-2 text-[13px] font-bold text-[#0E7D3E] cursor-pointer">保存草稿</button>}<button type="button" disabled={(step === 'basics' && (!draft.name.trim() || !draft.subjectId)) || (step === 'content' && draft.kpCount < 1 && draft.questionCount < 1)} onClick={() => step === 'basics' ? setStep('content') : step === 'content' ? setStep('review') : publish('active')} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">{step === 'review' ? '确认发布' : '下一步'}</button></div></div>
+        <div className="flex items-start justify-between"><div><p className="text-[11px] font-bold text-[#0E7D3E]">{step === 'basics' ? '第 1 步，共 2 步' : '第 2 步，共 2 步'}</p><h3 className="mt-1 text-[18px] font-bold">{step === 'basics' ? '填写基本信息' : '确认创建'}</h3></div><button type="button" onClick={() => setWizardOpen(false)} className="cursor-pointer text-[#64748B]"><span className="material-symbols-outlined">close</span></button></div>
+        <div className="my-5 grid grid-cols-2 gap-2">{['basics', 'review'].map((item, index) => <div key={item} className={`h-1.5 rounded-full ${['basics', 'review'].indexOf(step) >= index ? 'bg-[#16B45B]' : 'bg-[#E2E8F0]'}`} />)}</div>
+        {step === 'basics' && <div className="space-y-4"><label className="block text-[12px] font-bold text-[#475569]">内容包名称<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} className="mt-1 block w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[14px] outline-none focus:border-[#16B45B]" placeholder="如：人教版初中数学基础包" /></label><label className="block text-[12px] font-bold text-[#475569]">内容来源学科<select value={draft.subjectId} onChange={(event) => setDraft({ ...draft, subjectId: event.target.value })} className="mt-1 block w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[14px]">{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name} · {subject.stage} · {subject.textbook}</option>)}</select><span className="mt-2 block font-normal leading-5 text-[#64748B]">内容包自动引用该学科下已发布的知识点与精选题，后续内容更新会自动同步。</span></label></div>}
+        {step === 'review' && (() => { const subject = subjectById(draft.subjectId); return <div className="rounded-xl bg-[#F8FAFC] p-4 text-[13px]"><h4 className="font-bold text-[#0F172A]">{draft.name}</h4><p className="mt-2 text-[#64748B]">来源：{subject?.name} · {subject?.textbook}</p><p className="mt-1 text-[#64748B]">将自动引用：{subject?.kpCount ?? 0} 个知识点 · {subject?.questionCount ?? 0} 道精选题</p></div>; })()}
+        <div className="mt-6 flex items-center justify-between border-t border-[#E2E8F0] pt-4"><button type="button" onClick={() => step === 'basics' ? setWizardOpen(false) : setStep('basics')} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold cursor-pointer">{step === 'basics' ? '取消' : '上一步'}</button><button type="button" disabled={step === 'basics' && (!draft.name.trim() || !draft.subjectId)} onClick={() => step === 'basics' ? setStep('review') : publish()} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer">{step === 'review' ? '确认创建' : '下一步'}</button></div>
       </div></div>}
     </div>
   );

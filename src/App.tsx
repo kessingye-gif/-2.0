@@ -12,7 +12,6 @@ import { DashboardView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
 import { TeacherClassView } from './components/views/TeacherClassView';
 import { StudentView } from './components/views/StudentView';
-import { DiagnosticsView } from './components/views/DiagnosticsView';
 import { HelpModal } from './components/modals/HelpModal';
 import { Toast } from './components/ui/Toast';
 
@@ -48,6 +47,7 @@ import {
   ServiceFulfillmentResult,
   CooperationPlan,
   TeacherItem,
+  StudentItem,
   TeacherCreditLedgerEntry,
   InstitutionCreditEntry,
 } from './types';
@@ -65,6 +65,7 @@ export default function App() {
   const currentTab = getPlatformRouteId(location.pathname);
   const setCurrentTab = (tab: NavTab) => navigate(getPlatformRoute(tab).path);
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentTeacherFilter, setStudentTeacherFilter] = useState('');
 
   // Authentication & Current User State
   const [isAuthenticated, setIsAuthenticated] = useState(true);
@@ -130,7 +131,8 @@ export default function App() {
     contentPackages: initialContentPackages,
     knowledgePoints,
     questions,
-  }), [institutions, authCodes, students, orders, auditLogs, packages, knowledgePoints, questions]);
+    serviceRights,
+  }), [institutions, authCodes, students, orders, auditLogs, packages, knowledgePoints, questions, serviceRights]);
   const visibleDashboardSnapshot = useMemo(() => {
     if (currentUser.role === 'institution_admin' && currentUser.institutionId) return deriveInstitutionDashboardSnapshot({ institutionId: currentUser.institutionId, institutions, teachers, students, auditLogs });
     if (currentUser.role === 'teacher' && currentUser.teacherId) return deriveTeacherDashboardSnapshot({ teacherId: currentUser.teacherId, teachers, students, auditLogs });
@@ -152,7 +154,7 @@ export default function App() {
   const handleLogin = (user: CurrentUser) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    const logRole = user.role === 'super_admin' ? '超级管理员' : `机构管理员 (${user.institutionName})`;
+    const logRole = user.role === 'super_admin' ? '超级管理员' : user.role === 'teacher' ? `教师 (${user.institutionName})` : `机构管理员 (${user.institutionName})`;
     addAuditLog('管理员安全登录', `${user.name} (@${user.username})`, `身份校验通过，成功进入${logRole}控制台。`, '系统设置');
   };
 
@@ -165,7 +167,7 @@ export default function App() {
     setCurrentUser((user) => ({
       ...user,
       role,
-      name: role === 'super_admin' ? '超级管理员' : role === 'institution_admin' ? '机构管理员' : '李老师',
+      name: role === 'super_admin' ? '超级管理员' : role === 'institution_admin' ? '机构管理员' : (teachers[0]?.name ?? '教师'),
       institutionId: role === 'super_admin' ? undefined : institutions[0]?.id,
       institutionName: role === 'super_admin' ? undefined : institutions[0]?.name,
       teacherId: role === 'teacher' ? teachers[0]?.id : undefined,
@@ -224,11 +226,14 @@ export default function App() {
     });
     setInstitutions((current) => current.map((item) => (item.id === institution.id ? settlement.institution : item)));
     setOrders((current) => [settlement.order, ...current]);
-    setAuthCodes((current) => [result.authCode, ...current]);
-    setGuardianBindingCodes((current) => [result.guardianBindingCode, ...current]);
-    setServiceRights((current) => [result.right, ...current]);
-    addAuditLog('办理学生服务', result.right.studentName, `开通服务包【${result.right.packageName}】，所属机构账户扣除 ${settlement.totalQuotaConsumed.toLocaleString()} 点，已同步生成授权码与家长绑定码。`, '额度授权码');
-    handleNotify(`已完成${result.right.studentName}的服务办理，${institution.name}账户剩余 ${settlement.institution.remainingQuota.toLocaleString()} 点`);
+    if (result.authCode) setAuthCodes((current) => [result.authCode!, ...current]);
+    if (result.guardianBindingCode) setGuardianBindingCodes((current) => [result.guardianBindingCode!, ...current]);
+    setServiceRights((current) => result.right.fulfillmentKind === 'renewal'
+      ? current.map((item) => item.id === result.right.id ? result.right : item)
+      : [result.right, ...current]);
+    const isRenewal = result.right.fulfillmentKind === 'renewal';
+    addAuditLog(isRenewal ? '续费学生服务' : '办理学生服务', result.right.studentName, `${isRenewal ? '续费' : '开通'}服务包【${result.right.packageName}】，所属机构账户扣除 ${settlement.totalQuotaConsumed.toLocaleString()} 点${isRenewal ? `，有效期顺延至 ${result.right.serviceExpireAt ?? '长期有效'}。` : '，已生成授权码与家长绑定码。'}`, '额度授权码');
+    handleNotify(`${result.right.studentName}${isRenewal ? '续费成功，有效期已直接顺延' : '服务办理成功，等待学生首次激活'}；${institution.name}账户剩余 ${settlement.institution.remainingQuota.toLocaleString()} 点`);
   };
 
   const handleFulfillServices = (results: ServiceFulfillmentResult[]) => {
@@ -267,12 +272,18 @@ export default function App() {
     const successfulResults = settlements.flatMap((item) => item.results);
     setInstitutions((current) => current.map((item) => updatedInstitutions.get(item.id) ?? item));
     setOrders((current) => [...settlements.map((item) => item.order), ...current]);
-    setAuthCodes((current) => [...successfulResults.map((item) => item.authCode), ...current]);
-    setGuardianBindingCodes((current) => [...successfulResults.map((item) => item.guardianBindingCode), ...current]);
-    setServiceRights((current) => [...successfulResults.map((item) => item.right), ...current]);
+    const newAuthCodes = successfulResults.flatMap((item) => item.authCode ? [item.authCode] : []);
+    const newGuardianCodes = successfulResults.flatMap((item) => item.guardianBindingCode ? [item.guardianBindingCode] : []);
+    const renewedRights = new Map(successfulResults.filter((item) => item.right.fulfillmentKind === 'renewal').map((item) => [item.right.id, item.right]));
+    const activatedRights = successfulResults.filter((item) => item.right.fulfillmentKind !== 'renewal').map((item) => item.right);
+    setAuthCodes((current) => [...newAuthCodes, ...current]);
+    setGuardianBindingCodes((current) => [...newGuardianCodes, ...current]);
+    setServiceRights((current) => [...activatedRights, ...current.map((item) => renewedRights.get(item.id) ?? item)]);
     const totalQuota = settlements.reduce((sum, item) => sum + item.totalQuotaConsumed, 0);
-    addAuditLog('批量办理用户服务', `${successfulResults.length} 名用户`, `按 ${settlements.length} 个所属机构账户共扣除 ${totalQuota.toLocaleString()} 点并生成全部双码。${failures.length > 0 ? `未处理：${failures.join('；')}` : ''}`, '额度授权码');
-    handleNotify(`已为 ${successfulResults.length} 名用户开通服务${failures.length > 0 ? `；${failures.length} 个机构未处理` : ''}`, failures.length > 0 ? 'warning' : 'success');
+    const renewalCount = successfulResults.filter((item) => item.right.fulfillmentKind === 'renewal').length;
+    const activationCount = successfulResults.length - renewalCount;
+    addAuditLog('批量办理用户服务', `${successfulResults.length} 名用户`, `按 ${settlements.length} 个所属机构账户共扣除 ${totalQuota.toLocaleString()} 点；新开通 ${activationCount} 人，续费顺延 ${renewalCount} 人。${failures.length > 0 ? `未处理：${failures.join('；')}` : ''}`, '额度授权码');
+    handleNotify(`已处理 ${successfulResults.length} 名用户：新开通 ${activationCount} 人、续费 ${renewalCount} 人${failures.length > 0 ? `；${failures.length} 个机构未处理` : ''}`, failures.length > 0 ? 'warning' : 'success');
     const successfulInstitutionIds = new Set(settlements.map((item) => item.institution.id));
     return {
       succeededStudentIds: successfulResults.map((item) => item.right.studentId),
@@ -283,6 +294,27 @@ export default function App() {
 
   const handleAddTeachers = (newTeachers: TeacherItem[]) => {
     setTeachers((current) => [...newTeachers, ...current]);
+  };
+
+  const handleAddStudents = (newStudents: StudentItem[]) => {
+    if (newStudents.length === 0) return;
+    setStudents((current) => [...newStudents, ...current]);
+    const addedByTeacher = newStudents.reduce((counts, student) => {
+      counts.set(student.teacherId, (counts.get(student.teacherId) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>());
+    setTeachers((current) => current.map((teacher) => {
+      const addedCount = addedByTeacher.get(teacher.id) ?? 0;
+      return addedCount > 0 ? { ...teacher, studentCount: teacher.studentCount + addedCount } : teacher;
+    }));
+    const teacherNames = [...new Set(newStudents.map((item) => item.teacherName))].join('、');
+    addAuditLog('导入学生', `${newStudents.length} 名学生`, `学生已直接归属负责教师：${teacherNames}；班级仅作选填筛选信息。`, '教师管理');
+    handleNotify(`成功导入 ${newStudents.length} 名学生，已分配给 ${teacherNames}`);
+  };
+
+  const handleOpenTeacherStudents = (teacherName: string) => {
+    setStudentTeacherFilter(teacherName);
+    setCurrentTab('students');
   };
 
   const handleAddTeacher = (teacher: TeacherItem, initialQuota: number) => {
@@ -438,7 +470,7 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    return <LoginView institutions={institutions} adminAccounts={adminAccounts} onLogin={handleLogin} />;
+    return <LoginView institutions={institutions} teachers={teachers} adminAccounts={adminAccounts} onLogin={handleLogin} />;
   }
 
   if (location.pathname === '/') return <Navigate to="/platform/dashboard" replace />;
@@ -474,11 +506,7 @@ export default function App() {
         {/* Scrollable Main Content Area */}
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
-            <div className="space-y-6">
-              <DashboardView snapshot={visibleDashboardSnapshot} />
-              {currentUser.role === 'institution_admin' && currentUser.institutionId && <DiagnosticsView students={students.filter((item) => item.institutionId === currentUser.institutionId)} onGenerateReport={handleGenerateReport} scopeLabel="本机构" />}
-              {currentUser.role === 'teacher' && currentUser.teacherId && <DiagnosticsView students={students.filter((item) => item.teacherId === currentUser.teacherId)} onGenerateReport={handleGenerateReport} scopeLabel="我的班级" />}
-            </div>
+            <DashboardView snapshot={visibleDashboardSnapshot} students={visibleStudents} onGenerateReport={handleGenerateReport} />
           )}
 
           {currentView === 'goods' && (
@@ -538,9 +566,10 @@ export default function App() {
               creditLedger={teacherCreditLedger}
               packages={packages}
               students={visibleStudents}
-              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              onAddStudents={handleAddStudents}
               onAddTeacher={handleAddTeacher}
               onAddTeachers={handleAddTeachers}
+              onOpenStudents={handleOpenTeacherStudents}
               onUpdateTeacher={handleUpdateTeacher}
               onTransferTeacherCredits={handleTransferTeacherCredits}
               onFulfillServices={handleFulfillServices}
@@ -559,7 +588,7 @@ export default function App() {
               creditLedger={teacherCreditLedger}
               packages={packages}
               students={visibleStudents}
-              onAddStudents={(newStudents) => setStudents((current) => [...newStudents, ...current])}
+              onAddStudents={handleAddStudents}
               onAddTeacher={handleAddTeacher}
               onAddTeachers={handleAddTeachers}
               onUpdateTeacher={handleUpdateTeacher}
@@ -583,13 +612,13 @@ export default function App() {
               contentPackages={initialContentPackages}
               teachers={visibleTeachers}
               institutions={visibleInstitutions}
+              onAddStudents={handleAddStudents}
+              onAddTeacher={handleAddTeacher}
               onFulfillService={handleFulfillService}
               onFulfillServices={handleFulfillServices}
-              onOpenTeachers={() => setCurrentTab('teachers')}
-              onOpenClasses={() => setCurrentTab('classes')}
+              initialTeacherFilter={studentTeacherFilter}
               onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
-              onGenerateReport={handleGenerateReport}
               viewerRole={currentUser.role}
             />
           )}

@@ -26,6 +26,7 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
   const requiredContentCount = selectedPackage?.selectableContentPackageCount ?? 1;
   const selectedContentPackages = availableContentPackages.filter((item) => selectedContentIds.includes(item.id));
   const insufficientCredits = Boolean(selectedPackage && institutionRemainingQuota !== undefined && institutionRemainingQuota < selectedPackage.quotaCost);
+  const isRenewal = existingRights.some((item) => item.studentId === student.id && item.status === 'active');
 
   const handleConfirm = () => {
     if (!selectedPackage || result) return;
@@ -51,7 +52,7 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
       {!compact && <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
         <div className="mb-5">
           <h3 className="text-[17px] font-bold text-[#0F172A]">办理学生服务</h3>
-          <p className="mt-1 text-[12px] text-[#64748B]">核对学生归属并选择服务包，确认后同时生成授权码、家长绑定码和服务权益。</p>
+          <p className="mt-1 text-[12px] text-[#64748B]">{isRenewal ? '当前用户服务中，续费后有效期直接顺延，无需重新激活。' : '首次办理会生成激活凭证，服务有效期从学生首次激活当天开始计算。'}</p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           {[
@@ -93,19 +94,19 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
         {error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-700" role="alert">{error}</div>}
         <div className="mt-5 flex justify-end">
           <button type="button" disabled={!selectedPackage || selectedContentIds.length !== requiredContentCount || Boolean(result) || insufficientCredits} onClick={handleConfirm} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[#94A3B8]">
-            {result ? '已完成办理' : '确认办理并生成全部凭证'}
+            {result ? (isRenewal ? '已完成续费' : '已完成办理') : (isRenewal ? '确认续费并顺延' : '确认办理并生成激活凭证')}
           </button>
         </div>
       </div>
 
       {result && (
         <div className="rounded-2xl border border-[#A7E4BE] bg-[#F0FBF4] p-5">
-          <h4 className="font-bold text-[#0E7D3E]">服务办理成功</h4>
-          <p className="mt-1 text-[12px] text-[#4B8060]">结果已同步写入学生管理，无需再次手工生成。</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <h4 className="font-bold text-[#0E7D3E]">{result.right.fulfillmentKind === 'renewal' ? '服务续费成功' : '服务办理成功'}</h4>
+          <p className="mt-1 text-[12px] text-[#4B8060]">{result.right.fulfillmentKind === 'renewal' ? `有效期已顺延至 ${result.right.serviceExpireAt ?? '长期有效'}，学生无需重新激活。` : '激活凭证已生成；学生首次激活后开始计算服务有效期。'}</p>
+          {result.authCode && result.guardianBindingCode && <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div className="rounded-xl bg-white p-4"><div className="text-[11px] text-[#64748B]">学生授权码</div><div className="mt-1 font-mono text-[16px] font-bold text-[#16B45B]">{result.authCode.code}</div></div>
             <div className="rounded-xl bg-white p-4"><div className="text-[11px] text-[#64748B]">家长绑定码</div><div className="mt-1 font-mono text-[16px] font-bold text-[#16B45B]">{result.guardianBindingCode.code}</div></div>
-          </div>
+          </div>}
         </div>
       )}
     </div>

@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { AuthCode, ContentPackageItem, CooperationPlan, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
-import { CooperationAuthorizationSummary } from '../cooperation/CooperationAuthorizationSummary';
 import { ChoiceCard, DialogShell } from '../ui/FormPrimitives';
 import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
@@ -40,6 +39,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAdjustQuotaOpen, setIsAdjustQuotaOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
+  const [isViewDetailOpen, setIsViewDetailOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isAccountPasswordModalOpen, setIsAccountPasswordModalOpen] = useState(false);
   const [isAuthorizationModalOpen, setIsAuthorizationModalOpen] = useState(false);
@@ -99,6 +99,19 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
       return matchesSearch && matchesRegion && matchesStatus;
     });
   }, [institutions, searchTerm, regionFilter, statusFilter]);
+
+  const stats = useMemo(() => {
+    const activeCount = institutions.filter((item) => item.status === 'active').length;
+    const totalStudents = institutions.reduce((total, item) => total + item.studentCount, 0);
+    const alertCount = institutions.filter((item) => item.status === 'active' && item.totalQuota > 0 && item.remainingQuota / item.totalQuota <= 0.15).length;
+    const totalRemaining = institutions.reduce((total, item) => total + item.remainingQuota, 0);
+    return {
+      activeCount,
+      totalStudents,
+      alertCount,
+      totalRemaining: totalRemaining > 1_000_000 ? `${(totalRemaining / 1_000_000).toFixed(1)}M` : totalRemaining.toLocaleString(),
+    };
+  }, [institutions]);
 
   const handleOpenAddModal = () => {
     setFormData({
@@ -281,6 +294,25 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs">
+          <div><span className="text-[12.5px] font-semibold text-[#64748B]">运行中机构数</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{stats.activeCount}</div></div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F7EE] text-[#16B45B]"><span className="material-symbols-outlined text-[22px]">domain</span></div>
+        </div>
+        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs">
+          <div><span className="text-[12.5px] font-semibold text-[#64748B]">平台剩余额度</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{stats.totalRemaining}</div></div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]"><span className="material-symbols-outlined text-[22px]">layers</span></div>
+        </div>
+        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs">
+          <div><span className="text-[12.5px] font-semibold text-[#64748B]">服务学生总数</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{stats.totalStudents.toLocaleString()}</div></div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFFBEB] text-[#D97706]"><span className="material-symbols-outlined text-[22px]">group</span></div>
+        </div>
+        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs">
+          <div><span className="text-[12.5px] font-semibold text-[#64748B]">低额度预警机构</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{stats.alertCount}</div></div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FEF2F2] text-[#DC2626]"><span className="material-symbols-outlined text-[22px]">warning</span></div>
+        </div>
+      </div>
+
       {/* Filter Bar */}
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3 flex-1 min-w-[280px]">
@@ -293,8 +325,9 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="搜索机构名称、负责人或账号..."
-              className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl py-1.5 pl-9 pr-3 text-[13px] text-[#0F172A] focus:border-[#16B45B] focus:bg-white outline-none"
+              placeholder="搜索机构名称、负责人或账号…"
+              aria-label="搜索机构"
+              className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] py-1.5 pl-9 pr-3 text-[13px] text-[#0F172A] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"
             />
           </div>
 
@@ -302,7 +335,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
           <select
             value={regionFilter}
             onChange={(e) => setRegionFilter(e.target.value)}
-            className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl py-1.5 px-3 text-[13px] text-[#334155] focus:border-[#16B45B] outline-none cursor-pointer"
+            aria-label="按区域筛选"
+            className="cursor-pointer rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-[13px] text-[#334155] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"
           >
             <option value="">全部区域</option>
             <option value="huadong">华东地区</option>
@@ -358,7 +392,8 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
               setRegionFilter('');
               setStatusFilter('all');
             }}
-            className="w-8 h-8 rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="重置机构筛选"
+            className="w-8 h-8 rounded-xl border border-[#E2E8F0] bg-white text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"
             title="重置"
           >
             <span className="material-symbols-outlined text-[18px]">refresh</span>
@@ -418,11 +453,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                           <div className="flex items-center gap-2">
                             {!isInactive && <span className="h-1.5 w-1.5 rounded-full bg-[#16B45B]" aria-label="正常服务" />}
                             <span
-                              onClick={() => {
-                                setSelectedInstitution(inst);
-                                setIsDetailDrawerOpen(true);
-                              }}
-                              className={`text-[13.5px] font-bold cursor-pointer hover:text-[#16B45B] transition-colors ${
+                              className={`text-[13.5px] font-bold ${
                                 isInactive ? 'text-[#64748B]' : 'text-[#0F172A]'
                               }`}
                             >
@@ -473,7 +504,7 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
                       {/* 操作 */}
                       <td className="px-5 py-2.5 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-3 text-[12px]">
-                          <button onClick={() => { setSelectedInstitution(inst); setIsDetailDrawerOpen(true); }} className="font-medium text-[#475569] hover:text-[#0E7D3E] cursor-pointer">查看详情</button>
+                          <button onClick={() => { setSelectedInstitution(inst); setIsViewDetailOpen(true); }} className="font-bold text-[#475569] hover:text-[#0E7D3E] hover:underline cursor-pointer">查看详情</button>
                           <button onClick={() => { setSelectedInstitution(inst); setIsDetailDrawerOpen(true); }} className="rounded-lg bg-[#16B45B] px-3 py-1.5 font-bold text-white hover:bg-[#139B4E] cursor-pointer">开通/配置</button>
                         </div>
                       </td>
@@ -742,27 +773,79 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
 
 
-      {/* Institution Detail Drawer */}
+      {/* Institution Read-only Detail Modal */}
+      {isViewDetailOpen && selectedInstitution && (() => {
+        const scope = getScopeSummary(selectedInstitution);
+        const usedQuota = Math.max(0, selectedInstitution.totalQuota - selectedInstitution.remainingQuota);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+            <div role="dialog" aria-modal="true" aria-labelledby="institution-detail-title" className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl">
+              <div className="flex items-start justify-between border-b border-[#E2E8F0] px-6 py-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 id="institution-detail-title" className="text-[18px] font-bold text-[#0F172A]">机构详情</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${selectedInstitution.status === 'active' ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#F1F5F9] text-[#64748B]'}`}>{selectedInstitution.status === 'active' ? '正常' : '已停用'}</span>
+                  </div>
+                  <p className="mt-1 text-[12px] text-[#64748B]">{selectedInstitution.name} · {selectedInstitution.code}</p>
+                </div>
+                <button onClick={() => setIsViewDetailOpen(false)} aria-label="关闭机构详情" className="rounded-lg p-1 text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A] cursor-pointer"><span className="material-symbols-outlined">close</span></button>
+              </div>
+
+              <div className="max-h-[70vh] space-y-4 overflow-y-auto p-6 custom-scrollbar">
+                <section className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                  <h4 className="text-[13px] font-bold text-[#0F172A]">基本资料</h4>
+                  <dl className="mt-3 grid gap-x-6 gap-y-3 text-[12px] sm:grid-cols-2">
+                    <div><dt className="text-[#94A3B8]">所属区域</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.regionName}</dd></div>
+                    <div><dt className="text-[#94A3B8]">负责人</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.contactPerson}</dd></div>
+                    <div><dt className="text-[#94A3B8]">联系电话</dt><dd className="mt-1 font-medium text-[#334155]">{selectedInstitution.phone || '未填写'}</dd></div>
+                    <div><dt className="text-[#94A3B8]">管理员账号</dt><dd className="mt-1 font-mono font-medium text-[#334155]">{selectedInstitution.adminAccount || '未配置'}</dd></div>
+                  </dl>
+                </section>
+
+                <section className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4">
+                  <div className="flex items-center justify-between"><h4 className="text-[13px] font-bold text-[#0F172A]">机构额度</h4><span className="text-[11px] text-[#64748B]">总额度 {selectedInstitution.totalQuota.toLocaleString()} 点</span></div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div><p className="text-[11px] text-[#64748B]">剩余可用</p><p className="mt-1 font-mono text-[18px] font-bold text-[#0E7D3E]">{selectedInstitution.remainingQuota.toLocaleString()} 点</p></div>
+                    <div><p className="text-[11px] text-[#64748B]">累计使用</p><p className="mt-1 font-mono text-[18px] font-bold text-[#334155]">{usedQuota.toLocaleString()} 点</p></div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-[#E2E8F0] p-4">
+                  <h4 className="text-[13px] font-bold text-[#0F172A]">已授权范围</h4>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div><p className="text-[11px] text-[#94A3B8]">内容包（{scope.contentPackageNames.length}）</p><p className="mt-1 text-[12px] leading-5 text-[#334155]">{scope.contentPackageNames.length ? scope.contentPackageNames.join('、') : '暂未授权'}</p></div>
+                    <div><p className="text-[11px] text-[#94A3B8]">服务包（{scope.servicePackagesInScope.length}）</p><p className="mt-1 text-[12px] leading-5 text-[#334155]">{scope.servicePackagesInScope.length ? scope.servicePackagesInScope.map((item) => item.name).join('、') : '暂未授权'}</p></div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="flex justify-end border-t border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4">
+                <button onClick={() => setIsViewDetailOpen(false)} className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2 text-[13px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer">关闭</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Institution Configuration Modal */}
       {isDetailDrawerOpen && selectedInstitution && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end">
-          <div className="bg-white w-full max-w-xl h-full shadow-2xl overflow-y-auto custom-scrollbar p-6 flex flex-col justify-between">
-            <div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div role="dialog" aria-modal="true" aria-labelledby="institution-config-title" className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden overscroll-contain rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl">
+            <div className="overflow-y-auto p-6 custom-scrollbar">
               <div className="flex justify-between items-start pb-4 border-b border-[#E2E8F0] mb-6">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[20px] font-bold text-[#0F172A]">
-                      {selectedInstitution.name}
+                    <h3 id="institution-config-title" className="text-[20px] font-bold text-[#0F172A]">
+                      机构开通与配置
                     </h3>
-                    <span className="text-[11px] font-mono bg-[#F8FAFC] px-2 py-0.5 rounded border border-[#E2E8F0]">
-                      {selectedInstitution.id}
-                    </span>
                   </div>
                   <p className="text-[12px] text-[#64748B] mt-1">
-                    创建于 {selectedInstitution.createdAt}
+                    {selectedInstitution.name} · {selectedInstitution.code}
                   </p>
                 </div>
                 <button
                   onClick={() => setIsDetailDrawerOpen(false)}
+                  aria-label="关闭机构开通配置"
                   className="p-1 rounded-lg text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
                 >
                   <span className="material-symbols-outlined">close</span>
@@ -771,95 +854,17 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
 
               <div className="space-y-6">
                 <section>
-                  <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">开通与配置</h4><p className="mt-1 text-[11px] text-[#64748B]">先完成账号、额度和业务授权，再查看详细资料。</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#FFF7ED] text-[#B45309]'}`}>{(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? '配置已完成' : '待补充授权'}</span></div>
+                  <div className="mb-4 flex items-center justify-between"><div><h4 className="text-[14px] font-bold text-[#0F172A]">完成以下 3 项即可投入使用</h4><p className="mt-1 text-[12px] text-[#64748B]">账号用于登录，额度用于办理学生服务，授权决定机构可用的内容与服务包。</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#FFF7ED] text-[#B45309]'}`}>{(getScopeSummary(selectedInstitution).contentPackageNames.length && getScopeSummary(selectedInstitution).servicePackagesInScope.length) ? '3 项已配置' : '仍需补充授权'}</span></div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4"><span className="material-symbols-outlined text-[20px] text-[#0E7D3E]">account_balance_wallet</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">额度账户</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">调整可用额度或录入线下入账。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">调整额度</button><button onClick={() => { setCreditEntryForm({ paymentAmount: 10000, creditAmount: 10000, voucherNo: '', notes: '' }); setIsCreditEntryOpen(true); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
-                    <div className="rounded-2xl border border-[#DCE5F5] bg-[#F6F9FF] p-4"><span className="material-symbols-outlined text-[20px] text-[#2563EB]">deployed_code</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">内容与服务授权</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">配置可用内容包和服务包。</p><button onClick={() => openAuthorizationModal(selectedInstitution)} className="mt-3 w-full rounded-lg bg-[#2563EB] px-3 py-2 text-[12px] font-bold text-white">配置授权范围</button></div>
-                    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-4"><span className="material-symbols-outlined text-[20px] text-[#64748B]">manage_accounts</span><h5 className="mt-2 text-[13px] font-bold text-[#0F172A]">机构账号</h5><p className="mt-1 min-h-8 text-[11px] leading-4 text-[#64748B]">在此维护该机构管理员的登录账号与密码。</p><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-3 w-full rounded-lg border border-[#B8DCC6] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">管理账号</button></div>
+                    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><span className="text-[11px] font-bold text-[#16B45B]">第 1 项</span><h5 className="mt-2 text-[14px] font-bold text-[#0F172A]">机构账号</h5><p className="mt-1 min-h-10 text-[12px] leading-5 text-[#64748B]">设置机构管理员的登录账号和初始密码。</p><button onClick={() => { handleOpenAccountModal(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-4 w-full rounded-lg border border-[#86D6A5] bg-white px-3 py-2.5 text-[12px] font-bold text-[#0E7D3E]">管理登录账号</button></div>
+                    <div className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-5"><span className="text-[11px] font-bold text-[#16B45B]">第 2 项</span><h5 className="mt-2 text-[14px] font-bold text-[#0F172A]">机构额度</h5><p className="mt-1 min-h-10 text-[12px] leading-5 text-[#64748B]">当前可用 {selectedInstitution.remainingQuota.toLocaleString()} 点，用于办理学生服务。</p><button onClick={() => { handleOpenAdjustQuota(selectedInstitution); setIsDetailDrawerOpen(false); }} className="mt-4 w-full rounded-lg bg-[#16B45B] px-3 py-2.5 text-[12px] font-bold text-white">调整机构额度</button><button onClick={() => { setCreditEntryForm({ paymentAmount: 10000, creditAmount: 10000, voucherNo: '', notes: '' }); setIsCreditEntryOpen(true); }} className="mt-2 w-full text-[11px] font-bold text-[#0E7D3E]">录入线下入账</button></div>
+                    <div className="rounded-2xl border border-[#DCE5F5] bg-[#F6F9FF] p-5"><span className="text-[11px] font-bold text-[#2563EB]">第 3 项</span><h5 className="mt-2 text-[14px] font-bold text-[#0F172A]">内容与服务授权</h5><p className="mt-1 min-h-10 text-[12px] leading-5 text-[#64748B]">已授权 {getScopeSummary(selectedInstitution).contentPackageNames.length} 个内容包、{getScopeSummary(selectedInstitution).servicePackagesInScope.length} 个服务包。</p><button onClick={() => openAuthorizationModal(selectedInstitution)} className="mt-4 w-full rounded-lg bg-[#2563EB] px-3 py-2.5 text-[12px] font-bold text-white">配置授权范围</button></div>
                   </div>
                 </section>
-
-                {/* Quota Card */}
-                <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[13.5px] font-bold text-[#0F172A]">采购额度总览</span>
-                    <span className={`text-[12px] font-bold px-2.5 py-0.5 rounded-full ${selectedInstitution.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-gray-200 text-gray-600'}`}>{selectedInstitution.status === 'active' ? '正常服务' : '已停用'}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-[13px]">
-                    <div className="bg-white p-3 rounded-xl border border-[#E2E8F0]">
-                      <p className="text-[11px] text-[#64748B]">总划拨额度</p>
-                      <p className="text-[18px] font-bold text-[#0F172A] font-mono">
-                        {selectedInstitution.totalQuota.toLocaleString()} <span className="text-[11px] font-normal text-[#64748B]">点</span>
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-[#E2E8F0]">
-                      <p className="text-[11px] text-[#64748B]">剩余可用额度</p>
-                      <p className="text-[18px] font-bold text-[#16B45B] font-mono">
-                        {selectedInstitution.remainingQuota.toLocaleString()} <span className="text-[11px] font-normal text-[#64748B]">点</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[18px] text-[#16B45B]">deployed_code</span>
-                        机构授权范围
-                      </h4>
-                      <p className="mt-1 text-[11px] text-[#64748B]">内容包与服务包范围分别生效；模板只用于快速带入，不代替本机构已保存的权限。</p>
-                    </div>
-                  </div>
-                  <CooperationAuthorizationSummary
-                    contentPackages={contentPackages}
-                    servicePackages={servicePackages}
-                    contentPackageIds={contentPackages.filter((item) => (selectedInstitution.availableContentPackages || []).includes(item.id) || (selectedInstitution.availableContentPackages || []).includes(item.name)).map((item) => item.id)}
-                    servicePackageIds={selectedInstitution.availableServicePackageIds || []}
-                  />
-                </div>
-
-                {/* Scale info */}
-                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3 text-[13px]">
-                  <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">groups</span>
-                    师生规模统计
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
-                      <p className="text-[11px] text-[#64748B]">教师人数</p>
-                      <p className="text-[18px] font-bold text-[#0F172A] font-mono">
-                        {selectedInstitution.teacherCount} <span className="text-[11px] font-normal text-[#64748B]">人</span>
-                      </p>
-                    </div>
-                    <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
-                      <p className="text-[11px] text-[#64748B]">学生人数</p>
-                      <p className="text-[18px] font-bold text-[#0F172A] font-mono">
-                        {selectedInstitution.studentCount.toLocaleString()} <span className="text-[11px] font-normal text-[#64748B]">人</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact info */}
-                <div className="border border-[#E2E8F0] rounded-2xl p-4 space-y-3 text-[13px]">
-                  <h4 className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[18px] text-[#16B45B]">badge</span>
-                    机构基本信息与联系人
-                  </h4>
-                  <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 text-[#64748B]">
-                    <p>机构编码: <span className="text-[#0F172A] font-mono">{selectedInstitution.id}</span></p>
-                    <p>负责人姓名: <span className="text-[#0F172A] font-medium">{selectedInstitution.contactPerson}</span></p>
-                    <p>联系电话: <span className="text-[#0F172A] font-mono">{selectedInstitution.phone}</span></p>
-                    <p>电子邮箱: <span className="text-[#0F172A] font-mono">{selectedInstitution.email || '暂无'}</span></p>
-                    <p>所属区域: <span className="text-[#0F172A] font-medium">{selectedInstitution.regionName}</span></p>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#E2E8F0] flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[#E2E8F0] bg-[#F8FAFC] px-6 py-4">
               <button
                 onClick={() => handleToggleStatus(selectedInstitution)}
                 className={`px-4 py-2 rounded-xl text-[13px] font-bold cursor-pointer ${

@@ -168,7 +168,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   const contentRoute = getContentRouteState(location.pathname);
   useEffect(() => {
     if (location.pathname === '/platform/content') {
-      navigate(getContentRoutePath('resources', 'knowledge-points'), { replace: true });
+      navigate(getContentRoutePath('packages'), { replace: true });
     }
   }, [location.pathname, navigate]);
   const activeSubTab: 'contentPackages' | 'questions' | 'tree' = contentRoute.section === 'packages'
@@ -296,7 +296,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
   });
   const [treeSearchTerm, setTreeSearchTerm] = useState<string>('');
   const [treeSubjectFilter, setTreeSubjectFilter] = useState<string>('');
-  const [treeViewMode, setTreeViewMode] = useState<'table' | 'tree'>('table');
+  const [treeViewMode, setTreeViewMode] = useState<'table' | 'tree'>('tree');
 
   const toggleNodeExpand = (nodeId: string) => {
     setExpandedNodeIds((prev) => {
@@ -912,6 +912,17 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8F0] pb-1 gap-3">
         <div className="flex gap-6">
           <button
+            onClick={() => setActiveSubTab('contentPackages')}
+            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'contentPackages'
+                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
+                : 'text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            内容包 ({scopedContentPackages.length})
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('questions')}
             className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               activeSubTab === 'questions'
@@ -931,17 +942,6 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             }`}
           >
             知识点 ({knowledgePoints.length})
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('contentPackages')}
-            className={`pb-2 text-[13.5px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-              activeSubTab === 'contentPackages'
-                ? 'text-[#16B45B] border-b-2 border-[#16B45B]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            内容包 ({scopedContentPackages.length})
           </button>
 
         </div>
@@ -1161,17 +1161,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-wrap items-center gap-4 shadow-2xs">
             <div className="w-36">
               <label className="block text-[11px] font-bold text-[#64748B] mb-1">学科筛选</label>
-              <select
-                value={subjectFilter}
-                onChange={(e) => setSubjectFilter(e.target.value)}
-                className="w-full border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-[13px] outline-none cursor-pointer focus:border-[#16B45B]"
-              >
-                <option value="">全部学科</option>
-                <option value="数学">数学</option>
-                <option value="物理">物理</option>
-                <option value="化学">化学</option>
-                <option value="生物">生物</option>
-              </select>
+              <SubjectSelect value={subjectFilter} onChange={setSubjectFilter} valueMode="name" emptyLabel="全部学科" className="rounded-lg px-2.5 py-1.5" />
             </div>
 
             <div className="w-36">
@@ -1414,17 +1404,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
               </div>
 
               <div className="w-36">
-                <select
-                  value={treeSubjectFilter}
-                  onChange={(e) => setTreeSubjectFilter(e.target.value)}
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none cursor-pointer font-bold focus:border-[#16B45B]"
-                >
-                  <option value="">全部学科</option>
-                  <option value="数学">数学</option>
-                  <option value="物理">物理</option>
-                  <option value="化学">化学</option>
-                  <option value="生物">生物</option>
-                </select>
+                <SubjectSelect value={treeSubjectFilter} onChange={setTreeSubjectFilter} valueMode="name" emptyLabel="全部学科" className="py-1.5 font-bold" />
               </div>
             </div>
 
@@ -1455,7 +1435,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTreeViewMode('tree')}
+                  onClick={() => { setTreeViewMode('tree'); handleExpandAllNodes(); }}
                   className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer text-[12px] ${
                     treeViewMode === 'tree'
                       ? 'bg-white text-[#16B45B] shadow-2xs'

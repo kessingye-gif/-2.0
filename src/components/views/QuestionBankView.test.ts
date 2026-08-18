@@ -48,3 +48,18 @@ test('题库筛选和录入统一使用公共题型字典组件', () => {
   assert.doesNotMatch(source, /<option value="单选题">/);
   assert.doesNotMatch(source, /<option value="多选题">/);
 });
+
+test('题库学科筛选读取基础字典公共组件', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  const filterSource = source.slice(source.indexOf('学科筛选'), source.indexOf('难度等级'));
+  assert.match(source, /<SubjectSelect value=\{subjectFilter\}/);
+  assert.match(source, /emptyLabel="全部学科"/);
+  assert.doesNotMatch(filterSource, /<option/);
+});
+
+test('知识点默认按内容包式树状层级展开', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /useState<'table' \| 'tree'>\('tree'\)/);
+  assert.match(source, /setTreeViewMode\('tree'\); handleExpandAllNodes\(\)/);
+  assert.match(source, /value=\{treeSubjectFilter\}[\s\S]*valueMode="name"/);
+});

@@ -21,16 +21,25 @@ test('内容包列表提供可追溯详情和明确新增流程', () => {
   assert.match(markup, /机构边界/);
   assert.match(markup, /data-content-package-grid="true"/);
   assert.match(markup, /新增内容包/);
+  assert.match(markup, /全部状态/);
+  assert.match(markup, /可使用/);
+  assert.doesNotMatch(markup, /待完善/);
+  assert.doesNotMatch(markup, /尚未选择知识点范围/);
+  assert.match(markup, /编辑/);
+  assert.match(markup, /停用/);
+  assert.match(markup, /启用/);
+  assert.doesNotMatch(markup, /继续完善/);
+  assert.doesNotMatch(markup, /重新启用/);
   assert.doesNotMatch(markup, /<table/);
   assert.doesNotMatch(markup, />删除</);
 });
 
-test('内容范围为空时不能发布', () => {
+test('选择来源学科后自动引用内容，不再要求手动选择知识点范围', () => {
   assert.deepEqual(validateContentPackageDraft({ name: '', subjectId: '', kpCount: 0, questionCount: 0 }), [
     '请填写内容包名称',
     '请选择学科',
-    '请选择至少一个知识点或一道题目',
   ]);
+  assert.deepEqual(validateContentPackageDraft({ name: '初中数学包', subjectId: 'SUB-01', kpCount: 0, questionCount: 0 }), []);
   assert.deepEqual(validateContentPackageDraft({ name: '初中数学包', subjectId: 'SUB-01', kpCount: 12, questionCount: 30 }), []);
 });
 
@@ -98,6 +107,7 @@ test('内容包知识点详情显示统一层级与 AI 补充字段', () => {
       showNewPackageAction: true,
     })
   ));
+  assert.doesNotMatch(markup, />编辑<\/button>/);
   ['章', '节', '知识点'].forEach((label) => assert.match(markup, new RegExp(`<dt[^>]*>${label}</dt>`)));
   ['核心学习内容', '教学目标', '教学建议'].forEach((label) => assert.match(markup, new RegExp(`<p[^>]*>${label}</p>`)));
 });

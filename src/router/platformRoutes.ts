@@ -17,12 +17,12 @@ export interface PlatformRoute {
 
 export const platformRoutes: PlatformRoute[] = [
   { id: 'dashboard', path: '/platform/dashboard', label: '运营首页', icon: 'space_dashboard' },
-  { id: 'content', path: '/platform/content', label: '内容资产', icon: 'library_books' },
+  { id: 'content', path: '/platform/content', label: '内容管理', icon: 'library_books' },
   { id: 'goods', path: '/platform/goods', label: '服务产品', icon: 'inventory_2' },
   { id: 'institutions', path: '/platform/institutions', label: '机构管理', icon: 'domain' },
   { id: 'teachers', path: '/platform/teachers', label: '教师管理', icon: 'school' },
   { id: 'classes', path: '/platform/classes', label: '班级管理', icon: 'groups' },
-  { id: 'students', path: '/platform/students', label: '用户与使用', icon: 'person_search' },
+  { id: 'students', path: '/platform/students', label: '学生管理', icon: 'person_search' },
   { id: 'system', path: '/platform/system', label: '系统管理', icon: 'settings' },
 ];
 

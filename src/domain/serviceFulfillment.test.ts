@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ContentPackageItem, Institution, ServicePackage, StudentItem } from '../types';
-import { createBulkServiceFulfillments, createServiceFulfillment, settleInstitutionServiceFulfillments } from './serviceFulfillment';
+import { activateStudentService, createBulkServiceFulfillments, createServiceFulfillment, settleInstitutionServiceFulfillments } from './serviceFulfillment';
 
 const student: StudentItem = {
   id: 'STU-001', name: '王小明', nickname: '小明', account: 'wangxm', grade: '初一', school: '浙大附中', textbook: '人教版',
@@ -28,11 +28,12 @@ const institution: Institution = {
 
 test('一次办理同时产生双码和待激活权益', () => {
   const result = createServiceFulfillment({ student, servicePackage, now: new Date('2026-08-12T02:00:00.000Z'), nonce: '1234' });
-  assert.equal(result.authCode.studentId, 'STU-001');
-  assert.equal(result.guardianBindingCode.studentId, 'STU-001');
+  assert.equal(result.authCode!.studentId, 'STU-001');
+  assert.equal(result.guardianBindingCode!.studentId, 'STU-001');
   assert.equal(result.right.status, 'pending');
   assert.equal(result.right.packageName, '单科高量包');
-  assert.equal(result.right.authCodeId, result.authCode.id);
+  assert.equal(result.right.authCodeId, result.authCode!.id);
+  assert.equal(result.right.serviceExpireAt, null);
 });
 
 test('停用服务包不能办理', () => {
@@ -56,7 +57,7 @@ test('批量办理可跨教师并汇总机构应扣点数', () => {
 
   assert.equal(result.totalQuotaConsumed, 200);
   assert.equal(result.results.length, 2);
-  assert.notEqual(result.results[0].authCode.code, result.results[1].authCode.code);
+  assert.notEqual(result.results[0].authCode!.code, result.results[1].authCode!.code);
   assert.deepEqual(result.results.map((item) => item.right.studentId), ['STU-001', 'STU-002']);
 });
 
@@ -109,4 +110,16 @@ test('续费从当前有效期顺延', () => {
   const renewal = createServiceFulfillment({ student, servicePackage, existingRights: [activeRight], now: new Date('2026-08-17'), nonce: 'RENEW' });
   assert.equal(renewal.right.fulfillmentKind, 'renewal');
   assert.equal(renewal.right.serviceExpireAt, '2028-01-01');
+  assert.equal(renewal.right.id, activeRight.id);
+  assert.equal(renewal.right.status, 'active');
+  assert.equal(renewal.authCode, undefined);
+  assert.equal(renewal.guardianBindingCode, undefined);
+});
+
+test('首次激活当天开始计算有效期', () => {
+  const fulfillment = createServiceFulfillment({ student, servicePackage, now: new Date('2026-08-01'), nonce: 'FIRST' });
+  const activated = activateStudentService({ right: fulfillment.right, authCode: fulfillment.authCode!, servicePackage, activatedAt: new Date('2026-09-10T02:00:00.000Z') });
+  assert.equal(activated.authCode.status, 'used');
+  assert.equal(activated.right.status, 'active');
+  assert.equal(activated.right.serviceExpireAt, '2027-09-10');
 });

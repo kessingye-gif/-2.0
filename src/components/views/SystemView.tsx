@@ -31,8 +31,6 @@ export const SystemView: React.FC<SystemViewProps> = ({ auditLogs, mode, workIte
         { id: 'aiRules', label: 'AI 模型' },
         { id: 'masterData', label: '基础字典' },
         { id: 'accounts', label: '账号与权限' },
-        { id: 'auditLogs', label: '操作审计' },
-        { id: 'exceptionReversal', label: '异常处理' },
       ]
     : [
         { id: 'compensation', label: '额度补发' },

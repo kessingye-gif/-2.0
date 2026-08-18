@@ -294,6 +294,7 @@ export interface TeacherItem {
   id: string;
   name: string;
   account: string;
+  loginPassword?: string;
   phone: string;
   institutionId: string;
   institutionName: string;
@@ -381,6 +382,8 @@ export interface StudentItem {
   name: string;
   nickname: string;
   account: string;
+  phone?: string;
+  loginPassword?: string;
   grade: string;
   school: string;
   textbook: string;
@@ -388,6 +391,7 @@ export interface StudentItem {
   institutionName: string;
   teacherId: string;
   teacherName: string;
+  className?: string;
   subjects: string[]; // ['数学', '物理']
   serviceStatus: 'active' | 'expired' | 'none';
   serviceExpireAt?: string;
@@ -447,8 +451,8 @@ export interface StudentServiceRight {
 }
 
 export interface ServiceFulfillmentResult {
-  authCode: AuthCode;
-  guardianBindingCode: GuardianBindingCode;
+  authCode?: AuthCode;
+  guardianBindingCode?: GuardianBindingCode;
   right: StudentServiceRight;
 }
 

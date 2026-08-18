@@ -5,7 +5,7 @@ export type ContentRouteState =
   | { section: 'packages'; resource: null };
 
 export const getContentRouteState = (pathname: string): ContentRouteState => {
-  if (pathname === '/platform/content/packages' || pathname.startsWith('/platform/content/packages/')) {
+  if (pathname === '/platform/content' || pathname === '/platform/content/packages' || pathname.startsWith('/platform/content/packages/')) {
     return { section: 'packages', resource: null };
   }
 

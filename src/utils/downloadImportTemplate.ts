@@ -16,7 +16,7 @@ export const importFieldRules = [
 export const buildImportTemplateSheets = (templateKey: ImportTemplateKey): ImportTemplateSheet[] => {
   const template = importTemplates[templateKey];
   const examples = templateKey === 'questions' ? questionExamples : template.exampleRows;
-  return [{ name: templateKey === 'questions' ? '题库导入' : '知识点导入', rows: [template.headers, ...examples] }];
+  return [{ name: templateKey === 'questions' ? '题库导入' : templateKey === 'classStudents' ? '学生导入' : '知识点导入', rows: [template.headers, ...examples] }];
 };
 export const downloadImportTemplate = (templateKey: ImportTemplateKey) => {
   const workbook = XLSX.utils.book_new();

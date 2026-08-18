@@ -6,6 +6,7 @@ import { GradeSelect } from '../masterData/MasterDataSelects';
 import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
 import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
 import type { Role } from '../../permissions/accessControl';
+import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
 interface TeacherClassViewProps {
   institutions: Institution[];
@@ -16,6 +17,7 @@ interface TeacherClassViewProps {
   onAddStudents?: (newStudents: StudentItem[]) => void;
   onAddTeacher: (teacher: TeacherItem, initialQuota: number) => void;
   onAddTeachers: (teachers: TeacherItem[]) => void;
+  onOpenStudents?: (teacherName: string) => void;
   onUpdateTeacher: (teacherId: string, updates: Partial<TeacherItem>) => void;
   onTransferTeacherCredits: (teacherId: string, amount: number, type: 'allocate' | 'reclaim', reason: string) => void;
   onFulfillServices: (results: ServiceFulfillmentResult[]) => void;
@@ -85,7 +87,7 @@ const initialClassRoster: ClassRosterStudent[] = [
 
 const mockNames = ['张超越', '李娜', '王强', '刘洋', '陈小羽', '郭嘉', '周杰', '徐婷', '朱亮', '孙萌', '高飞', '胡晓', '林博', '郑静', '马超'];
 
-export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, teachers, packages, creditLedger, students = [], onAddStudents, onAddTeacher, onAddTeachers, onUpdateTeacher, onTransferTeacherCredits, onFulfillServices, initialTab = 'teachers', viewerRole = 'super_admin', viewerInstitutionId, viewerTeacherId }) => {
+export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions, teachers, packages, creditLedger, students = [], onAddStudents, onAddTeacher, onAddTeachers, onOpenStudents, onUpdateTeacher, onTransferTeacherCredits, onFulfillServices, initialTab = 'teachers', viewerRole = 'super_admin', viewerInstitutionId, viewerTeacherId }) => {
   const location = useLocation();
   const institutionId = (location.state as { institutionId?: string } | null)?.institutionId;
   const { getActiveSubjects } = useMasterData();
@@ -102,6 +104,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   const [teacherForm, setTeacherForm] = useState({
     name: '',
     account: '',
+    loginPassword: generateRandomPassword(),
     phone: '',
     institutionId: institutions[0]?.id || '',
     initialQuota: 1000,
@@ -169,10 +172,11 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
           t.name.includes(teacherSearch) ||
           t.account.includes(teacherSearch) ||
           t.phone.includes(teacherSearch) ||
-          t.institutionName.includes(teacherSearch)
+          t.institutionName.includes(teacherSearch) ||
+          classes.some((item) => item.headTeacherId === t.id && item.name.includes(teacherSearch))
         )
     );
-  }, [teachers, teacherSearch, institutionId]);
+  }, [teachers, teacherSearch, institutionId, classes]);
 
   const filteredClasses = useMemo(() => {
     return filterClassesForViewer<TeacherClassItem>(classes, viewerRole as Role, viewerInstitutionId, viewerTeacherId).filter(
@@ -187,11 +191,17 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
   // Handlers
   const handleSaveTeacher = (e: React.FormEvent) => {
     e.preventDefault();
+    const passwordMessage = getPasswordValidationMessage(teacherForm.loginPassword);
+    if (passwordMessage) {
+      alert(passwordMessage);
+      return;
+    }
     const inst = institutions.find((i) => i.id === teacherForm.institutionId);
     const newT: TeacherItem = {
       id: `TCH-${Date.now().toString().slice(-4)}`,
       name: teacherForm.name,
       account: teacherForm.account,
+      loginPassword: teacherForm.loginPassword,
       phone: teacherForm.phone,
       institutionId: teacherForm.institutionId,
       institutionName: inst?.name || '指定机构',
@@ -390,7 +400,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索教师姓名、账号、手机号或机构..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">教师仅用于用户归属、筛选和分组；服务开通由机构账户统一结算。</p><button type="button" onClick={() => { setTeacherForm({ name: '', account: '', phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button></div>
+            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">教师仅用于用户归属、筛选和分组；服务开通由机构账户统一结算。</p>{viewerRole !== 'teacher' && <button type="button" onClick={() => { setTeacherForm({ name: '', account: '', loginPassword: generateRandomPassword(), phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button>}</div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -400,13 +410,14 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <th className="py-3 px-4">教师姓名</th>
                   <th className="py-3 px-4">登录账号/手机</th>
                   <th className="py-3 px-4">所属机构</th>
-                  <th className="py-3 px-4 text-center">负责学生数</th>
+                  <th className="py-3 px-4 text-center">负责学生</th>
                   <th className="py-3 px-4 text-center">状态</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {filteredTeachers.map((tch) => (
+                {filteredTeachers.map((tch) => {
+                  return (
                   <tr key={tch.id} className="hover:bg-[#F8FAFC]">
                     <td className="py-3 px-4 font-bold text-[#0F172A]">{tch.name}</td>
                     <td className="py-3 px-4">
@@ -416,20 +427,21 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <td className="py-3 px-4 font-bold">{tch.institutionName}</td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-[#0F172A]">{tch.studentCount} 人</td>
                     <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-[#E8F7EE] text-[#16B45B]">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${tch.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-slate-100 text-slate-500'}`}>
                         {tch.status === 'active' ? '正常' : '停用'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenPermissions(tch)}
+                      {viewerRole !== 'teacher' && onOpenStudents && <button
+                        onClick={() => onOpenStudents(tch.name)}
                         className="text-[#16B45B] hover:underline font-bold text-[12px] cursor-pointer"
                       >
-                        权限
-                      </button>
+                        查看学生
+                      </button>}
+                      {viewerRole !== 'teacher' && <button type="button" onClick={() => onUpdateTeacher(tch.id, { status: tch.status === 'active' ? 'inactive' : 'active' })} className={`hover:underline font-bold text-[12px] cursor-pointer ${tch.status === 'active' ? 'text-rose-500' : 'text-[#16B45B]'}`}>{tch.status === 'active' ? '停用' : '启用'}</button>}
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>
@@ -447,7 +459,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索班级名称、代码、班主任..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <button
+            {viewerRole !== 'teacher' && <button
               onClick={() => {
                 setClassForm({
                   name: '',
@@ -464,7 +476,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               新建班级
-            </button>
+            </button>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -493,14 +505,14 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                     <div className="text-right">
                       <span className="text-[#64748B] block">班级学员</span>
                       <strong className="text-[#16B45B] font-mono text-[15px]">{cls.studentCount} 人</strong>
-                      <button onClick={(event) => { event.stopPropagation(); setSelectedClass(cls); setIsImportStudentModalOpen(true); }} className="mt-1 block w-full text-[11px] font-bold text-[#16B45B] hover:underline">关联已开通学生</button>
+                      {viewerRole !== 'teacher' && <button onClick={(event) => { event.stopPropagation(); setSelectedClass(cls); setIsImportStudentModalOpen(true); }} className="mt-1 block w-full text-[11px] font-bold text-[#16B45B] hover:underline">关联已开通学生</button>}
                     </div>
                   </div>
                 </div>
 
                 <p className="text-[11px] text-[#64748B]">服务开通由机构账户统一结算，班主任仅负责成员归属。</p>
 
-                <div className="pt-2">
+                {viewerRole !== 'teacher' && <div className="pt-2">
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
@@ -512,7 +524,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   >
                     批量办理服务
                   </button>
-                </div>
+                </div>}
               </div>
             ))}
           </div>
@@ -520,7 +532,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       )}
 
       {/* Add Teacher Modal */}
-      {isTeacherModalOpen && (
+      {viewerRole !== 'teacher' && isTeacherModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
             <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">新增教师账号</h3>
@@ -547,6 +559,21 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   placeholder="例如：wang_teacher"
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">初始登录密码</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={teacherForm.loginPassword}
+                    onChange={(e) => setTeacherForm({ ...teacherForm, loginPassword: e.target.value })}
+                    placeholder="至少 12 位，包含大小写、数字和特殊字符"
+                    className="min-w-0 flex-1 rounded-xl border border-[#E2E8F0] px-3 py-2 font-mono text-[13px] outline-none"
+                  />
+                  <button type="button" onClick={() => setTeacherForm({ ...teacherForm, loginPassword: generateRandomPassword() })} className="shrink-0 rounded-xl border border-[#9AD8B5] px-3 text-[12px] font-bold text-[#0E7D3E]">随机生成</button>
+                </div>
               </div>
 
               <div>
@@ -577,7 +604,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </button>
                 <button
                   type="submit"
-                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.institutionId}
+                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.loginPassword || !teacherForm.institutionId}
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                 >
                   确认保存
@@ -589,7 +616,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       )}
 
       {/* Permissions Modal */}
-      {isPermissionModalOpen && selectedTeacher && (
+      {viewerRole !== 'teacher' && isPermissionModalOpen && selectedTeacher && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl">
             <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3 mb-4">
@@ -714,7 +741,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       )}
 
       {/* Add Class Modal */}
-      {isClassModalOpen && (
+      {viewerRole !== 'teacher' && isClassModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
             <h3 className="text-[16px] font-bold text-[#0F172A] border-b pb-3">新建教学班级</h3>
@@ -872,7 +899,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       )}
 
       {/* Import Students Modal (With Default Quota Setting & Auto Roster View) */}
-      {isImportStudentModalOpen && selectedClass && (
+      {viewerRole !== 'teacher' && isImportStudentModalOpen && selectedClass && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 border border-[#E2E8F0] shadow-xl space-y-4">
             <div className="border-b pb-3 flex justify-between items-center">
@@ -983,7 +1010,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 placeholder="搜索学生姓名、账号或手机号..."
                 className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[12.5px] outline-none w-64 focus:border-[#16B45B]"
               />
-              <div className="flex items-center gap-2">
+              {viewerRole !== 'teacher' && <div className="flex items-center gap-2">
                 <button onClick={() => { setIsRosterModalOpen(false); setBulkPackageId(filterServicePackagesForInstitution(packages, institutions, rosterClass.institutionId)[0]?.id ?? ''); setIsBulkServiceOpen(true); }} className="border border-[#86D6A5] bg-[#F0FBF4] text-[#0E7D3E] px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1 cursor-pointer">
                   <span className="material-symbols-outlined text-[16px]">redeem</span>
                   批量办理待配包学生
@@ -999,7 +1026,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   <span className="material-symbols-outlined text-[16px]">group_add</span>
                   批量导入更多学员
                 </button>
-              </div>
+              </div>}
             </div>
 
             {/* Roster Table */}
@@ -1048,12 +1075,12 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                           )}
                         </td>
                         <td className="py-2.5 px-4 text-right space-x-2">
-                          <button
+                          {viewerRole !== 'teacher' && <button
                             onClick={() => handleRemoveStudentFromClass(s.id)}
                             className="text-rose-500 hover:underline font-bold text-[12px] cursor-pointer"
                           >
                             移除
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     ))
@@ -1075,7 +1102,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
         </div>
       )}
 
-      {isBulkServiceOpen && rosterClass && (() => {
+      {viewerRole !== 'teacher' && isBulkServiceOpen && rosterClass && (() => {
         const teacher = teachers.find((item) => item.id === rosterClass.headTeacherId);
         const institution = institutions.find((item) => item.id === rosterClass.institutionId);
         const availablePackages = filterServicePackagesForInstitution(packages, institutions, rosterClass.institutionId);

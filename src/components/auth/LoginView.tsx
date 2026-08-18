@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Institution, CurrentUser } from '../../types';
+import { Institution, CurrentUser, TeacherItem } from '../../types';
 import { AccountCredential, authenticateAccount } from '../../domain/accountCredentials';
 
 interface LoginViewProps {
   institutions: Institution[];
+  teachers: TeacherItem[];
   adminAccounts: AccountCredential[];
   onLogin: (user: CurrentUser) => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ institutions, adminAccounts, onLogin }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ institutions, teachers, adminAccounts, onLogin }) => {
   const [username, setUsername] = useState('admin@kaiqiao.com');
   const [password, setPassword] = useState('Admin@2026!x');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,6 +57,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ institutions, adminAccount
             institutionId: institution.id,
             institutionName: institution.name,
             avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCqF43kaxcc8_tFNcaYZUIKb_f3cZldDs5DlPffbW65W6Vv9hQwKyfYKwR-67wWTW77xfEJ3qgt41UNSheunoAWYSSfOqUT-dtyfZ7rhUVNrypClVDfaKjROfDFvDlzTtmsGG1yMRbdH_a5LtikWHMNDxFKu6KVjfGm9Y8ljuDI5iSajkGrb_2OoSarrwvIDtwj4j9lZR4pJwJyk-QjVOhrYr1HwsDCmhXnwrxYcBEQIkN5orT-rIfAw',
+          },
+        })),
+        ...teachers.map((teacher) => ({
+          id: `TEACHER-USER-${teacher.id}`,
+          username: teacher.account,
+          password: teacher.loginPassword || '',
+          phone: teacher.phone,
+          status: teacher.status,
+          user: {
+            id: `TEACHER-USER-${teacher.id}`,
+            name: teacher.name,
+            username: teacher.account,
+            role: 'teacher' as const,
+            institutionId: teacher.institutionId,
+            institutionName: teacher.institutionName,
+            teacherId: teacher.id,
           },
         })),
       ];
