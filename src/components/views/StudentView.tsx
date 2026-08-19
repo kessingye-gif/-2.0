@@ -14,6 +14,7 @@ import {
   Institution,
   ContentPackageItem,
   BulkServiceFulfillmentOutcome,
+  StudentTeacherAssignment,
 } from '../../types';
 import { deriveStudentRights } from '../../utils/studentCodeManagement';
 import { filterStudents, getStudentFilterOptions } from '../../utils/studentFilters';
@@ -23,6 +24,7 @@ import { ServiceFulfillmentPanel } from '../fulfillment/ServiceFulfillmentPanel'
 import { mergeStudentServiceRights } from '../../domain/studentRights';
 import { deriveStudentServiceReminders, type StudentServiceReminder } from '../../domain/serviceReminders';
 import type { Role } from '../../permissions/accessControl';
+import { getTeacherStudentSubjectScope } from '../../permissions/dataScope';
 import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
 import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
 import { buildImportedStudents, type StudentImportRow } from '../../domain/studentImport';
@@ -41,11 +43,13 @@ interface StudentViewProps {
   onFulfillServices?: (results: ServiceFulfillmentResult[]) => BulkServiceFulfillmentOutcome;
   onAddStudents?: (students: StudentItem[]) => void;
   onAssignTeacher?: (studentId: string, teacherId: string) => void;
+  onUpdateTeacherAssignments?: (studentId: string, assignments: StudentTeacherAssignment[]) => void;
   initialTeacherFilter?: string;
   isLoading?: boolean;
   onRevokeAuthCode: (codeId: string) => void;
   onUpdateGuardianshipStatus: (id: string, status: GuardianshipStatus) => void;
   viewerRole?: Role;
+  viewerTeacherId?: string;
 }
 
 const hiddenRebindRequests: WeChatRebindRequest[] = [];
@@ -75,13 +79,15 @@ export const StudentView: React.FC<StudentViewProps> = ({
   onFulfillServices,
   onAddStudents,
   onAssignTeacher,
+  onUpdateTeacherAssignments,
   initialTeacherFilter = '',
   isLoading = false,
   onRevokeAuthCode,
   onUpdateGuardianshipStatus,
   viewerRole = 'super_admin',
+  viewerTeacherId,
 }) => {
-  const { getActiveGrades } = useMasterData();
+  const { getActiveGrades, getActiveSubjects } = useMasterData();
   const [bulkMode, setBulkMode] = useState(false);
 
   // Roster Filters
@@ -105,6 +111,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [importInstitutionId, setImportInstitutionId] = useState(institutions[0]?.id ?? '');
   const [assignTeacherStudent, setAssignTeacherStudent] = useState<StudentItem | null>(null);
   const [assignmentTeacherId, setAssignmentTeacherId] = useState('');
+  const [teachingAssignmentsDraft, setTeachingAssignmentsDraft] = useState<StudentTeacherAssignment[]>([]);
+  const subjectOptions = useMemo(() => getActiveSubjects().map((item) => item.name), [getActiveSubjects]);
   const [importStudents, setImportStudents] = useState<StudentItem[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importSkipped, setImportSkipped] = useState<string[]>([]);
@@ -142,8 +150,14 @@ export const StudentView: React.FC<StudentViewProps> = ({
   };
 
   // Filtered Roster
+  const scopedStudents = useMemo(() => students.flatMap((student) => {
+    if (viewerRole !== 'teacher') return [student];
+    const scope = getTeacherStudentSubjectScope(student, viewerTeacherId);
+    if (!scope) return [];
+    return [{ ...student, subjects: scope === 'all' ? student.subjects : scope }];
+  }), [students, viewerRole, viewerTeacherId]);
   const organizationFilters = { institution: institutionFilter, teacher: teacherFilter, className: classFilter, grade: gradeFilter };
-  const filterOptions = useMemo(() => getStudentFilterOptions(students, organizationFilters), [students, institutionFilter, teacherFilter, classFilter, gradeFilter]);
+  const filterOptions = useMemo(() => getStudentFilterOptions(scopedStudents, organizationFilters), [scopedStudents, institutionFilter, teacherFilter, classFilter, gradeFilter]);
   const gradeOptions = useMemo(() => {
     const available = new Set(filterOptions.grades);
     const configured = getActiveGrades().map((item) => item.name).filter((name) => available.has(name));
@@ -151,7 +165,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
     return [...configured, ...unconfigured];
   }, [filterOptions.grades, getActiveGrades]);
   const filteredStudents = useMemo(() => {
-    const base = filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter === 'expiring' ? '' : serviceStatusFilter });
+    const base = filterStudents(scopedStudents, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter === 'expiring' ? '' : serviceStatusFilter });
     if (serviceStatusFilter !== 'expiring') return base;
     const today = new Date();
     const deadline = new Date(today);
@@ -163,7 +177,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
       const date = new Date(`${expireAt}T23:59:59`);
       return date >= today && date <= deadline;
     });
-  }, [students, mergedServiceRights, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, classFilter, gradeFilter]);
+  }, [scopedStudents, mergedServiceRights, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, classFilter, gradeFilter]);
   const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || classFilter || gradeFilter);
   const openImportDialog = () => {
     setImportInstitutionId(institutions[0]?.id ?? '');
@@ -336,7 +350,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                     <td className="py-3 px-4"><button onClick={() => setDetailStudent(stu)} className="font-bold text-[#0F172A] hover:text-[#16B45B]">{stu.name}</button><div className="mt-0.5 font-mono text-[11px] text-[#64748B]">{stu.account}{stu.phone ? ` · ${stu.phone}` : ''}</div>
                       <span className={`px-1.5 py-0.5 text-[10px] rounded ${guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700'}`}>{guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? '家长已绑' : '家长待绑'}</span>
                     </td>
-                    <td className="py-3 px-4 text-[11px] text-[#64748B]"><div className="font-bold text-[#475569]">{stu.teacherName || '未分配教师'} · {stu.grade}</div><div className="mt-0.5">{stu.className || '未设置班级'} · {stu.institutionName}</div></td>
+                    <td className="py-3 px-4 text-[11px] text-[#64748B]"><div className="font-bold text-[#475569]">主负责：{stu.teacherName || '机构管理员'} · {stu.grade}</div>{stu.teacherAssignments?.length ? <div className="mt-0.5 text-[#0E7D3E]">任课：{stu.teacherAssignments.map((item) => `${item.teacherName}（${item.subject}）`).join('、')}</div> : null}<div className="mt-0.5">{stu.className || '未设置班级'} · {stu.institutionName}</div></td>
                     <td className="py-3 px-4 text-center">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                         serviceStatus === 'active' ? 'bg-green-100 text-green-700' : serviceStatus === 'expired' || serviceStatus === 'revoked' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
@@ -349,7 +363,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                     </td>
                     <td className="py-3 px-4"><div className="font-bold text-[#0E7D3E]">{latestRight?.packageName || '未开通'}</div><div className="mt-1 text-[11px] text-[#64748B]">{latestRight?.contentPackageNames?.length ? latestRight.contentPackageNames.join(' / ') : '未选择内容包'}</div></td>
                     <td className="py-3 px-4 font-mono text-[12px]">{latestRight ? latestRight.includedAiUsage.toLocaleString() : '-'}</td>
-                    <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button>{canManageServices && onAssignTeacher && <button onClick={() => { setAssignTeacherStudent(stu); setAssignmentTeacherId(stu.teacherId || ''); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">{stu.teacherId ? '转让' : '分配教师'}</button>}{canManageServices && <button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">{serviceStatus === 'active' ? '续费' : '办理服务'}</button>}</div></td>
+                    <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button>{canManageServices && onAssignTeacher && <button onClick={() => { setAssignTeacherStudent(stu); setAssignmentTeacherId(stu.teacherId || ''); setTeachingAssignmentsDraft(stu.teacherAssignments ?? []); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">管理教师</button>}{canManageServices && <button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">{serviceStatus === 'active' ? '续费' : '办理服务'}</button>}</div></td>
                   </tr>
                 );})}
               </tbody>
@@ -553,14 +567,17 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
       {assignTeacherStudent && canManageServices && onAssignTeacher && (
         <DialogShell
-          title={assignTeacherStudent.teacherId ? '转让学生' : '分配负责教师'}
-          description={`${assignTeacherStudent.name} · ${assignTeacherStudent.institutionName}`}
+          title="管理学生教师"
+          description={`${assignTeacherStudent.name} · 设置一名主负责教师，并可增加多名学科任课教师。`}
           onClose={() => setAssignTeacherStudent(null)}
-          maxWidthClass="max-w-lg"
-          footer={<div className="flex justify-end gap-2"><button type="button" onClick={() => setAssignTeacherStudent(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button type="button" disabled={!assignmentTeacherId} onClick={() => { onAssignTeacher(assignTeacherStudent.id, assignmentTeacherId); setAssignTeacherStudent(null); }} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认分配</button></div>}
+          maxWidthClass="max-w-2xl"
+          footer={<div className="flex justify-end gap-2"><button type="button" onClick={() => setAssignTeacherStudent(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button type="button" disabled={!assignmentTeacherId} onClick={() => { onAssignTeacher(assignTeacherStudent.id, assignmentTeacherId); onUpdateTeacherAssignments?.(assignTeacherStudent.id, teachingAssignmentsDraft.filter((item) => item.teacherId !== assignmentTeacherId)); setAssignTeacherStudent(null); }} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">保存教师配置</button></div>}
         >
-          <label className="block text-[12px] font-bold text-[#475569]">负责教师<select autoFocus value={assignmentTeacherId} onChange={(event) => setAssignmentTeacherId(event.target.value)} className="mt-2 w-full rounded-xl border border-[#CDE8D8] bg-white px-3 py-2.5 text-[13px] text-[#0F172A]"><option value="">请选择教师</option>{teachers.filter((teacher) => teacher.status === 'active' && teacher.institutionId === assignTeacherStudent.institutionId).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
-          <p className="mt-3 rounded-xl bg-[#F8FAFC] px-3 py-2 text-[11px] leading-5 text-[#64748B]">仅显示该机构的在职教师。确认后，教师端会立即看到这名学生。</p>
+          <div className="space-y-4">
+            <label className="block text-[12px] font-bold text-[#475569]">主负责教师<select autoFocus value={assignmentTeacherId} onChange={(event) => setAssignmentTeacherId(event.target.value)} className="mt-2 w-full rounded-xl border border-[#CDE8D8] bg-white px-3 py-2.5 text-[13px] text-[#0F172A]"><option value="">请选择主负责教师</option>{teachers.filter((teacher) => teacher.status === 'active' && teacher.institutionId === assignTeacherStudent.institutionId).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}{teacher.subject ? ` · ${teacher.subject}` : ''}</option>)}</select></label>
+            <section className="rounded-xl border border-[#E2E8F0] bg-white p-4"><div><h4 className="text-[13px] font-bold">学科任课教师</h4><p className="mt-1 text-[11px] text-[#64748B]">可多选。勾选后自动使用教师账号中的任教学科，仍可按实际情况调整。</p></div><div className="mt-3 space-y-2">{teachers.filter((teacher) => teacher.status === 'active' && teacher.institutionId === assignTeacherStudent.institutionId && teacher.id !== assignmentTeacherId).map((teacher) => { const assignment = teachingAssignmentsDraft.find((item) => item.teacherId === teacher.id); return <div key={teacher.id} className={`grid items-center gap-3 rounded-xl border px-3 py-2.5 sm:grid-cols-[1fr_180px] ${assignment ? 'border-[#86D6A5] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><label className="flex cursor-pointer items-center gap-2 text-[12px] font-bold"><input type="checkbox" checked={Boolean(assignment)} onChange={(event) => setTeachingAssignmentsDraft((current) => event.target.checked ? [...current, { teacherId: teacher.id, teacherName: teacher.name, subject: teacher.subject || subjectOptions[0] || '未设置学科' }] : current.filter((item) => item.teacherId !== teacher.id))} />{teacher.name}<span className="text-[11px] font-normal text-[#0E7D3E]">{teacher.subject || '待补充学科'}</span></label>{assignment && <select aria-label={`${teacher.name}任教学科`} value={assignment.subject} onChange={(event) => setTeachingAssignmentsDraft((current) => current.map((item) => item.teacherId === teacher.id ? { ...item, subject: event.target.value } : item))} className="rounded-lg border border-[#CDE8D8] bg-white px-2.5 py-2 text-[12px]"><option value="">请选择任教学科</option>{subjectOptions.map((subject) => <option key={subject} value={subject}>{subject}</option>)}</select>}</div>; })}</div></section>
+            <p className="rounded-xl bg-[#F8FAFC] px-3 py-2 text-[11px] leading-5 text-[#64748B]">主负责教师用于学生归属和服务办理；任课教师只获得该学生的查看与学情权限。</p>
+          </div>
         </DialogShell>
       )}
 

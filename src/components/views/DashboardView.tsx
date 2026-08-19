@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { PlatformDashboardSnapshot } from '../../dashboardSnapshot';
 import type { StudentItem } from '../../types';
 import type { Role } from '../../permissions/accessControl';
+import { getTeacherStudentSubjectScope } from '../../permissions/dataScope';
 import { DashboardSection } from '../dashboard/DashboardSection';
 import { MetricLink } from '../dashboard/MetricLink';
 import { DialogShell, controlClassName } from '../ui/FormPrimitives';
@@ -103,13 +104,35 @@ const weakPointCatalog = [
 
 export const StudentLearningView: React.FC<{
   students: StudentItem[];
-  teachers: Array<{ id: string; name: string }>;
+  teachers: Array<{ id: string; name: string; subject?: string }>;
   viewerRole: Role;
-}> = ({ students, teachers, viewerRole }) => {
+  viewerTeacherId?: string;
+}> = ({ students, teachers, viewerRole, viewerTeacherId }) => {
   const isInstitution = viewerRole === 'institution_admin';
+  const isTeacher = viewerRole === 'teacher';
   const [teacherId, setTeacherId] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
-  const visibleStudents = teacherId === 'all' ? students : students.filter((student) => student.teacherId === teacherId);
+  const teacherFilteredStudents = teacherId === 'all' ? students : students.filter((student) => student.teacherId === teacherId || student.teacherAssignments?.some((assignment) => assignment.teacherId === teacherId));
+  const visibleStudents = teacherFilteredStudents.flatMap((student) => {
+    if (!isTeacher) return [student];
+    const scope = getTeacherStudentSubjectScope(student, viewerTeacherId);
+    if (!scope) return [];
+    if (scope === 'all') return [student];
+    const scopedLearning = (student.subjectLearning ?? []).filter((item) => scope.includes(item.subject));
+    const totalQuestions = scopedLearning.reduce((sum, item) => sum + item.totalQuestions, 0);
+    const totalErrors = scopedLearning.reduce((sum, item) => sum + item.errorCount, 0);
+    return [{
+      ...student,
+      subjects: scope,
+      subjectLearning: scopedLearning,
+      totalStudyHours: scopedLearning.reduce((sum, item) => sum + item.studyHours, 0),
+      totalQuestions,
+      accuracyRate: totalQuestions ? Math.round(scopedLearning.reduce((sum, item) => sum + item.accuracyRate * item.totalQuestions, 0) / totalQuestions) : 0,
+      errorCount: totalErrors,
+      unreviewedErrorCount: scopedLearning.reduce((sum, item) => sum + item.unreviewedErrorCount, 0),
+    }];
+  });
+  const currentTeacher = teachers.find((teacher) => teacher.id === viewerTeacherId);
   const learningStudents = visibleStudents.filter((student) => student.totalQuestions > 0 || student.totalStudyHours > 0);
   const totalQuestions = visibleStudents.reduce((sum, student) => sum + student.totalQuestions, 0);
   const totalErrors = visibleStudents.reduce((sum, student) => sum + student.errorCount, 0);
@@ -123,7 +146,7 @@ export const StudentLearningView: React.FC<{
 
   return <div className="mx-auto max-w-[1480px] space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <div><div className="flex items-center gap-2"><h2 className="text-[20px] font-extrabold text-[#0F172A]">学生学情</h2><span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-[10px] font-bold text-[#B45309]">示例数据</span></div><p className="mt-1 text-[12px] text-[#64748B]">{isInstitution ? '查看本机构全部学生的学习表现，并按负责教师快速筛选。' : '查看我负责学生的学习表现、薄弱知识点和待复习问题。'}</p></div>
+      <div><div className="flex items-center gap-2"><h2 className="text-[20px] font-extrabold text-[#0F172A]">学生学情</h2><span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-[10px] font-bold text-[#B45309]">示例数据</span>{isTeacher && <span className="rounded-full bg-[#E8F7EE] px-2.5 py-1 text-[10px] font-bold text-[#0E7D3E]">{currentTeacher?.subject ? `${currentTeacher.subject}教师` : '教师视角'}</span>}</div><p className="mt-1 text-[12px] text-[#64748B]">{isInstitution ? '查看本机构全部学生的学习表现，并按负责教师快速筛选。' : '主负责学生展示全部已开通学科；任课学生只展示分配给我的学科。'}</p></div>
       <div className="flex items-end gap-3">{isInstitution && <label className="block"><span className="mb-1.5 block text-[11px] font-bold text-[#64748B]">负责教师</span><select aria-label="按负责教师筛选" value={teacherId} onChange={(event) => setTeacherId(event.target.value)} className={`${controlClassName} min-w-[180px]`}><option value="all">全部教师</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}<div className="pb-2 text-right"><p className="text-[10px] font-medium text-[#0E7D3E]">数据口径：小程序智能诊断</p><p className="mt-1 text-[10px] text-[#94A3B8]">学生完成练习后自动更新</p></div></div>
     </div>
 
@@ -139,7 +162,7 @@ export const StudentLearningView: React.FC<{
       <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="text-[15px] font-bold">共性薄弱知识点</h3><p className="mt-1 text-[11px] text-[#64748B]">用于安排集中讲解，个人结论请进入学生学情查看。</p></div><span className="text-[10px] font-bold text-[#B45309]">示例</span></div><div className="mt-4 space-y-3">{weakPoints.map((item) => <div key={item.name} className="rounded-xl bg-[#F8FAFC] p-3"><div className="flex justify-between gap-3"><div><span className="text-[10px] font-bold text-[#0E7D3E]">{item.subject}</span><strong className="mt-1 block text-[12px]">{item.name}</strong></div><strong className="text-[13px] text-red-600">{item.accuracy}%</strong></div><p className="mt-2 text-[10px] text-[#94A3B8]">关联错题 {item.wrongQuestions} 道</p></div>)}{weakPoints.length === 0 && <p className="rounded-xl bg-[#F8FAFC] px-4 py-10 text-center text-[12px] text-[#94A3B8]">暂无可展示的知识点诊断</p>}</div></section>
     </div>
 
-    {selectedStudent && <DialogShell title={`${selectedStudent.name} · 个人学情`} description={`${selectedStudent.teacherName || '机构管理员'}负责 · ${selectedStudent.grade} · ${selectedStudent.className || '未设置班级'} · 数据来自小程序智能诊断`} icon="person_search" maxWidthClass="max-w-4xl" onClose={() => setSelectedStudent(null)} footer={<button type="button" onClick={() => setSelectedStudent(null)} className="rounded-xl border border-[#D8E1EA] bg-white px-5 py-2.5 text-[13px] font-bold text-[#475569]">关闭</button>}>
+    {selectedStudent && <DialogShell title={`${selectedStudent.name} · 个人学情`} description={`${selectedStudent.teacherName || '机构管理员'}负责 · 可查看范围：${selectedStudent.subjects.join('、') || '暂无学科'} · 数据来自小程序智能诊断`} icon="person_search" maxWidthClass="max-w-4xl" onClose={() => setSelectedStudent(null)} footer={<button type="button" onClick={() => setSelectedStudent(null)} className="rounded-xl border border-[#D8E1EA] bg-white px-5 py-2.5 text-[13px] font-bold text-[#475569]">关闭</button>}>
       <div className="space-y-4"><section className="grid gap-3 sm:grid-cols-4">{[['学习时长', `${selectedStudent.totalStudyHours} 小时`], ['累计练习', `${number(selectedStudent.totalQuestions)} 题`], ['正确率', `${selectedStudent.accuracyRate}%`], ['待复习错题', `${selectedStudent.unreviewedErrorCount} 题`]].map(([label, value]) => <div key={label} className="rounded-xl border border-[#E2E8F0] bg-white p-4"><span className="text-[11px] text-[#64748B]">{label}</span><strong className="mt-1 block text-[20px]">{value}</strong></div>)}</section><section className="rounded-xl border border-[#E2E8F0] bg-white p-5"><h4 className="text-[14px] font-bold">AI 诊断摘要</h4><p className="mt-2 text-[12px] leading-6 text-[#475569]">{selectedStudent.totalQuestions ? `已完成 ${selectedStudent.totalQuestions} 道练习，当前整体正确率 ${selectedStudent.accuracyRate}%。建议优先复习 ${selectedStudent.unreviewedErrorCount} 道未巩固错题，再针对薄弱知识点进行专项练习。` : '该学生尚未在小程序产生练习记录，完成首次练习后将自动生成个人诊断。'}</p></section><section className="rounded-xl border border-[#E2E8F0] bg-white p-5"><div className="flex justify-between"><h4 className="text-[14px] font-bold">薄弱知识点</h4><span className="text-[10px] font-bold text-[#B45309]">示例数据</span></div><div className="mt-3 grid gap-3 sm:grid-cols-2">{selectedWeakPoints.map((item) => <div key={item.name} className="rounded-xl bg-[#F8FAFC] p-4"><span className="text-[10px] font-bold text-[#0E7D3E]">{item.subject}</span><strong className="mt-1 block text-[12px]">{item.name}</strong><p className="mt-2 text-[11px] text-[#64748B]">正确率 {item.accuracy}% · 关联错题 {item.wrongQuestions} 道</p></div>)}{selectedWeakPoints.length === 0 && <p className="text-[12px] text-[#94A3B8]">暂无知识点诊断</p>}</div></section></div>
     </DialogShell>}
   </div>;

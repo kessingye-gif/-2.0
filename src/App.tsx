@@ -48,6 +48,7 @@ import {
   StudentItem,
   TeacherCreditLedgerEntry,
   InstitutionCreditEntry,
+  StudentTeacherAssignment,
 } from './types';
 import { deriveLegacyServiceRights } from './domain/studentRights';
 import { allocateTeacherCredits, reclaimTeacherCredits } from './domain/teacherCredits';
@@ -376,6 +377,18 @@ export default function App() {
     handleNotify(`${student.name}已从${previousOwnerName}转让给${teacher.name}`);
   };
 
+  const handleUpdateStudentTeacherAssignments = (studentId: string, assignments: StudentTeacherAssignment[]) => {
+    const student = students.find((item) => item.id === studentId);
+    if (!student) return;
+    const validAssignments = assignments.filter((assignment, index, all) => assignment.subject && assignment.teacherId !== student.teacherId
+      && all.findIndex((item) => item.teacherId === assignment.teacherId) === index
+      && teachers.some((teacher) => teacher.id === assignment.teacherId && teacher.institutionId === student.institutionId && teacher.status === 'active'));
+    setStudents((current) => current.map((item) => item.id === studentId ? { ...item, teacherAssignments: validAssignments } : item));
+    const summary = validAssignments.length ? validAssignments.map((item) => `${item.teacherName}（${item.subject}）`).join('、') : '无任课教师';
+    addAuditLog('调整学生任课教师', student.name, summary, '机构管理');
+    handleNotify(`${student.name}的任课教师已更新：${summary}`);
+  };
+
   const handleOpenTeacherStudents = (teacherName: string) => {
     setStudentTeacherFilter(teacherName);
     setCurrentTab('students');
@@ -579,6 +592,7 @@ export default function App() {
               students={visibleStudents}
               teachers={visibleTeachers}
               viewerRole={currentUser.role}
+              viewerTeacherId={currentUser.teacherId}
             />
           )}
 
@@ -686,12 +700,14 @@ export default function App() {
               institutions={visibleInstitutions}
               onAddStudents={handleAddStudents}
               onAssignTeacher={handleAssignStudentTeacher}
+              onUpdateTeacherAssignments={handleUpdateStudentTeacherAssignments}
               onFulfillService={handleFulfillService}
               onFulfillServices={handleFulfillServices}
               initialTeacherFilter={studentTeacherFilter}
               onRevokeAuthCode={handleRevokeAuthCode}
               onUpdateGuardianshipStatus={handleUpdateGuardianshipStatus}
               viewerRole={currentUser.role}
+              viewerTeacherId={currentUser.teacherId}
             />
           )}
 

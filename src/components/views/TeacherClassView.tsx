@@ -103,6 +103,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
 
   const [teacherForm, setTeacherForm] = useState({
     name: '',
+    subject: '',
     account: '',
     loginPassword: generateRandomPassword(),
     phone: '',
@@ -130,12 +131,12 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     const stamp = Date.now().toString().slice(-5);
     onAddTeachers([
       {
-        id: `TCH-B-${stamp}-1`, name: '批量教师一', account: `teacher_${stamp}_1`, phone: '13800001001',
+        id: `TCH-B-${stamp}-1`, name: '批量教师一', subject: '数学', account: `teacher_${stamp}_1`, phone: '13800001001',
         institutionId: institution.id, institutionName: institution.name, studentCount: 0,
         allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
       },
       {
-        id: `TCH-B-${stamp}-2`, name: '批量教师二', account: `teacher_${stamp}_2`, phone: '13800001002',
+        id: `TCH-B-${stamp}-2`, name: '批量教师二', subject: '物理', account: `teacher_${stamp}_2`, phone: '13800001002',
         institutionId: institution.id, institutionName: institution.name, studentCount: 0,
         allocatedQuota: 0, remainingQuota: 0, permissions: { ...defaultPermissions }, status: 'active', createdAt: new Date().toISOString().slice(0, 10),
       },
@@ -170,6 +171,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
       (t) =>
         (!institutionId || t.institutionId === institutionId) && (
           t.name.includes(teacherSearch) ||
+          (t.subject ?? '').includes(teacherSearch) ||
           t.account.includes(teacherSearch) ||
           t.phone.includes(teacherSearch) ||
           t.institutionName.includes(teacherSearch) ||
@@ -200,6 +202,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
     const newT: TeacherItem = {
       id: `TCH-${Date.now().toString().slice(-4)}`,
       name: teacherForm.name,
+      subject: teacherForm.subject,
       account: teacherForm.account,
       loginPassword: teacherForm.loginPassword,
       phone: teacherForm.phone,
@@ -400,7 +403,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               placeholder="搜索教师姓名、账号、手机号或机构..."
               className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none w-72 focus:border-[#16B45B]"
             />
-            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">教师仅用于用户归属、筛选和分组；服务开通由机构账户统一结算。</p>{viewerRole !== 'teacher' && <button type="button" onClick={() => { setTeacherForm({ name: '', account: '', loginPassword: generateRandomPassword(), phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button>}</div>
+            <div className="flex items-center gap-2"><p className="text-[12px] text-[#64748B]">任教学科决定教师默认关联的学科学生与学情；服务开通由机构账户统一结算。</p>{viewerRole !== 'teacher' && <button type="button" onClick={() => { setTeacherForm({ name: '', subject: '', account: '', loginPassword: generateRandomPassword(), phone: '', institutionId: institutionId ?? institutions[0]?.id ?? '', initialQuota: 0 }); setIsTeacherModalOpen(true); }} className="rounded-xl bg-[#16B45B] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#139B4E]"><span className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增老师</button>}</div>
           </div>
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
@@ -408,6 +411,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
                 <tr>
                   <th className="py-3 px-4">教师姓名</th>
+                  <th className="py-3 px-4">任教学科</th>
                   <th className="py-3 px-4">登录账号/手机</th>
                   <th className="py-3 px-4">所属机构</th>
                   <th className="py-3 px-4 text-center">负责学生</th>
@@ -420,6 +424,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                   return (
                   <tr key={tch.id} className="hover:bg-[#F8FAFC]">
                     <td className="py-3 px-4 font-bold text-[#0F172A]">{tch.name}</td>
+                    <td className="py-3 px-4"><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${tch.subject ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-amber-50 text-amber-700'}`}>{tch.subject || '待补充'}</span></td>
                     <td className="py-3 px-4">
                       <div className="font-mono text-[12px]">{tch.account}</div>
                       <div className="text-[11px] text-[#64748B]">{tch.phone}</div>
@@ -550,6 +555,15 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
               </div>
 
               <div>
+                <label className="block text-[12px] font-bold text-[#475569] mb-1">任教学科</label>
+                <select required value={teacherForm.subject} onChange={(e) => setTeacherForm({ ...teacherForm, subject: e.target.value })} className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-[13px] font-bold outline-none focus:border-[#16B45B]">
+                  <option value="">请选择任教学科</option>
+                  {allSubjects.map((subject) => <option key={subject} value={subject}>{subject}</option>)}
+                </select>
+                <p className="mt-1.5 text-[11px] text-[#64748B]">学科来自“系统管理－基础字典”，分配学生时自动带出。</p>
+              </div>
+
+              <div>
                 <label className="block text-[12px] font-bold text-[#475569] mb-1">登录账号</label>
                 <input
                   type="text"
@@ -604,7 +618,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
                 </button>
                 <button
                   type="submit"
-                  disabled={!teacherForm.name || !teacherForm.account || !teacherForm.loginPassword || !teacherForm.institutionId}
+                  disabled={!teacherForm.name || !teacherForm.subject || !teacherForm.account || !teacherForm.loginPassword || !teacherForm.institutionId}
                   className="px-4 py-2 bg-[#16B45B] text-white rounded-xl text-[13px] font-bold hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
                 >
                   确认保存

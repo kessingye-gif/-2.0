@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { ContentPackageItem, Institution, ServiceFulfillmentResult, ServicePackage, StudentItem, StudentServiceRight } from '../../types';
 import { createServiceFulfillment } from '../../domain/serviceFulfillment';
+import { DialogShell } from '../ui/FormPrimitives';
 
 interface ServiceFulfillmentPanelProps {
   student: StudentItem;
@@ -17,8 +18,10 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
   const availablePackages = useMemo(() => packages.filter((item) => item.status === 'active' && (!institution || institution.availableServicePackageIds?.includes(item.id))), [packages, institution]);
   const [packageId, setPackageId] = useState(availablePackages[0]?.id ?? '');
   const [result, setResult] = useState<ServiceFulfillmentResult | null>(null);
+  const [isResultOpen, setIsResultOpen] = useState(false);
   const [selectedContentIds, setSelectedContentIds] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
   const selectedPackage = availablePackages.find((item) => item.id === packageId);
   const availableContentPackages = contentPackages.filter((item) => item.status === 'active'
     && (!selectedPackage?.selectableContentPackageIds?.length || selectedPackage.selectableContentPackageIds.includes(item.id))
@@ -41,9 +44,20 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
       });
       onFulfill(fulfillment);
       setResult(fulfillment);
+      setIsResultOpen(true);
       setError('');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '服务办理失败');
+    }
+  };
+
+  const copyText = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      window.setTimeout(() => setCopied(''), 1600);
+    } catch {
+      setCopied('复制失败，请手动选择复制');
     }
   };
 
@@ -99,16 +113,22 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
         </div>
       </div>
 
-      {result && (
-        <div className="rounded-2xl border border-[#A7E4BE] bg-[#F0FBF4] p-5">
-          <h4 className="font-bold text-[#0E7D3E]">{result.right.fulfillmentKind === 'renewal' ? '服务续费成功' : '服务办理成功'}</h4>
-          <p className="mt-1 text-[12px] text-[#4B8060]">{result.right.fulfillmentKind === 'renewal' ? `有效期已顺延至 ${result.right.serviceExpireAt ?? '长期有效'}，学生无需重新激活。` : '激活凭证已生成；学生首次激活后开始计算服务有效期。'}</p>
-          {result.authCode && result.guardianBindingCode && <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl bg-white p-4"><div className="text-[11px] text-[#64748B]">学生授权码</div><div className="mt-1 font-mono text-[16px] font-bold text-[#16B45B]">{result.authCode.code}</div></div>
-            <div className="rounded-xl bg-white p-4"><div className="text-[11px] text-[#64748B]">家长绑定码</div><div className="mt-1 font-mono text-[16px] font-bold text-[#16B45B]">{result.guardianBindingCode.code}</div></div>
+      {result && isResultOpen && <DialogShell
+        title={result.right.fulfillmentKind === 'renewal' ? '服务续费成功' : '服务办理成功'}
+        description={`${student.name} · ${selectedPackage?.name ?? result.right.packageName}`}
+        icon="check_circle"
+        maxWidthClass="max-w-2xl"
+        onClose={() => setIsResultOpen(false)}
+        footer={<><span aria-live="polite" className="mr-auto text-[11px] font-bold text-[#0E7D3E]">{copied}</span>{result.authCode && result.guardianBindingCode && <button type="button" onClick={() => void copyText(`学生：${student.name}\n学生授权码：${result.authCode.code}\n家长绑定码：${result.guardianBindingCode.code}`, '已复制全部凭证')} className="rounded-xl border border-[#86D6A5] bg-white px-4 py-2.5 text-[13px] font-bold text-[#0E7D3E] hover:bg-[#F0FBF4]">复制全部</button>}<button type="button" onClick={() => setIsResultOpen(false)} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white">完成</button></>}
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[#A7E4BE] bg-[#F0FBF4] px-4 py-3"><p className="text-[12px] leading-5 text-[#0E7D3E]">{result.right.fulfillmentKind === 'renewal' ? `有效期已顺延至 ${result.right.serviceExpireAt ?? '长期有效'}，学生无需重新激活。` : '激活凭证已生成；学生首次激活后开始计算服务有效期。'}</p></div>
+          {result.authCode && result.guardianBindingCode && <div className="grid gap-3 sm:grid-cols-2">
+            {[["学生授权码", result.authCode.code], ["家长绑定码", result.guardianBindingCode.code]].map(([label, code]) => <div key={label} className="rounded-xl border border-[#E2E8F0] bg-white p-4"><div className="text-[11px] font-bold text-[#64748B]">{label}</div><div className="mt-2 break-all font-mono text-[18px] font-bold tracking-wide text-[#16B45B]">{code}</div><button type="button" onClick={() => void copyText(code, `已复制${label}`)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#F0FBF4] px-3 py-2 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]"><span className="material-symbols-outlined text-[16px]">content_copy</span>复制</button></div>)}
           </div>}
+          <p className="text-[11px] leading-5 text-[#64748B]">学生授权码用于学生首次激活；家长绑定码用于建立家长与学生的绑定关系，请分别发送给对应使用人。</p>
         </div>
-      )}
+      </DialogShell>}
     </div>
   );
 };

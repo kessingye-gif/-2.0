@@ -262,7 +262,7 @@ export const deriveTeacherDashboardSnapshot = ({ teacherId, teachers, students, 
   auditLogs: AuditLogItem[];
 }): PlatformDashboardSnapshot => {
   const teacher = teachers.find((item) => item.id === teacherId);
-  const ownStudents = students.filter((item) => item.teacherId === teacherId);
+  const ownStudents = students.filter((item) => item.teacherId === teacherId || item.teacherAssignments?.some((assignment) => assignment.teacherId === teacherId));
   const activeStudents = ownStudents.filter((item) => item.serviceStatus === 'active');
   const pendingStudents = ownStudents.filter((item) => item.serviceStatus === 'none');
   const learningStudents = ownStudents.filter((item) => item.totalQuestions > 0 || item.totalStudyHours > 0);

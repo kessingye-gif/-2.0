@@ -294,6 +294,8 @@ export interface TeacherPermission {
 export interface TeacherItem {
   id: string;
   name: string;
+  /** 任教学科。旧教师数据允许暂时为空，新建教师时必须选择。 */
+  subject?: string;
   account: string;
   loginPassword?: string;
   phone: string;
@@ -392,8 +394,10 @@ export interface StudentItem {
   institutionName: string;
   teacherId: string;
   teacherName: string;
+  teacherAssignments?: StudentTeacherAssignment[];
   className?: string;
   subjects: string[]; // ['数学', '物理']
+  subjectLearning?: StudentSubjectLearning[];
   serviceStatus: 'active' | 'expired' | 'none';
   serviceExpireAt?: string;
   totalStudyHours: number;
@@ -401,6 +405,21 @@ export interface StudentItem {
   accuracyRate: number;
   errorCount: number;
   unreviewedErrorCount: number;
+}
+
+export interface StudentSubjectLearning {
+  subject: string;
+  studyHours: number;
+  totalQuestions: number;
+  accuracyRate: number;
+  errorCount: number;
+  unreviewedErrorCount: number;
+}
+
+export interface StudentTeacherAssignment {
+  teacherId: string;
+  teacherName: string;
+  subject: string;
 }
 
 export type GuardianshipStatus = 'pending' | 'active' | 'rejected' | 'frozen' | 'released' | 'expired';
