@@ -26,7 +26,6 @@ import type { Role } from '../../permissions/accessControl';
 import { createBulkServiceFulfillments } from '../../domain/serviceFulfillment';
 import { downloadImportTemplate } from '../../utils/downloadImportTemplate';
 import { buildImportedStudents, type StudentImportRow } from '../../domain/studentImport';
-import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
 interface StudentViewProps {
   students: StudentItem[];
@@ -41,7 +40,7 @@ interface StudentViewProps {
   onFulfillService: (result: ServiceFulfillmentResult) => void;
   onFulfillServices?: (results: ServiceFulfillmentResult[]) => BulkServiceFulfillmentOutcome;
   onAddStudents?: (students: StudentItem[]) => void;
-  onAddTeacher?: (teacher: TeacherItem, initialQuota: number) => void;
+  onAssignTeacher?: (studentId: string, teacherId: string) => void;
   initialTeacherFilter?: string;
   isLoading?: boolean;
   onRevokeAuthCode: (codeId: string) => void;
@@ -75,7 +74,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
   onFulfillService,
   onFulfillServices,
   onAddStudents,
-  onAddTeacher,
+  onAssignTeacher,
   initialTeacherFilter = '',
   isLoading = false,
   onRevokeAuthCode,
@@ -83,7 +82,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
   viewerRole = 'super_admin',
 }) => {
   const { getActiveGrades } = useMasterData();
-  const [activeTab, setActiveTab] = useState<'roster' | 'organization'>('roster');
   const [bulkMode, setBulkMode] = useState(false);
 
   // Roster Filters
@@ -104,15 +102,13 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [bulkContentPackageIds, setBulkContentPackageIds] = useState<string[]>([]);
   const [bulkMessage, setBulkMessage] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [importTargetTeacher, setImportTargetTeacher] = useState<TeacherItem | null>(null);
-  const [detailTeacher, setDetailTeacher] = useState<TeacherItem | null>(null);
+  const [importInstitutionId, setImportInstitutionId] = useState(institutions[0]?.id ?? '');
+  const [assignTeacherStudent, setAssignTeacherStudent] = useState<StudentItem | null>(null);
+  const [assignmentTeacherId, setAssignmentTeacherId] = useState('');
   const [importStudents, setImportStudents] = useState<StudentItem[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importSkipped, setImportSkipped] = useState<string[]>([]);
   const [importFileName, setImportFileName] = useState('');
-  const [isTeacherCreateOpen, setIsTeacherCreateOpen] = useState(false);
-  const [teacherCreateError, setTeacherCreateError] = useState('');
-  const [teacherForm, setTeacherForm] = useState(() => ({ name: '', account: '', loginPassword: generateRandomPassword(), phone: '', institutionId: institutions[0]?.id ?? '' }));
   const studentRights = useMemo(() => deriveStudentRights(authCodes), [authCodes]);
   const mergedServiceRights = useMemo(() => mergeStudentServiceRights(serviceRights, authCodes, packages), [serviceRights, authCodes, packages]);
   const serviceReminders = useMemo(() => deriveStudentServiceReminders(mergedServiceRights, new Date()), [mergedServiceRights]);
@@ -124,6 +120,10 @@ export const StudentView: React.FC<StudentViewProps> = ({
     });
     const serviceActive = students.filter((student) => latestRightByStudent.get(student.id)?.status === 'active' || (!latestRightByStudent.has(student.id) && student.serviceStatus === 'active')).length;
     const pendingActivation = students.filter((student) => latestRightByStudent.get(student.id)?.status === 'pending').length;
+    const needsService = students.filter((student) => {
+      const right = latestRightByStudent.get(student.id);
+      return right?.status === 'pending' || (!right && student.serviceStatus === 'none');
+    }).length;
     const today = new Date();
     const thirtyDaysLater = new Date(today);
     thirtyDaysLater.setDate(today.getDate() + 30);
@@ -134,7 +134,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
       const expireDate = new Date(`${expireAt}T23:59:59`);
       return expireDate >= today && expireDate <= thirtyDaysLater;
     }).length;
-    return { total: students.length, serviceActive, pendingActivation, expiringSoon };
+    return { total: students.length, serviceActive, pendingActivation, needsService, expiringSoon };
   }, [students, mergedServiceRights]);
 
   const handleReviewRebind = (id: string, isApproved: boolean) => {
@@ -150,10 +150,23 @@ export const StudentView: React.FC<StudentViewProps> = ({
     const unconfigured = filterOptions.grades.filter((name) => !configured.includes(name));
     return [...configured, ...unconfigured];
   }, [filterOptions.grades, getActiveGrades]);
-  const filteredStudents = useMemo(() => filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter }), [students, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, classFilter, gradeFilter]);
+  const filteredStudents = useMemo(() => {
+    const base = filterStudents(students, { ...organizationFilters, searchTerm, serviceStatus: serviceStatusFilter === 'expiring' ? '' : serviceStatusFilter });
+    if (serviceStatusFilter !== 'expiring') return base;
+    const today = new Date();
+    const deadline = new Date(today);
+    deadline.setDate(today.getDate() + 30);
+    return base.filter((student) => {
+      const right = mergedServiceRights.find((item) => item.studentId === student.id);
+      const expireAt = right?.serviceExpireAt || student.serviceExpireAt;
+      if (!expireAt || (right?.status ?? student.serviceStatus) !== 'active') return false;
+      const date = new Date(`${expireAt}T23:59:59`);
+      return date >= today && date <= deadline;
+    });
+  }, [students, mergedServiceRights, searchTerm, serviceStatusFilter, institutionFilter, teacherFilter, classFilter, gradeFilter]);
   const hasRosterFilters = Boolean(searchTerm || serviceStatusFilter || institutionFilter || teacherFilter || classFilter || gradeFilter);
-  const openImportDialog = (teacher: TeacherItem) => {
-    setImportTargetTeacher(teacher);
+  const openImportDialog = () => {
+    setImportInstitutionId(institutions[0]?.id ?? '');
     setImportStudents([]);
     setImportErrors([]);
     setImportSkipped([]);
@@ -170,12 +183,11 @@ export const StudentView: React.FC<StudentViewProps> = ({
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<StudentImportRow>(sheet, { defval: '' });
-      const institution = institutions.find((item) => item.id === importTargetTeacher?.institutionId);
-      if (!institution || !importTargetTeacher) throw new Error('未找到当前教师及所属机构');
+      const institution = institutions.find((item) => item.id === importInstitutionId);
+      if (!institution) throw new Error('请选择学生所属机构');
       const result = buildImportedStudents(rows, institution, teachers, students);
-      const mismatchedStudents = importTargetTeacher ? result.students.filter((item) => item.teacherId !== importTargetTeacher.id) : [];
-      setImportStudents(importTargetTeacher ? result.students.filter((item) => item.teacherId === importTargetTeacher.id) : result.students);
-      setImportErrors([...result.errors, ...mismatchedStudents.map((item) => `${item.name}：负责教师必须填写“${importTargetTeacher?.name}”`)]);
+      setImportStudents(result.students);
+      setImportErrors(result.errors);
       setImportSkipped(result.skipped);
     } catch (caught) {
       setImportErrors([caught instanceof Error ? caught.message : 'Excel 读取失败']);
@@ -192,28 +204,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
     setImportFileName('');
   };
 
-  const openTeacherCreateDialog = () => {
-    setTeacherForm({ name: '', account: '', loginPassword: generateRandomPassword(), phone: '', institutionId: institutions[0]?.id ?? '' });
-    setTeacherCreateError('');
-    setIsTeacherCreateOpen(true);
-  };
-
-  const handleCreateTeacher = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!onAddTeacher) return;
-    const institution = institutions.find((item) => item.id === teacherForm.institutionId);
-    if (!teacherForm.name.trim() || !teacherForm.account.trim() || !institution) return setTeacherCreateError('请填写教师姓名、登录账号并选择所属机构');
-    if (teachers.some((item) => item.account.toLowerCase() === teacherForm.account.trim().toLowerCase())) return setTeacherCreateError('登录账号已存在');
-    const passwordMessage = getPasswordValidationMessage(teacherForm.loginPassword);
-    if (passwordMessage) return setTeacherCreateError(passwordMessage);
-    try {
-      onAddTeacher({ id: `TCH-${Date.now()}`, name: teacherForm.name.trim(), account: teacherForm.account.trim(), loginPassword: teacherForm.loginPassword, phone: teacherForm.phone.trim(), institutionId: institution.id, institutionName: institution.name, studentCount: 0, allocatedQuota: 0, remainingQuota: 0, permissions: { canEditContent: false, canImportStudents: true, canManageClass: false, canRedeemPackage: false, canViewReport: true }, status: 'active', createdAt: new Date().toISOString().slice(0, 10) }, 0);
-      setIsTeacherCreateOpen(false);
-    } catch (caught) {
-      setTeacherCreateError(caught instanceof Error ? caught.message : '教师创建失败');
-    }
-  };
-
   if (isLoading) return <div className="space-y-4" aria-label="学生数据加载中">
     <div className="h-10 w-56 animate-pulse rounded-xl bg-slate-200" />
     <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex gap-3">{[1, 2, 3, 4].map((item) => <div key={item} className="h-9 w-32 animate-pulse rounded-xl bg-slate-100" />)}</div></div>
@@ -223,6 +213,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const selectedBulkPackage = activePackages.find((item) => item.id === bulkPackageId) ?? activePackages[0];
   const bulkContentOptions = contentPackages.filter((item) => item.status === 'active' && (!selectedBulkPackage?.selectableContentPackageIds?.length || selectedBulkPackage.selectableContentPackageIds.includes(item.id)));
   const selectedBulkContentPackages = bulkContentOptions.filter((item) => bulkContentPackageIds.includes(item.id));
+  const bulkContentSelectionLimit = Math.max(1, selectedBulkPackage?.selectableContentPackageCount ?? 1);
   const bulkInstitutionGroups = [...new Set(selectedBulkStudents.map((item) => item.institutionId))].map((institutionId) => {
     const institution = institutions.find((item) => item.id === institutionId);
     const users = selectedBulkStudents.filter((item) => item.institutionId === institutionId);
@@ -264,25 +255,19 @@ export const StudentView: React.FC<StudentViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {activeTab === 'roster' ? <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs"><div><span className="text-[12.5px] font-semibold text-[#64748B]">学生总数</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{studentStats.total}</div></div><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]"><span className="material-symbols-outlined text-[22px]">groups</span></div></div>
-        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs"><div><span className="text-[12.5px] font-semibold text-[#64748B]">服务中</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{studentStats.serviceActive}</div></div><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F7EE] text-[#16B45B]"><span className="material-symbols-outlined text-[22px]">verified</span></div></div>
-        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs"><div><span className="text-[12.5px] font-semibold text-[#64748B]">待激活</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{studentStats.pendingActivation}</div></div><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFFBEB] text-[#D97706]"><span className="material-symbols-outlined text-[22px]">hourglass_top</span></div></div>
-        <div className="flex items-center justify-between rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-2xs"><div><span className="text-[12.5px] font-semibold text-[#64748B]">30 天内到期</span><div className="mt-1.5 font-mono text-[26px] font-extrabold leading-none text-[#0F172A]">{studentStats.expiringSoon}</div></div><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FEF2F2] text-[#DC2626]"><span className="material-symbols-outlined text-[22px]">event_upcoming</span></div></div>
-      </div> : <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E8F0] pb-3">
-        <div><h2 className="text-[18px] font-bold text-[#0F172A]">导入学生</h2><p className="mt-1 text-[12px] text-[#64748B]">先选择负责教师，再导入该教师名下的学生</p></div>
-        <button type="button" onClick={() => setActiveTab('roster')} className="rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">返回学生列表</button>
-      </div>}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E2E8F0] pb-4">
+        <div><h1 className="text-[20px] font-extrabold text-[#0F172A]">学生管理</h1><p className="mt-1 text-[12px] text-[#64748B]">{viewerRole === 'teacher' ? '查看你负责学生的服务状态和学习情况。' : '查看学生、导入名单并办理服务。'}</p></div>
+        {canManageServices && onAddStudents && <button type="button" onClick={() => openImportDialog()} className="rounded-xl bg-[#16B45B] px-4 py-2.5 text-[13px] font-bold text-white shadow-xs hover:bg-[#139B4E]">导入学生</button>}
+      </div>
 
       {/* Tab 1: Student Roster */}
-      {activeTab === 'roster' && (
+      {(
         <div className="space-y-4">
           {students.length === 0 ? <div className="rounded-2xl border border-[#CDE8D8] bg-white px-6 py-12 text-center shadow-2xs">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E8F7EE] text-[#0E7D3E]"><span className="material-symbols-outlined text-[30px]">group_add</span></div>
             <h2 className="mt-4 text-[18px] font-bold text-[#0F172A]">{viewerRole === 'teacher' ? '暂时还没有分配给你的学生' : '还没有学生，先完成首次导入'}</h2>
-            <p className="mx-auto mt-2 max-w-xl text-[12px] leading-6 text-[#64748B]">{viewerRole === 'teacher' ? '学生由机构管理员导入并按负责教师分配。分配完成后，你会在这里看到自己的学生名单、整体学习情况和个人详情。' : teachers.length === 0 ? '先创建教师账号，再下载学生模板；模板中填写负责教师姓名，导入后会自动建立教师与学生的归属关系。' : '下载学生模板并填写负责教师姓名。导入完成后，教师即可看到自己负责的学生。'}</p>
-            {canManageServices && <div className="mt-6 flex flex-wrap justify-center gap-3">{teachers.length === 0 && onAddTeacher && <button type="button" onClick={openTeacherCreateDialog} className="rounded-xl border border-[#86D6A5] bg-white px-4 py-2.5 text-[13px] font-bold text-[#0E7D3E]">先创建教师</button>}{teachers.length > 0 && onAddStudents && <button type="button" onClick={() => setActiveTab('organization')} className="rounded-xl bg-[#16B45B] px-4 py-2.5 text-[13px] font-bold text-white">选择教师并导入学生</button>}</div>}
-            {canManageServices && <div className="mx-auto mt-7 grid max-w-2xl gap-3 text-left sm:grid-cols-3">{[['1', '创建教师', '建立教师登录账号'], ['2', '导入学生', '表格填写负责教师'], ['3', '办理服务', '学生激活后开始计时']].map(([step, title, desc]) => <div key={step} className="rounded-xl bg-[#F8FAFC] p-3"><span className="text-[11px] font-bold text-[#16B45B]">步骤 {step}</span><strong className="mt-1 block text-[12px] text-[#0F172A]">{title}</strong><span className="mt-1 block text-[11px] text-[#64748B]">{desc}</span></div>)}</div>}
+            <p className="mx-auto mt-2 max-w-xl text-[12px] leading-6 text-[#64748B]">{viewerRole === 'teacher' ? '学生由机构管理员导入并按负责教师分配。分配完成后，你会在这里看到自己的学生名单、整体学习情况和个人详情。' : '直接上传学生名单；负责教师可以不选，未分配的学生先由机构管理员统一管理，后续再转让。'}</p>
+            {canManageServices && onAddStudents && <div className="mt-6 flex justify-center"><button type="button" onClick={() => openImportDialog()} className="rounded-xl bg-[#16B45B] px-4 py-2.5 text-[13px] font-bold text-white">导入学生</button></div>}
           </div> : <>
           <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -297,33 +282,40 @@ export const StudentView: React.FC<StudentViewProps> = ({
               />
               {viewerRole === 'super_admin' && <select aria-label="按机构筛选" value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
               {viewerRole !== 'teacher' && <select aria-label="按教师筛选" value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setClassFilter(''); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
-              <select
-                aria-label="按服务状态筛选"
-                value={serviceStatusFilter}
-                onChange={(e) => setServiceStatusFilter(e.target.value)}
-                className="border border-[#E2E8F0] rounded-xl px-3 py-1.5 text-[13px] outline-none cursor-pointer font-bold focus:border-[#16B45B]"
-              >
-                <option value="">全部服务状态</option>
-                <option value="active">服务中 (已激活)</option>
-                <option value="none">待配包 / 待激活</option>
-                <option value="expired">已到期</option>
-              </select>
+              <select aria-label="按服务状态筛选" value={serviceStatusFilter} onChange={(e) => setServiceStatusFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部状态 · {studentStats.total}</option><option value="active">服务中 · {studentStats.serviceActive}</option><option value="none">待办理 · {studentStats.needsService}</option><option value="expiring">即将到期 · {studentStats.expiringSoon}</option></select>
               <button type="button" onClick={() => setShowAdvancedFilters((value) => !value)} className="rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">{showAdvancedFilters ? '收起筛选' : '更多筛选'}</button>
               {showAdvancedFilters && <><select aria-label="按班级筛选" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部班级</option>{filterOptions.classes.map((value) => <option key={value} value={value}>{value}</option>)}</select><select aria-label="按年级筛选" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></>}
               {hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setClassFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除</button>}
               </div>
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-              {canManageServices && onAddStudents && <button type="button" onClick={() => setActiveTab('organization')} className="rounded-lg border border-[#86D6A5] bg-white px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E]">导入学生</button>}
-              {canManageServices && <button type="button" onClick={() => setBulkMode((value) => !value)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white">{bulkMode ? '退出批量' : '批量办理'}</button>}
-              </div>
             </div>
           </div>
+
+          {canManageServices && selectedBulkStudentIds.size === 0 && (
+            <div role="note" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE5F5] bg-[#F6F9FF] px-4 py-3">
+              <div className="flex items-start gap-3">
+                <span aria-hidden="true" className="material-symbols-outlined mt-0.5 text-[20px] text-[#2563EB]">info</span>
+                <div>
+                  <p className="text-[12px] font-bold text-[#1E3A5F]">需要给多名学生办理服务？</p>
+                  <p className="mt-0.5 text-[11px] leading-5 text-[#64748B]">先勾选学生（可使用表头全选），再选择服务包和内容包，最后确认扣点。</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#475569]">
+                <span className="rounded-full bg-white px-3 py-1.5">1. 勾选学生</span>
+                <span aria-hidden="true" className="text-[#94A3B8]">→</span>
+                <span className="rounded-full bg-white px-3 py-1.5">2. 选择服务</span>
+                <span aria-hidden="true" className="text-[#94A3B8]">→</span>
+                <span className="rounded-full bg-white px-3 py-1.5">3. 确认扣点</span>
+              </div>
+            </div>
+          )}
+
+          {canManageServices && selectedBulkStudentIds.size > 0 && <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#A7E4BE] bg-[#F0FBF4] px-4 py-3 shadow-sm"><div><p className="text-[12px] font-bold text-[#0E7D3E]">第 1 步已完成 · 已选择 {selectedBulkStudentIds.size} 名学生</p><p className="mt-0.5 text-[11px] text-[#64748B]">下一步选择服务包和内容包，确认后按机构账户统一扣点。</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => { setSelectedBulkStudentIds(new Set()); setBulkMode(false); }} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-[#64748B]">取消选择</button><button type="button" onClick={() => setBulkMode(true)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-[#109E4E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">办理服务</button></div></div>}
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
             <table className="w-full text-left text-[13px]">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#64748B] font-bold">
                 <tr>
-                  {bulkMode && <th className="py-3 px-4"><input type="checkbox" aria-label="选择当前用户" checked={filteredStudents.length > 0 && filteredStudents.every((item) => selectedBulkStudentIds.has(item.id))} onChange={(event) => setSelectedBulkStudentIds(event.target.checked ? new Set(filteredStudents.map((item) => item.id)) : new Set())} /></th>}
+                  {canManageServices && <th className="py-3 px-4"><input type="checkbox" aria-label="全选当前筛选结果用于批量办理" checked={filteredStudents.length > 0 && filteredStudents.every((item) => selectedBulkStudentIds.has(item.id))} onChange={(event) => setSelectedBulkStudentIds(event.target.checked ? new Set(filteredStudents.map((item) => item.id)) : new Set())} /></th>}
                   <th className="py-3 px-4">学生 / 登录账号</th>
                   <th className="py-3 px-4">归属</th>
                   <th className="py-3 px-4 text-center">服务状态</th>
@@ -334,13 +326,13 @@ export const StudentView: React.FC<StudentViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {filteredStudents.length === 0 ? <tr><td colSpan={bulkMode ? 8 : 7} className="px-6 py-12 text-center text-[#64748B]">没有符合当前筛选条件的学生</td></tr> : filteredStudents.map((stu) => {
+                {filteredStudents.length === 0 ? <tr><td colSpan={canManageServices ? 8 : 7} className="px-6 py-12 text-center text-[#64748B]">没有符合当前筛选条件的学生</td></tr> : filteredStudents.map((stu) => {
                   const latestRight = mergedServiceRights.find((item) => item.studentId === stu.id);
                   const serviceStatus = latestRight?.status ?? (stu.serviceStatus === 'none' ? 'pending' : stu.serviceStatus);
                   const serviceStatusLabel = { pending: latestRight ? '待激活' : '待办理', active: '服务中', expired: '已到期', revoked: '已撤销' }[serviceStatus];
                   return (
                   <tr key={stu.id} className="hover:bg-[#F8FAFC]">
-                    {bulkMode && <td className="py-3 px-4"><input type="checkbox" aria-label={`选择${stu.name}`} checked={selectedBulkStudentIds.has(stu.id)} onChange={(event) => setSelectedBulkStudentIds((current) => { const next = new Set(current); event.target.checked ? next.add(stu.id) : next.delete(stu.id); return next; })} /></td>}
+                    {canManageServices && <td className="py-3 px-4"><input type="checkbox" aria-label={`选择${stu.name}用于批量办理`} checked={selectedBulkStudentIds.has(stu.id)} onChange={(event) => setSelectedBulkStudentIds((current) => { const next = new Set(current); event.target.checked ? next.add(stu.id) : next.delete(stu.id); return next; })} /></td>}
                     <td className="py-3 px-4"><button onClick={() => setDetailStudent(stu)} className="font-bold text-[#0F172A] hover:text-[#16B45B]">{stu.name}</button><div className="mt-0.5 font-mono text-[11px] text-[#64748B]">{stu.account}{stu.phone ? ` · ${stu.phone}` : ''}</div>
                       <span className={`px-1.5 py-0.5 text-[10px] rounded ${guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-700'}`}>{guardianships.some((item) => item.studentId === stu.id && item.status === 'active') ? '家长已绑' : '家长待绑'}</span>
                     </td>
@@ -357,7 +349,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                     </td>
                     <td className="py-3 px-4"><div className="font-bold text-[#0E7D3E]">{latestRight?.packageName || '未开通'}</div><div className="mt-1 text-[11px] text-[#64748B]">{latestRight?.contentPackageNames?.length ? latestRight.contentPackageNames.join(' / ') : '未选择内容包'}</div></td>
                     <td className="py-3 px-4 font-mono text-[12px]">{latestRight ? latestRight.includedAiUsage.toLocaleString() : '-'}</td>
-                    <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button>{canManageServices && <button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">{serviceStatus === 'active' ? '续费' : '办理服务'}</button>}</div></td>
+                    <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button>{canManageServices && onAssignTeacher && <button onClick={() => { setAssignTeacherStudent(stu); setAssignmentTeacherId(stu.teacherId || ''); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">{stu.teacherId ? '转让' : '分配教师'}</button>}{canManageServices && <button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">{serviceStatus === 'active' ? '续费' : '办理服务'}</button>}</div></td>
                   </tr>
                 );})}
               </tbody>
@@ -367,18 +359,28 @@ export const StudentView: React.FC<StudentViewProps> = ({
         </div>
       )}
 
-      {activeTab === 'organization' && canManageServices && (
+      {bulkMode && selectedBulkStudentIds.size > 0 && canManageServices && (
+        <DialogShell
+          title={`批量办理服务 · 已选 ${selectedBulkStudentIds.size} 名学生`}
+          description="选择服务包和内容包，系统将按所属机构校验授权和余额。"
+          icon="inventory_2"
+          maxWidthClass="max-w-5xl"
+          onClose={() => setBulkMode(false)}
+          footer={<div className="flex w-full flex-wrap items-center justify-between gap-3"><p className="text-[11px] text-[#64748B]">关闭弹窗不会取消已勾选的学生。</p><div className="flex gap-2"><button type="button" onClick={() => setBulkMode(false)} className="rounded-xl border border-[#E2E8F0] bg-white px-4 py-2.5 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC]">取消</button><button type="button" disabled={!onFulfillServices || (bulkContentOptions.length > 0 && bulkContentPackageIds.length === 0) || bulkInstitutionGroups.every((group) => !group.canSettle)} onClick={handleBulkFulfill} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white shadow-sm hover:bg-[#109E4E] disabled:bg-[#94A3B8] disabled:shadow-none">确认开通并按机构扣点</button></div></div>}
+        >
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E2E8F0] bg-white p-4"><div><h3 className="text-[15px] font-bold text-[#0F172A]">选择负责教师</h3><p className="mt-1 text-[12px] text-[#64748B]">导入后学生会直接归属所选教师，Excel 中的负责教师姓名必须一致。</p></div>{onAddTeacher && <button type="button" onClick={openTeacherCreateDialog} className="rounded-xl bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white"><span aria-hidden="true" className="material-symbols-outlined mr-1 align-[-3px] text-[16px]">add</span>新增教师</button>}</div>
-          <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xs"><table className="w-full text-left text-[13px]"><thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]"><tr><th className="px-4 py-3">教师姓名</th><th className="px-4 py-3">登录账号 / 手机</th><th className="px-4 py-3">所属机构</th><th className="px-4 py-3 text-center">负责学生</th><th className="px-4 py-3 text-center">状态</th><th className="px-4 py-3 text-right">操作</th></tr></thead><tbody className="divide-y divide-[#E2E8F0]">{teachers.length === 0 ? <tr><td colSpan={6} className="px-6 py-12 text-center text-[#64748B]">还没有教师，请先创建教师账号</td></tr> : teachers.map((teacher) => <tr key={teacher.id} className="hover:bg-[#F8FAFC]"><td className="px-4 py-3.5 font-bold text-[#0F172A]">{teacher.name}</td><td className="px-4 py-3.5"><div className="font-mono text-[12px]">{teacher.account}</div><div className="text-[11px] text-[#64748B]">{teacher.phone || '未填写手机号'}</div></td><td className="px-4 py-3.5 font-bold">{teacher.institutionName}</td><td className="px-4 py-3.5 text-center font-mono font-bold">{students.filter((item) => item.teacherId === teacher.id).length} 人</td><td className="px-4 py-3.5 text-center"><span className={`rounded px-2 py-0.5 text-[11px] font-bold ${teacher.status === 'active' ? 'bg-[#E8F7EE] text-[#16B45B]' : 'bg-slate-100 text-slate-500'}`}>{teacher.status === 'active' ? '正常' : '停用'}</span></td><td className="px-4 py-3.5 text-right"><div className="flex items-center justify-end gap-3"><button type="button" onClick={() => setDetailTeacher(teacher)} className="font-bold text-[#475569] hover:text-[#0E7D3E] hover:underline">查看详情</button><button type="button" disabled={teacher.status !== 'active'} onClick={() => openImportDialog(teacher)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 font-bold text-white shadow-xs transition hover:bg-[#139B4E] disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:shadow-none">导入学生</button></div></td></tr>)}</tbody></table></div>
-        </div>
-      )}
-
-      {activeTab === 'roster' && bulkMode && canManageServices && (
-        <div className="space-y-4">
+          <details open={selectedBulkStudents.length <= 6} className="group rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4">
+            <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">
+              <div className="flex items-center gap-2"><span aria-hidden="true" className="material-symbols-outlined text-[19px] text-[#0E7D3E]">group</span><h3 className="text-[13px] font-bold text-[#0F172A]">本次办理学生（{selectedBulkStudents.length} 人）</h3></div>
+              <div className="flex items-center gap-2 text-[11px] text-[#64748B]"><span>{selectedBulkStudents.slice(0, 3).map((student) => student.name).join('、')}{selectedBulkStudents.length > 3 ? ` 等 ${selectedBulkStudents.length} 人` : ''}</span><span aria-hidden="true" className="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180">expand_more</span></div>
+            </summary>
+            <div className="mt-3 grid gap-2 border-t border-[#DCEFE3] pt-3 sm:grid-cols-2 lg:grid-cols-3">
+              {selectedBulkStudents.map((student) => <div key={student.id} className="rounded-xl border border-[#DCEFE3] bg-white px-3 py-2.5"><div className="flex items-center justify-between gap-2"><strong className="text-[12.5px] text-[#0F172A]">{student.name}</strong><span className="shrink-0 text-[10.5px] text-[#64748B]">{student.grade}</span></div><p className="mt-1 truncate text-[11px] text-[#64748B]">{student.teacherName || '机构管理员暂管'} · {student.className || '未设置班级'}</p></div>)}
+            </div>
+          </details>
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div><h3 className="text-[16px] font-bold text-[#0F172A]">批量办理学生服务</h3><p className="mt-1 text-[12px] text-[#64748B]">在上方学生名单选择学生；系统按所属机构分别校验授权、余额并扣点。</p></div>
+              <div><div className="mb-2 inline-flex rounded-full bg-[#E3F7EA] px-2.5 py-1 text-[11px] font-bold text-[#0E7D3E]">第 2 步</div><h3 className="text-[16px] font-bold text-[#0F172A]">请选择服务包</h3><p className="mt-1 text-[12px] text-[#64748B]">为当前勾选的 {selectedBulkStudentIds.size} 名学生统一配置。</p></div>
               <label className="text-[12px] font-bold text-[#475569]">服务包
                 <select value={selectedBulkPackage?.id ?? ''} onChange={(event) => { setBulkPackageId(event.target.value); setBulkContentPackageIds([]); }} className="ml-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none">
                   {activePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人</option>)}
@@ -386,14 +388,14 @@ export const StudentView: React.FC<StudentViewProps> = ({
               </label>
             </div>
           </div>
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-center justify-between"><h4 className="text-[14px] font-bold">选择内容包</h4><span className="text-[11px] text-[#64748B]">可多选，至少选 1 个</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{bulkContentOptions.map((item) => <label key={item.id} className={`rounded-xl border p-3 text-[12px] ${bulkContentPackageIds.includes(item.id) ? 'border-[#16B45B] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><input className="mr-2" type="checkbox" checked={bulkContentPackageIds.includes(item.id)} onChange={(event) => setBulkContentPackageIds((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} />{item.name}</label>)}</div></div>
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-center justify-between"><h4 className="text-[14px] font-bold">选择内容包</h4><span className="text-[11px] text-[#64748B]">已选 {bulkContentPackageIds.length} / 最多 {bulkContentSelectionLimit} 个</span></div><div className="mt-3 grid gap-2 md:grid-cols-2">{bulkContentOptions.map((item) => { const checked = bulkContentPackageIds.includes(item.id); const disabled = !checked && bulkContentPackageIds.length >= bulkContentSelectionLimit; return <label key={item.id} className={`rounded-xl border p-3 text-[12px] ${checked ? 'border-[#16B45B] bg-[#F0FBF4]' : disabled ? 'cursor-not-allowed border-[#E2E8F0] bg-[#F8FAFC] opacity-50' : 'cursor-pointer border-[#E2E8F0]'}`}><input className="mr-2" type="checkbox" checked={checked} disabled={disabled} onChange={(event) => setBulkContentPackageIds((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} />{item.name}</label>; })}</div></div>
           {selectedBulkStudents.length > 0 && <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
             <h4 className="text-[14px] font-bold text-[#0F172A]">机构结算预览</h4>
             <div className="mt-3 space-y-2">{bulkInstitutionGroups.map((group) => <div key={group.institutionId} className={`flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-[12px] ${group.canSettle ? 'bg-[#F0FBF4]' : 'bg-red-50'}`}><div><strong>{group.institution?.name ?? group.users[0]?.institutionName}</strong><span className="ml-2 text-[#64748B]">{group.users.length} 人 × {selectedBulkPackage?.quotaCost ?? 0} 点</span></div><div className={group.canSettle ? 'text-[#0E7D3E]' : 'text-red-700'}>{!group.institution ? '未找到机构账户' : !group.authorized ? '该机构未授权此服务包' : !group.contentAuthorized ? '该机构未授权所选内容包' : group.institution.remainingQuota < group.requiredQuota ? `余额不足，还差 ${(group.requiredQuota - group.institution.remainingQuota).toLocaleString()} 点` : `扣除 ${group.requiredQuota.toLocaleString()} 点，剩余 ${(group.institution.remainingQuota - group.requiredQuota).toLocaleString()} 点`}</div></div>)}</div>
             {bulkMessage && <div className="mt-3 rounded-xl bg-[#F8FAFC] px-3 py-2 text-[12px] text-[#475569]">{bulkMessage}</div>}
-            <div className="mt-4 flex justify-end"><button type="button" disabled={!onFulfillServices || (bulkContentOptions.length > 0 && bulkContentPackageIds.length === 0) || bulkInstitutionGroups.every((group) => !group.canSettle)} onClick={handleBulkFulfill} className="rounded-xl bg-[#16B45B] px-5 py-2.5 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认开通并按机构扣点</button></div>
           </div>}
         </div>
+        </DialogShell>
       )}
 
       {false && (
@@ -549,56 +551,29 @@ export const StudentView: React.FC<StudentViewProps> = ({
         </div>
       )}
 
-      {isTeacherCreateOpen && canManageServices && (
-        <DialogShell title="新增教师" description="创建后教师会立即出现在学生导入列表，可继续为该教师导入学生。" onClose={() => setIsTeacherCreateOpen(false)} maxWidthClass="max-w-xl">
-          <form onSubmit={handleCreateTeacher} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-[12px] font-bold text-[#475569]">教师姓名<input required value={teacherForm.name} onChange={(event) => setTeacherForm({ ...teacherForm, name: event.target.value })} placeholder="例如：王老师" className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none" /></label>
-              <label className="text-[12px] font-bold text-[#475569]">登录账号<input required value={teacherForm.account} onChange={(event) => setTeacherForm({ ...teacherForm, account: event.target.value })} placeholder="例如：wang_teacher" className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 font-mono text-[13px] outline-none" /></label>
-              <label className="text-[12px] font-bold text-[#475569]">手机号码（选填）<input value={teacherForm.phone} onChange={(event) => setTeacherForm({ ...teacherForm, phone: event.target.value })} placeholder="例如：13800000000" className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none" /></label>
-              <label className="text-[12px] font-bold text-[#475569]">所属机构<select value={teacherForm.institutionId} onChange={(event) => setTeacherForm({ ...teacherForm, institutionId: event.target.value })} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none">{institutions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-            </div>
-            <label className="block text-[12px] font-bold text-[#475569]">初始登录密码<div className="mt-1 flex gap-2"><input required type="text" value={teacherForm.loginPassword} onChange={(event) => setTeacherForm({ ...teacherForm, loginPassword: event.target.value })} className="min-w-0 flex-1 rounded-xl border border-[#E2E8F0] px-3 py-2 font-mono text-[13px] outline-none" /><button type="button" onClick={() => setTeacherForm({ ...teacherForm, loginPassword: generateRandomPassword() })} className="shrink-0 rounded-xl border border-[#86D6A5] px-3 text-[12px] font-bold text-[#0E7D3E]">随机生成</button></div></label>
-            {teacherCreateError && <p className="rounded-xl bg-red-50 px-3 py-2 text-[12px] font-bold text-red-700">{teacherCreateError}</p>}
-            <div className="flex justify-end gap-2 border-t border-[#E2E8F0] pt-4"><button type="button" onClick={() => setIsTeacherCreateOpen(false)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button type="submit" className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white">确认新增</button></div>
-          </form>
+      {assignTeacherStudent && canManageServices && onAssignTeacher && (
+        <DialogShell
+          title={assignTeacherStudent.teacherId ? '转让学生' : '分配负责教师'}
+          description={`${assignTeacherStudent.name} · ${assignTeacherStudent.institutionName}`}
+          onClose={() => setAssignTeacherStudent(null)}
+          maxWidthClass="max-w-lg"
+          footer={<div className="flex justify-end gap-2"><button type="button" onClick={() => setAssignTeacherStudent(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B]">取消</button><button type="button" disabled={!assignmentTeacherId} onClick={() => { onAssignTeacher(assignTeacherStudent.id, assignmentTeacherId); setAssignTeacherStudent(null); }} className="rounded-xl bg-[#16B45B] px-4 py-2 text-[13px] font-bold text-white disabled:bg-[#94A3B8]">确认分配</button></div>}
+        >
+          <label className="block text-[12px] font-bold text-[#475569]">负责教师<select autoFocus value={assignmentTeacherId} onChange={(event) => setAssignmentTeacherId(event.target.value)} className="mt-2 w-full rounded-xl border border-[#CDE8D8] bg-white px-3 py-2.5 text-[13px] text-[#0F172A]"><option value="">请选择教师</option>{teachers.filter((teacher) => teacher.status === 'active' && teacher.institutionId === assignTeacherStudent.institutionId).map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>
+          <p className="mt-3 rounded-xl bg-[#F8FAFC] px-3 py-2 text-[11px] leading-5 text-[#64748B]">仅显示该机构的在职教师。确认后，教师端会立即看到这名学生。</p>
         </DialogShell>
       )}
 
-      {detailTeacher && canManageServices && (() => {
-        const assignedStudents = students.filter((item) => item.teacherId === detailTeacher.id);
-        return <DialogShell
-          title={`教师详情 · ${detailTeacher.name}`}
-          description={`${detailTeacher.institutionName} · ${detailTeacher.status === 'active' ? '正常' : '已停用'}`}
-          icon="school"
-          onClose={() => setDetailTeacher(null)}
-          footer={<button type="button" onClick={() => setDetailTeacher(null)} className="rounded-xl border border-[#E2E8F0] bg-white px-5 py-2 text-[13px] font-bold text-[#475569] hover:bg-[#F8FAFC]">关闭</button>}
-        >
-          <div className="space-y-4">
-            <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-              <div className="flex items-center justify-between"><h4 className="text-[13px] font-bold text-[#0F172A]">账号与归属</h4><span className={`rounded-full px-2.5 py-1 text-[10.5px] font-bold ${detailTeacher.status === 'active' ? 'bg-[#E8F7EE] text-[#0E7D3E]' : 'bg-[#F1F5F9] text-[#64748B]'}`}>{detailTeacher.status === 'active' ? '正常' : '已停用'}</span></div>
-              <dl className="mt-4 grid gap-x-6 gap-y-3 text-[12px] sm:grid-cols-2">
-                <div><dt className="text-[#94A3B8]">登录账号</dt><dd className="mt-1 font-mono font-medium text-[#334155]">{detailTeacher.account}</dd></div>
-                <div><dt className="text-[#94A3B8]">手机号码</dt><dd className="mt-1 font-medium text-[#334155]">{detailTeacher.phone || '未填写'}</dd></div>
-                <div><dt className="text-[#94A3B8]">所属机构</dt><dd className="mt-1 font-medium text-[#334155]">{detailTeacher.institutionName}</dd></div>
-                <div><dt className="text-[#94A3B8]">创建时间</dt><dd className="mt-1 font-medium text-[#334155]">{detailTeacher.createdAt || '未记录'}</dd></div>
-              </dl>
-            </section>
-            <section className="rounded-2xl border border-[#CDE8D8] bg-[#F3FBF6] p-4">
-              <div className="flex items-center justify-between"><div><p className="text-[11px] text-[#64748B]">当前负责学生</p><p className="mt-1 font-mono text-[22px] font-bold text-[#0E7D3E]">{assignedStudents.length} 人</p></div><span className="material-symbols-outlined text-[32px] text-[#86D6A5]">group</span></div>
-              <p className="mt-3 text-[12px] leading-5 text-[#475569]">{assignedStudents.length ? assignedStudents.map((item) => item.name).join('、') : '该教师名下暂时没有学生，可通过“导入学生”添加。'}</p>
-            </section>
-          </div>
-        </DialogShell>;
-      })()}
-
       {isImportOpen && canManageServices && (
-        <DialogShell title={`导入学生 · ${importTargetTeacher?.name ?? ''}`} description={`导入后学生将归属 ${importTargetTeacher?.name ?? '当前教师'}；Excel 的负责教师姓名必须与其一致。`} onClose={() => setIsImportOpen(false)} maxWidthClass="max-w-2xl">
+        <DialogShell title="导入学生" description="系统按 Excel 中的负责教师姓名自动归属；留空时由机构管理员暂管。" onClose={() => setIsImportOpen(false)} maxWidthClass="max-w-2xl">
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-xl bg-[#F0FBF4] p-4 text-[12px] sm:grid-cols-2"><div><span className="text-[#64748B]">负责教师</span><strong className="mt-1 block text-[13px] text-[#0F172A]">{importTargetTeacher?.name}</strong></div><div><span className="text-[#64748B]">所属机构</span><strong className="mt-1 block text-[13px] text-[#0F172A]">{importTargetTeacher?.institutionName}</strong></div></div>
+            <div className="rounded-xl bg-[#F0FBF4] p-4 text-[12px]">
+              <label className="block max-w-md font-bold text-[#475569]">所属机构<select value={importInstitutionId} onChange={(event) => { setImportInstitutionId(event.target.value); setImportStudents([]); setImportErrors([]); }} className="mt-1.5 block w-full rounded-xl border border-[#CDE8D8] bg-white px-3 py-2 text-[13px] text-[#0F172A]">{institutions.map((institution) => <option key={institution.id} value={institution.id}>{institution.name}</option>)}</select></label>
+              <p className="mt-3 text-[11px] leading-5 text-[#4B8060]">归属以 Excel 的“负责教师姓名（选填）”为准；教师姓名必须与本机构教师一致，留空则由机构管理员暂管。</p>
+            </div>
             <div className="rounded-xl border border-dashed border-[#A7E4BE] bg-[#F8FFFA] p-5 text-center">
               <p className="text-[13px] font-bold text-[#0F172A]">上传学生 Excel</p>
-              <p className="mt-1 text-[11px] text-[#64748B]">必填：学生姓名、登录账号、登录密码、手机号、负责教师姓名和年级；班级可选。</p>
+              <p className="mt-1 text-[11px] text-[#64748B]">必填：学生姓名、登录账号、登录密码、手机号和年级；负责教师、班级可选。</p>
               <div className="mt-3 flex flex-wrap justify-center gap-3"><button type="button" onClick={() => downloadImportTemplate('classStudents')} className="rounded-lg border border-[#86D6A5] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E]">下载学生模板</button><label className="cursor-pointer rounded-lg bg-[#16B45B] px-3 py-2 text-[12px] font-bold text-white">选择 Excel<input type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleStudentImportFile(file); event.target.value = ''; }} /></label></div>
               {importFileName && <p className="mt-3 text-[11px] text-[#64748B]">已读取：{importFileName}</p>}
             </div>

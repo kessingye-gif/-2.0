@@ -9,8 +9,8 @@ export interface ImportTemplateDefinition {
 export const importTemplates: Record<ImportTemplateKey, ImportTemplateDefinition> = {
   classStudents: {
     fileName: '学生导入模板',
-    headers: ['学生姓名', '登录账号', '登录密码', '手机号', '负责教师姓名', '年级', '班级（选填）'],
-    exampleRows: [['张同学', 'zhangtongxue2026', 'Student@2026!', '13800000001', '张敏老师', '初三', '初三1班']],
+    headers: ['学生姓名', '登录账号', '登录密码', '手机号', '负责教师姓名（选填）', '年级', '班级（选填）'],
+    exampleRows: [['张同学', 'zhangtongxue2026', 'Student@2026!', '13800000001', '', '初三', '初三1班']],
   },
   questions: {
     fileName: '精选题库导入模板',

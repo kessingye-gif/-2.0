@@ -1034,7 +1034,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         <>
           <ContentPackageManager
             subjects={sharedSubjects}
-            onOpenResource={(resource) => navigate(getContentRoutePath('resources', resource))}
+            selectedPackageId={contentRoute.section === 'packages' ? contentRoute.packageId : null}
+            onSelectedPackageChange={(packageId) => navigate(getContentRoutePath('packages', packageId))}
             knowledgePoints={knowledgePoints}
             onViewQuestions={handleViewBoundQuestions}
             onBatchImportKnowledgePoints={handleOpenKnowledgePointImport}

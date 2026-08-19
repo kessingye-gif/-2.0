@@ -13,8 +13,8 @@ test('精选题库下载模板保持单表并覆盖主要题型的案例', () =>
   assert.match(String(sheets[0].rows.flat()), /解答题/);
 });
 
-test('学生模板以负责教师为归属，班级仅为选填列', () => {
+test('学生模板允许负责教师和班级选填', () => {
   const sheets = buildImportTemplateSheets('classStudents');
   assert.equal(sheets[0].name, '学生导入');
-  assert.deepEqual(sheets[0].rows[0], ['学生姓名', '登录账号', '登录密码', '手机号', '负责教师姓名', '年级', '班级（选填）']);
+  assert.deepEqual(sheets[0].rows[0], ['学生姓名', '登录账号', '登录密码', '手机号', '负责教师姓名（选填）', '年级', '班级（选填）']);
 });

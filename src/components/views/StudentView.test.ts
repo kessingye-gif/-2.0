@@ -33,13 +33,15 @@ test('总部用户页面以服务和使用为主，教师与机构只作为归�
     })
   ));
 
-  assert.match(markup, /学生总数/);
-  assert.match(markup, /服务中/);
-  assert.match(markup, /待激活/);
-  assert.match(markup, /30 天内到期/);
-  assert.doesNotMatch(markup, /学生配置/);
-  assert.match(markup, /批量办理/);
+  assert.match(markup, /学生管理/);
+  assert.match(markup, /查看学生、导入名单并办理服务/);
   assert.match(markup, /导入学生/);
+  assert.match(markup, /全部/);
+  assert.match(markup, /服务中/);
+  assert.match(markup, /待办理/);
+  assert.match(markup, /即将到期/);
+  assert.doesNotMatch(markup, /先创建教师并导入学生，再为学生办理服务/);
+  assert.doesNotMatch(markup, /学生配置/);
   assert.match(markup, /更多筛选/);
   assert.doesNotMatch(markup, /全部班级/);
   assert.doesNotMatch(markup, /使用情况/);
@@ -54,27 +56,41 @@ test('总部用户页面以服务和使用为主，教师与机构只作为归�
 test('批量开通已合并为用户服务列表操作，不再作为独立页签', () => {
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /setActiveTab\('bulk'\)/);
-  assert.match(source, /退出批量/);
+  assert.match(source, /selectedBulkStudentIds\.size > 0/);
+  assert.match(source, /需要给多名学生办理服务/);
+  assert.match(source, /勾选学生/);
+  assert.match(source, />办理服务<\/button>/);
+  assert.match(source, /title=\{`批量办理服务 · 已选/);
+  assert.match(source, /maxWidthClass="max-w-5xl"/);
+  assert.match(source, /关闭弹窗不会取消已勾选的学生/);
+  assert.match(source, /本次办理学生/);
+  assert.match(source, /请选择服务包/);
+  assert.match(source, /selectedBulkStudents\.map/);
+  assert.match(source, /机构管理员暂管/);
+  assert.doesNotMatch(source, /退出批量办理/);
   assert.match(source, /选择内容包/);
   assert.match(source, /实际扣除/);
 });
 
-test('学生导入页平铺教师列表并从教师行发起导入', () => {
+test('学生导入直接打开上传弹窗，教师为可选归属', () => {
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
-  assert.match(source, /选择负责教师/);
-  assert.match(source, /teachers\.map\(\(teacher\)/);
-  assert.match(source, /openImportDialog\(teacher\)/);
-  assert.match(source, /setDetailTeacher\(teacher\)/);
-  assert.match(source, />查看详情<\/button>/);
-  assert.match(source, />导入学生<\/button>/);
-  assert.match(source, /新增教师/);
-  assert.doesNotMatch(source, /维护教师/);
+  assert.match(source, /onClick=\{\(\) => openImportDialog\(\)\}/);
+  assert.match(source, /负责教师（选填）/);
+  assert.match(source, /暂不分配，由机构管理员管理/);
+  assert.match(source, /allowUnassigned: true/);
+  assert.doesNotMatch(source, /teacher-picker-title/);
+  assert.doesNotMatch(source, /新增教师/);
 });
 
-test('学生配置筛选栏不显示重复人数，操作按钮与筛选同排', () => {
+test('学生列表只保留一个主入口，批量操作在选择学生后出现', () => {
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /filteredStudents\.length} \/ \{students\.length/);
-  assert.match(source, /全部服务状态[\s\S]*导入学生[\s\S]*批量办理/);
+  assert.doesNotMatch(source, /全部服务状态/);
+  assert.match(source, /学生管理[\s\S]*导入学生/);
+  assert.match(source, /selectedBulkStudentIds\.size > 0[\s\S]*批量办理服务/);
+  assert.doesNotMatch(source, /aria-label="学生状态"/);
+  assert.match(source, /aria-label="按服务状态筛选"/);
+  assert.doesNotMatch(source, /teacher-picker-title/);
 });
 
 test('办理服务属于学生页弹窗，不跳转到商品页', () => {
@@ -107,15 +123,15 @@ test('学生详情为命中规则的服务权益显示待跟进提醒', () => {
   assert.match(markup, /标记已处理/);
 });
 
-test('没有学生时给出创建教师到导入学生的首次使用引导', () => {
+test('没有学生时直接给出导入入口并说明教师可后续分配', () => {
   const markup = renderToStaticMarkup(createElement(MasterDataProvider, null, createElement(StudentView, {
     students: [], guardianships: [], authCodes: [], guardianBindingCodes: [], serviceRights: [], packages: initialServicePackages,
     teachers: initialTeachers, institutions: initialInstitutions, onAddStudents: () => undefined,
     onFulfillService: () => undefined, onRevokeAuthCode: () => undefined, onUpdateGuardianshipStatus: () => undefined,
   })));
   assert.match(markup, /还没有学生，先完成首次导入/);
-  assert.match(markup, /选择教师并导入学生/);
-  assert.match(markup, /步骤 1/);
+  assert.match(markup, /未分配的学生先由机构管理员统一管理/);
+  assert.doesNotMatch(markup, /步骤 1/);
 });
 
 test('加载学生数据时显示独立骨架状态', () => {

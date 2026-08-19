@@ -265,6 +265,7 @@ export const deriveTeacherDashboardSnapshot = ({ teacherId, teachers, students, 
   const ownStudents = students.filter((item) => item.teacherId === teacherId);
   const activeStudents = ownStudents.filter((item) => item.serviceStatus === 'active');
   const pendingStudents = ownStudents.filter((item) => item.serviceStatus === 'none');
+  const learningStudents = ownStudents.filter((item) => item.totalQuestions > 0 || item.totalStudyHours > 0);
   const studyHours = ownStudents.reduce((sum, item) => sum + item.totalStudyHours, 0);
   const questions = ownStudents.reduce((sum, item) => sum + item.totalQuestions, 0);
   const errors = ownStudents.reduce((sum, item) => sum + item.errorCount, 0);
@@ -282,9 +283,10 @@ export const deriveTeacherDashboardSnapshot = ({ teacherId, teachers, students, 
         metric(unreviewed, { id: 'attentionStudents', label: '待复习错题', suffix: ' 题', sourceLabel: '学生错题档案', definition: '负责学生尚未完成复习的错题', targetPath: '/platform/students?tab=diagnostics', tone: unreviewed ? 'warning' : 'default' }),
       ]},
       { id: 'students', title: '学生学情', description: '负责学生的学习与答题汇总', metrics: [
+        metric(learningStudents.length, { id: 'learningStudents', label: '已有诊断学生', suffix: ' 人', sourceLabel: '小程序智能诊断', definition: '已在小程序产生练习或诊断数据的负责学生', targetPath: '/platform/students?tab=diagnostics', tone: 'positive' }),
         metric(studyHours, { id: 'studyHours', label: '累计学习时长', suffix: ' 小时', sourceLabel: '学生学习档案', definition: '负责学生累计学习时长', targetPath: '/platform/students?tab=diagnostics' }),
-        metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '学生学习档案', definition: '负责学生累计答题数', targetPath: '/platform/students?tab=diagnostics' }),
-        metric(averageAccuracy, { id: 'accuracy', label: '平均正确率', suffix: '%', sourceLabel: '学生学习档案', definition: '负责学生平均答题正确率', targetPath: '/platform/students?tab=diagnostics' }),
+        metric(questions, { id: 'questions', label: '累计答题', suffix: ' 题', sourceLabel: '小程序智能诊断', definition: '负责学生在小程序中的累计答题数', targetPath: '/platform/students?tab=diagnostics' }),
+        metric(averageAccuracy, { id: 'accuracy', label: '平均正确率', suffix: '%', sourceLabel: '小程序智能诊断', definition: '负责学生诊断报告的平均答题正确率', targetPath: '/platform/students?tab=diagnostics' }),
       ]},
       { id: 'learning', title: '错题与复习', description: '需要老师关注的学习问题', metrics: [
         metric(errors, { id: 'errors', label: '累计错题', suffix: ' 题', sourceLabel: '学生错题档案', definition: '负责学生累计错题数', targetPath: '/platform/students?tab=diagnostics' }),
@@ -292,7 +294,6 @@ export const deriveTeacherDashboardSnapshot = ({ teacherId, teachers, students, 
       ]},
     ],
     workItems: [
-      ...(pendingStudents.length ? [{ id: 'pending-students', title: '学生待办理服务', description: '进入学生管理为学生办理服务', count: pendingStudents.length, targetPath: '/platform/students?service=pending', tone: 'warning' as const }] : []),
       ...(unreviewed ? [{ id: 'unreviewed-errors', title: '学生错题待复习', description: '进入学生学情查看需关注学生', count: unreviewed, targetPath: '/platform/students?tab=diagnostics', tone: 'danger' as const }] : []),
     ],
   };

@@ -1,5 +1,6 @@
 export type PlatformRouteId =
   | 'dashboard'
+  | 'learning'
   | 'goods'
   | 'content'
   | 'institutions'
@@ -17,6 +18,7 @@ export interface PlatformRoute {
 
 export const platformRoutes: PlatformRoute[] = [
   { id: 'dashboard', path: '/platform/dashboard', label: '运营首页', icon: 'space_dashboard' },
+  { id: 'learning', path: '/platform/learning', label: '学生学情', icon: 'monitoring' },
   { id: 'content', path: '/platform/content', label: '内容管理', icon: 'library_books' },
   { id: 'goods', path: '/platform/goods', label: '服务产品', icon: 'inventory_2' },
   { id: 'institutions', path: '/platform/institutions', label: '机构管理', icon: 'domain' },

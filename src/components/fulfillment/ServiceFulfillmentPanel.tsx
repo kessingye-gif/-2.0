@@ -24,6 +24,7 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
     && (!selectedPackage?.selectableContentPackageIds?.length || selectedPackage.selectableContentPackageIds.includes(item.id))
     && (!institution || (institution.availableContentPackages ?? []).some((value) => value === item.id || value === item.name)));
   const selectedContentPackages = availableContentPackages.filter((item) => selectedContentIds.includes(item.id));
+  const contentSelectionLimit = Math.max(1, selectedPackage?.selectableContentPackageCount ?? 1);
   const insufficientCredits = Boolean(selectedPackage && institutionRemainingQuota !== undefined && institutionRemainingQuota < selectedPackage.quotaCost);
   const isRenewal = existingRights.some((item) => item.studentId === student.id && item.status === 'active');
 
@@ -82,8 +83,8 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
           ))}
         </div>
         <div className="mt-4">
-          <div className="flex items-center justify-between"><h4 className="text-[13px] font-bold text-[#0F172A]">选择内容包</h4><span className="text-[11px] text-[#64748B]">可多选，至少选 1 个</span></div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">{availableContentPackages.map((item) => <label key={item.id} className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-[12px] ${selectedContentIds.includes(item.id) ? 'border-[#16B45B] bg-[#F0FBF4]' : 'border-[#E2E8F0]'}`}><input type="checkbox" checked={selectedContentIds.includes(item.id)} onChange={(event) => setSelectedContentIds((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span><strong className="block text-[#0F172A]">{item.name}</strong><span className="mt-0.5 block text-[#64748B]">{item.stage} · {item.subject}</span></span></label>)}</div>
+          <div className="flex items-center justify-between"><h4 className="text-[13px] font-bold text-[#0F172A]">选择内容包</h4><span className="text-[11px] text-[#64748B]">已选 {selectedContentIds.length} / 最多 {contentSelectionLimit} 个</span></div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">{availableContentPackages.map((item) => { const checked = selectedContentIds.includes(item.id); const disabled = !checked && selectedContentIds.length >= contentSelectionLimit; return <label key={item.id} className={`flex items-start gap-2 rounded-xl border p-3 text-[12px] ${checked ? 'border-[#16B45B] bg-[#F0FBF4]' : disabled ? 'cursor-not-allowed border-[#E2E8F0] bg-[#F8FAFC] opacity-50' : 'cursor-pointer border-[#E2E8F0]'}`}><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => setSelectedContentIds((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span><strong className="block text-[#0F172A]">{item.name}</strong><span className="mt-0.5 block text-[#64748B]">{item.stage} · {item.subject}</span></span></label>; })}</div>
           {availableContentPackages.length === 0 && <div className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-[12px] text-red-700">该机构暂无可用内容包，请先完成机构内容授权。</div>}
         </div>
         {institutionRemainingQuota !== undefined && <div className={`mt-4 rounded-xl px-3 py-2 text-[12px] ${insufficientCredits ? 'bg-red-50 text-red-700' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}>

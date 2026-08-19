@@ -51,7 +51,9 @@ const seedPackages: ContentPackageRecord[] = [
 
 interface ContentPackageManagerProps {
   subjects: ContentSubjectSummary[];
-  onOpenResource: (resource: 'knowledge-points' | 'questions', subjectId: string) => void;
+  onOpenResource?: (resource: 'knowledge-points' | 'questions', subjectId: string) => void;
+  selectedPackageId?: string | null;
+  onSelectedPackageChange?: (packageId: string | null) => void;
   knowledgePoints?: KnowledgePointNode[];
   onViewQuestions?: (knowledgePointId: string) => void;
   onBatchImportKnowledgePoints?: () => void;
@@ -92,7 +94,6 @@ interface ContentPackageWorkspaceProps {
   knowledgePoints: KnowledgePointNode[];
   onBack: () => void;
   onNewPackage: () => void;
-  onOpenResource: ContentPackageManagerProps['onOpenResource'];
   onViewQuestions: (knowledgePointId: string) => void;
   onBatchImportKnowledgePoints: () => void;
   onAddKnowledgePoint: () => void;
@@ -100,7 +101,7 @@ interface ContentPackageWorkspaceProps {
   showNewPackageAction: boolean;
 }
 
-export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onOpenResource, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage, showNewPackageAction }) => {
+export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = ({ pkg, subject, knowledgePoints, onBack, onNewPackage, onViewQuestions, onBatchImportKnowledgePoints, onAddKnowledgePoint, canCreatePackage, showNewPackageAction }) => {
   const { state: masterDataState } = useMasterData();
   const automaticallyReferencedIds = knowledgePoints
     .filter((point) => point.level === 3 && point.status === 'active' && Boolean(subject?.name.includes(point.subject)))
@@ -179,7 +180,7 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   </div>;
 };
 
-export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, onOpenResource, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true }) => {
+export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, selectedPackageId = null, onSelectedPackageChange = (_packageId: string | null) => undefined, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true }) => {
   const [packages, setPackages] = useState(seedPackages);
   const [packageSearch, setPackageSearch] = useState('');
   const [packageStatus, setPackageStatus] = useState<'all' | 'active' | 'inactive'>('all');
@@ -189,7 +190,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
     const matchesStatus = packageStatus === 'all' || pkg.status === packageStatus;
     return matchesSearch && matchesStatus;
   });
-  const [selected, setSelected] = useState<ContentPackageRecord | null>(null);
+  const selected = packages.find((pkg) => pkg.id === selectedPackageId) ?? null;
   const [wizardOpen, setWizardOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [statusChangeTarget, setStatusChangeTarget] = useState<{ pkg: ContentPackageRecord; nextStatus: 'active' | 'inactive' } | null>(null);
@@ -236,7 +237,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
   };
 
   if (selected) {
-    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} knowledgePoints={knowledgePoints} onBack={() => setSelected(null)} onNewPackage={() => { setSelected(null); openWizard(); }} onOpenResource={onOpenResource} onViewQuestions={onViewQuestions} onBatchImportKnowledgePoints={onBatchImportKnowledgePoints} onAddKnowledgePoint={onAddKnowledgePoint} canCreatePackage={canCreatePackage} showNewPackageAction={showNewPackageAction} />;
+    return <ContentPackageWorkspace pkg={selected} subject={subjectById(selected.subjectId)} knowledgePoints={knowledgePoints} onBack={() => onSelectedPackageChange(null)} onNewPackage={() => { onSelectedPackageChange(null); openWizard(); }} onViewQuestions={onViewQuestions} onBatchImportKnowledgePoints={onBatchImportKnowledgePoints} onAddKnowledgePoint={onAddKnowledgePoint} canCreatePackage={canCreatePackage} showNewPackageAction={showNewPackageAction} />;
   }
 
   return (
@@ -278,11 +279,11 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
                 <dl className="mt-3 divide-y divide-[#E8EEEB] border-y border-[#E8EEEB] text-[13px]">
                   <div className="flex items-center justify-between py-2.5">
                     <dt className="text-[#64748B]">知识点</dt>
-                    <dd><button type="button" onClick={() => onOpenResource('knowledge-points', pkg.subjectId)} className="cursor-pointer font-mono font-bold text-[#0F172A] hover:text-[#0E7D3E] hover:underline">{pkg.kpCount.toLocaleString('zh-CN')}</button></dd>
+                    <dd><button type="button" onClick={() => onSelectedPackageChange(pkg.id)} className="cursor-pointer font-mono font-bold text-[#0F172A] hover:text-[#0E7D3E] hover:underline">{pkg.kpCount.toLocaleString('zh-CN')}</button></dd>
                   </div>
                   <div className="flex items-center justify-between py-2.5">
                     <dt className="text-[#64748B]">关联题目</dt>
-                    <dd><button type="button" onClick={() => onOpenResource('questions', pkg.subjectId)} className="cursor-pointer font-mono font-bold text-[#0F172A] hover:text-[#0E7D3E] hover:underline">{pkg.questionCount.toLocaleString('zh-CN')}</button></dd>
+                    <dd><button type="button" onClick={() => onSelectedPackageChange(pkg.id)} className="cursor-pointer font-mono font-bold text-[#0F172A] hover:text-[#0E7D3E] hover:underline">{pkg.questionCount.toLocaleString('zh-CN')}</button></dd>
                   </div>
                   <div className="flex items-center justify-between py-2.5">
                     <dt className="text-[#64748B]">授权机构</dt>
@@ -293,7 +294,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
                 <div className={`mt-3 rounded-lg px-3 py-2 text-[11px] ${pkg.status === 'inactive' ? 'bg-[#F8FAFC] text-[#64748B]' : 'bg-[#F0FBF4] text-[#0E7D3E]'}`}><strong>内容来源：</strong>{pkg.status === 'inactive' ? '已停用，当前不能授权给新机构' : `自动同步${subject?.name ?? '来源学科'}下已发布的知识点与精选题`}</div>
 
                 <div className="mt-3">
-                  <button type="button" onClick={() => setSelected(pkg)} className="cursor-pointer rounded-lg border border-[#D6E2DC] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] transition hover:border-[#16B45B] hover:bg-[#EAF7EF]">
+                  <button type="button" onClick={() => onSelectedPackageChange(pkg.id)} className="cursor-pointer rounded-lg border border-[#D6E2DC] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] transition hover:border-[#16B45B] hover:bg-[#EAF7EF]">
                     进入内容包
                   </button>
                 </div>

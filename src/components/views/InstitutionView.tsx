@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AuthCode, ContentPackageItem, CooperationPlan, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
+import { AuthCode, ContentPackageItem, Institution, OrderLedgerRecord, RegionType, ServicePackage } from '../../types';
 import { ChoiceCard, DialogShell } from '../ui/FormPrimitives';
 import { generateRandomPassword, getPasswordValidationMessage } from '../../utils/password';
 
@@ -14,7 +14,6 @@ interface InstitutionViewProps {
   onBatchImport: (file: File) => void;
   onCreateCreditEntry: (input: { institutionId: string; paymentAmount: number; creditAmount: number; voucherNo: string; notes: string }) => void;
   contentPackages?: ContentPackageItem[];
-  cooperationPlans?: CooperationPlan[];
 }
 
 export const InstitutionView: React.FC<InstitutionViewProps> = ({
@@ -28,7 +27,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
   onBatchImport,
   onCreateCreditEntry,
   contentPackages = [],
-  cooperationPlans = [],
 }) => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -950,12 +948,6 @@ export const InstitutionView: React.FC<InstitutionViewProps> = ({
           </>}
         >
           <div className="space-y-5">
-            {cooperationPlans.filter((plan) => plan.status === 'active').length > 0 && (
-              <section className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <div className="mb-3"><h4 className="text-[13px] font-bold text-[#0F172A]">从授权模板快速带入</h4><p className="mt-1 text-[11px] text-[#64748B]">带入后仍可单独调整，最终以本弹窗保存的范围为准。</p></div>
-                <div className="flex flex-wrap gap-2">{cooperationPlans.filter((plan) => plan.status === 'active').map((plan) => <button key={plan.id} onClick={() => { setAuthorizationContentIds(plan.contentPackageIds); setAuthorizationServiceIds(plan.servicePackageIds); }} className="rounded-lg border border-[#D8EDE1] bg-white px-3 py-2 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E8F7EE]">{plan.name}</button>)}</div>
-              </section>
-            )}
             <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
               <div className="mb-3 flex items-center justify-between"><div><h4 className="text-[13px] font-bold text-[#0F172A]">可用及可维护内容包</h4><p className="mt-1 text-[11px] text-[#64748B]">决定机构能访问哪些教学内容。</p></div><span className="text-[11px] font-bold text-[#16B45B]">已选 {authorizationContentIds.length} 个</span></div>
               <div className="grid gap-2 sm:grid-cols-2">{contentPackages.filter((item) => item.status === 'active').map((item) => <ChoiceCard key={item.id} checked={authorizationContentIds.includes(item.id)} title={item.name} meta={`${item.stage} · ${item.subject}`} onChange={() => setAuthorizationContentIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>

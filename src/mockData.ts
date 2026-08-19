@@ -553,6 +553,20 @@ export const initialTeachers: TeacherItem[] = [
     createdAt: '2026-02-15',
   },
   {
+    id: 'TCH-004', name: '陈雨老师', account: 'chenyu_zj', loginPassword: 'Teacher@2026!', phone: '136-5555-1201',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 2,
+    allocatedQuota: 0, remainingQuota: 0,
+    permissions: { canEditContent: true, canImportStudents: true, canManageClass: true, canRedeemPackage: false, canViewReport: true },
+    status: 'active', createdAt: '2026-04-08',
+  },
+  {
+    id: 'TCH-005', name: '刘洋老师', account: 'liuyang_zj', loginPassword: 'Teacher@2026!', phone: '135-6666-1202',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', studentCount: 1,
+    allocatedQuota: 0, remainingQuota: 0,
+    permissions: { canEditContent: true, canImportStudents: true, canManageClass: true, canRedeemPackage: false, canViewReport: true },
+    status: 'active', createdAt: '2026-05-16',
+  },
+  {
     id: 'TCH-003', name: '高林老师', account: 'gaolin_tch', loginPassword: 'Teacher@2026!', phone: '137-3333-4444',
     institutionId: 'INS-3007001', institutionName: '博雅语言学院', studentCount: 18,
     allocatedQuota: 1000, remainingQuota: 320,
@@ -608,6 +622,34 @@ export const initialStudents: StudentItem[] = [
     accuracyRate: 72,
     errorCount: 26,
     unreviewedErrorCount: 12,
+  },
+  {
+    id: 'STU-003', name: '赵子涵', nickname: '子涵', account: 'zhaozh2026', phone: '13710001003', loginPassword: 'Student@2026!',
+    grade: '初二', className: '初二（1）班', school: '浙江大学附属中学', textbook: '人教版',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-004', teacherName: '陈雨老师',
+    subjects: ['数学', '物理'], serviceStatus: 'active', serviceExpireAt: '2027-06-30',
+    totalStudyHours: 28.5, totalQuestions: 246, accuracyRate: 81, errorCount: 47, unreviewedErrorCount: 9,
+  },
+  {
+    id: 'STU-004', name: '孙浩然', nickname: '浩然', account: 'sunhr2026', phone: '13710001004', loginPassword: 'Student@2026!',
+    grade: '初二', className: '初二（2）班', school: '浙江大学附属中学', textbook: '人教版',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-004', teacherName: '陈雨老师',
+    subjects: ['数学', '物理'], serviceStatus: 'none',
+    totalStudyHours: 6.5, totalQuestions: 58, accuracyRate: 69, errorCount: 18, unreviewedErrorCount: 11,
+  },
+  {
+    id: 'STU-005', name: '周可欣', nickname: '可欣', account: 'zhouke2026', phone: '13710001005', loginPassword: 'Student@2026!',
+    grade: '高一', className: '高一（1）班', school: '浙江大学附属中学', textbook: '人教版',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-005', teacherName: '刘洋老师',
+    subjects: ['数学', '物理', '化学'], serviceStatus: 'none',
+    totalStudyHours: 18, totalQuestions: 132, accuracyRate: 76, errorCount: 32, unreviewedErrorCount: 7,
+  },
+  {
+    id: 'STU-006', name: '吴一诺', nickname: '一诺', account: 'wuyinuo2026', phone: '13710001006', loginPassword: 'Student@2026!',
+    grade: '初一', className: '', school: '浙江大学附属中学', textbook: '人教版',
+    institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: '', teacherName: '',
+    subjects: ['数学'], serviceStatus: 'none',
+    totalStudyHours: 0, totalQuestions: 0, accuracyRate: 0, errorCount: 0, unreviewedErrorCount: 0,
   },
 ];
 

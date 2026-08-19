@@ -67,4 +67,6 @@ test('教师大屏只汇总自己负责学生的学情', () => {
   const ownStudents = initialStudents.filter((item) => item.teacherId === teacher.id);
   assert.equal(metrics.find((item) => item.id === 'students')?.value, ownStudents.length);
   assert.equal(metrics.find((item) => item.id === 'questions')?.value, ownStudents.reduce((sum, item) => sum + item.totalQuestions, 0));
+  assert.equal(metrics.find((item) => item.id === 'learningStudents')?.value, ownStudents.filter((item) => item.totalQuestions > 0 || item.totalStudyHours > 0).length);
+  assert.equal(metrics.find((item) => item.id === 'accuracy')?.sourceLabel, '小程序智能诊断');
 });

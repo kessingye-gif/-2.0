@@ -8,7 +8,7 @@ import { LoginView } from './components/auth/LoginView';
 import { InstitutionView } from './components/views/InstitutionView';
 import { GoodsView } from './components/views/GoodsView';
 import { QuestionBankView } from './components/views/QuestionBankView';
-import { DashboardView } from './components/views/DashboardView';
+import { DashboardView, StudentLearningView } from './components/views/DashboardView';
 import { SystemView } from './components/views/SystemView';
 import { TeacherClassView } from './components/views/TeacherClassView';
 import { StudentView } from './components/views/StudentView';
@@ -27,7 +27,6 @@ import {
   initialOrderLedger,
   initialParentGuardianships,
   initialContentPackages,
-  initialCooperationPlans,
   initialTeachers,
 } from './mockData';
 import { buildGlobalSearchResults, deriveFulfillmentSnapshot } from './fulfillment';
@@ -45,7 +44,6 @@ import {
   GuardianBindingCode,
   StudentServiceRight,
   ServiceFulfillmentResult,
-  CooperationPlan,
   TeacherItem,
   StudentItem,
   TeacherCreditLedgerEntry,
@@ -84,7 +82,6 @@ export default function App() {
     { id: 'SUPER-ADMIN-01', username: 'admin@kaiqiao.com', password: 'Admin@2026!x', phone: '', status: 'active' },
   ]);
   const [packages, setPackages] = useState<ServicePackage[]>(initialServicePackages);
-  const [cooperationPlans, setCooperationPlans] = useState<CooperationPlan[]>(initialCooperationPlans);
   const [authCodes, setAuthCodes] = useState<AuthCode[]>(initialAuthCodes);
   const [knowledgePoints, setKnowledgePoints] = useState<KnowledgePointNode[]>(initialKnowledgePoints);
   const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
@@ -110,6 +107,7 @@ export default function App() {
   const [orders, setOrders] = useState<OrderLedgerRecord[]>(initialOrderLedger);
   const [resolvedWorkItemIds, setResolvedWorkItemIds] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'warning' | 'error' } | null>(null);
+  const [teacherTransferNotifications, setTeacherTransferNotifications] = useState<Array<HeaderNotificationAlert & { recipientTeacherId: string }>>([]);
 
   const searchResults = useMemo(
     () => buildGlobalSearchResults(searchQuery, { institutions, authCodes, students, orders }),
@@ -142,6 +140,7 @@ export default function App() {
   const visibleTeachers = useMemo(() => scopeTeachers(teachers, currentUser), [teachers, currentUser]);
   const visibleStudents = useMemo(() => scopeStudents(students, currentUser), [students, currentUser]);
   const notificationAlerts = useMemo<HeaderNotificationAlert[]>(() => {
+    if (currentUser.role === 'teacher') return teacherTransferNotifications.filter((item) => item.recipientTeacherId === currentUser.teacherId);
     if (currentUser.role !== 'super_admin') return [];
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -166,11 +165,18 @@ export default function App() {
         : [];
     });
     return [...lowQuotaAlerts, ...contractAlerts, ...serviceAlerts];
-  }, [currentUser.role, institutions, students]);
+  }, [currentUser.role, currentUser.teacherId, institutions, students, teacherTransferNotifications]);
 
   const handleSelectSearchResult = (tab: NavTab) => {
     setCurrentTab(tab);
     setSearchQuery('');
+  };
+
+  const handleSelectNotification = (tab: NavTab, alertId: string) => {
+    setCurrentTab(tab);
+    if (alertId.startsWith('transfer-')) {
+      setTeacherTransferNotifications((current) => current.filter((item) => item.id !== alertId));
+    }
   };
 
   // Floating Help Modal State
@@ -334,8 +340,40 @@ export default function App() {
       return addedCount > 0 ? { ...teacher, studentCount: teacher.studentCount + addedCount } : teacher;
     }));
     const teacherNames = [...new Set(newStudents.map((item) => item.teacherName))].join('、');
-    addAuditLog('导入学生', `${newStudents.length} 名学生`, `学生已直接归属负责教师：${teacherNames}；班级仅作选填筛选信息。`, '教师管理');
-    handleNotify(`成功导入 ${newStudents.length} 名学生，已分配给 ${teacherNames}`);
+    addAuditLog('导入学生', `${newStudents.length} 名学生`, `学生归属：${teacherNames}；未选教师的学生由机构管理员暂管，班级仅作选填筛选信息。`, '教师管理');
+    handleNotify(`成功导入 ${newStudents.length} 名学生；归属：${teacherNames}`);
+  };
+
+  const handleAssignStudentTeacher = (studentId: string, teacherId: string) => {
+    const teacher = teachers.find((item) => item.id === teacherId);
+    const student = students.find((item) => item.id === studentId);
+    if (!teacher || !student || teacher.institutionId !== student.institutionId) return;
+    if (student.teacherId === teacher.id) return;
+    const previousTeacher = teachers.find((item) => item.id === student.teacherId);
+    const previousOwnerName = previousTeacher?.name ?? '机构管理员';
+    const operatedAt = new Date().toLocaleString('zh-CN', { hour12: false });
+    setStudents((current) => current.map((item) => item.id === studentId ? { ...item, teacherId: teacher.id, teacherName: teacher.name } : item));
+    setTeacherTransferNotifications((current) => [
+      {
+        id: `transfer-in-${student.id}-${Date.now()}`,
+        type: 'student_transfer',
+        title: `${student.name}已转入你的学生名单`,
+        detail: `由${previousOwnerName}转入；操作人：${currentUser.name}；${operatedAt}`,
+        targetTab: 'students',
+        recipientTeacherId: teacher.id,
+      },
+      ...(previousTeacher ? [{
+        id: `transfer-out-${student.id}-${Date.now()}`,
+        type: 'student_transfer_out' as const,
+        title: `${student.name}已转出`,
+        detail: `已转让给${teacher.name}；操作人：${currentUser.name}；${operatedAt}`,
+        targetTab: 'students' as const,
+        recipientTeacherId: previousTeacher.id,
+      }] : []),
+      ...current,
+    ]);
+    addAuditLog(previousTeacher ? '转让学生' : '分配学生', student.name, `由${previousOwnerName}调整为${teacher.name}`, '机构管理');
+    handleNotify(`${student.name}已从${previousOwnerName}转让给${teacher.name}`);
   };
 
   const handleOpenTeacherStudents = (teacherName: string) => {
@@ -522,7 +560,7 @@ export default function App() {
           currentUser={currentUser}
           onLogout={handleLogout}
           notificationAlerts={notificationAlerts}
-          onSelectNotification={setCurrentTab}
+          onSelectNotification={handleSelectNotification}
           onOpenSettings={() => setIsHelpModalOpen(true)}
           searchResults={searchResults}
           onSelectSearchResult={handleSelectSearchResult}
@@ -534,6 +572,14 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 custom-scrollbar">
           {currentView === 'dashboard' && (
             <DashboardView snapshot={visibleDashboardSnapshot} students={visibleStudents} onGenerateReport={handleGenerateReport} />
+          )}
+
+          {currentView === 'learning' && (
+            <StudentLearningView
+              students={visibleStudents}
+              teachers={visibleTeachers}
+              viewerRole={currentUser.role}
+            />
           )}
 
           {currentView === 'goods' && (
@@ -581,7 +627,6 @@ export default function App() {
               onBatchImport={handleBatchImportInstitutions}
               onCreateCreditEntry={handleCreateInstitutionCreditEntry}
               contentPackages={initialContentPackages}
-              cooperationPlans={cooperationPlans}
             />
           )}
 
@@ -640,7 +685,7 @@ export default function App() {
               teachers={visibleTeachers}
               institutions={visibleInstitutions}
               onAddStudents={handleAddStudents}
-              onAddTeacher={handleAddTeacher}
+              onAssignTeacher={handleAssignStudentTeacher}
               onFulfillService={handleFulfillService}
               onFulfillServices={handleFulfillServices}
               initialTeacherFilter={studentTeacherFilter}

@@ -7,6 +7,7 @@ export interface StudentImportRow {
   登录密码?: unknown;
   手机号?: unknown;
   负责教师姓名?: unknown;
+  '负责教师姓名（选填）'?: unknown;
   年级?: unknown;
   '班级（选填）'?: unknown;
 }
@@ -23,29 +24,29 @@ export function buildImportedStudents(rows: StudentImportRow[], institution: Ins
     const account = String(row.登录账号 ?? '').trim();
     const loginPassword = String(row.登录密码 ?? '').trim();
     const phone = String(row.手机号 ?? '').trim();
-    const teacherName = String(row.负责教师姓名 ?? '').trim();
+    const teacherName = String(row['负责教师姓名（选填）'] ?? row.负责教师姓名 ?? '').trim();
     const grade = String(row.年级 ?? '').trim();
     const className = String(row['班级（选填）'] ?? '').trim();
     if (account && existingAccounts.has(account.toLowerCase())) {
       skipped.push(`第 ${line} 行：登录账号 ${account} 已存在，已保留原数据`);
       return [];
     }
-    if (!name || !account || !loginPassword || !phone || !teacherName || !grade) {
-      errors.push(`第 ${line} 行：学生姓名、登录账号、登录密码、手机号、负责教师姓名和年级必填`);
+    if (!name || !account || !loginPassword || !phone || !grade) {
+      errors.push(`第 ${line} 行：学生姓名、登录账号、登录密码、手机号和年级必填`);
       return [];
     }
-    const matchedTeachers = institutionTeachers.filter((item) => item.name === teacherName);
-    if (matchedTeachers.length === 0) {
+    const matchedTeachers = teacherName ? institutionTeachers.filter((item) => item.name === teacherName) : [];
+    if (teacherName && matchedTeachers.length === 0) {
       errors.push(`第 ${line} 行：本机构不存在教师“${teacherName}”`);
       return [];
     }
-    if (matchedTeachers.length > 1) {
+    if (teacherName && matchedTeachers.length > 1) {
       errors.push(`第 ${line} 行：教师姓名“${teacherName}”重复，无法唯一匹配`);
       return [];
     }
-    const teacher = matchedTeachers[0];
-    if (teacher.status !== 'active') {
-      errors.push(`第 ${line} 行：负责教师“${teacherName}”已停用`);
+    const teacher = matchedTeachers[0] ?? null;
+    if (teacher && teacher.status !== 'active') {
+      errors.push(`第 ${line} 行：负责教师“${teacher.name}”已停用`);
       return [];
     }
     const passwordMessage = getPasswordValidationMessage(loginPassword);
@@ -74,8 +75,8 @@ export function buildImportedStudents(rows: StudentImportRow[], institution: Ins
       textbook: '人教版',
       institutionId: institution.id,
       institutionName: institution.name,
-      teacherId: teacher.id,
-      teacherName: teacher.name,
+      teacherId: teacher?.id ?? '',
+      teacherName: teacher?.name ?? '机构管理员待分配',
       className: className || undefined,
       subjects: [],
       serviceStatus: 'none' as const,

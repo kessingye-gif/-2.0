@@ -11,7 +11,7 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   onLogout: () => void;
   notificationAlerts?: HeaderNotificationAlert[];
-  onSelectNotification?: (tab: NavTab) => void;
+  onSelectNotification?: (tab: NavTab, alertId: string) => void;
   onOpenSettings?: () => void;
   searchResults?: GlobalSearchResult[];
   onSelectSearchResult?: (tab: NavTab) => void;
@@ -21,7 +21,7 @@ interface HeaderProps {
 
 export interface HeaderNotificationAlert {
   id: string;
-  type: 'low_quota' | 'expiring';
+  type: 'low_quota' | 'expiring' | 'student_transfer' | 'student_transfer_out';
   title: string;
   detail: string;
   targetTab: NavTab;
@@ -44,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const hasBusinessNotification = notificationAlerts.some((alert) => alert.type === 'student_transfer' || alert.type === 'student_transfer_out');
+  const hasWarningNotification = notificationAlerts.some((alert) => alert.type === 'low_quota' || alert.type === 'expiring');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,23 +97,23 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsNotificationOpen((open) => !open)}
-            aria-label={`预警通知${notificationAlerts.length ? `，${notificationAlerts.length} 条待处理` : ''}`}
+            aria-label={`通知${notificationAlerts.length ? `，${notificationAlerts.length} 条未读` : ''}`}
             aria-expanded={isNotificationOpen}
             className="relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569] transition-all hover:bg-[#E8F7EE] hover:text-[#16B45B]"
-            title="预警通知"
+            title="通知"
           >
             <span className="material-symbols-outlined text-[18px]">notifications</span>
             {notificationAlerts.length > 0 && <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#F5B700] px-1 text-[9px] font-bold leading-4 text-white">{notificationAlerts.length > 9 ? '9+' : notificationAlerts.length}</span>}
           </button>
 
-          {isNotificationOpen && <section className="absolute right-0 top-11 z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-xl" aria-label="超级管理员预警">
+          {isNotificationOpen && <section className="absolute right-0 top-11 z-50 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-xl" aria-label="通知列表">
             <header className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3">
-              <div><h3 className="text-[14px] font-bold text-[#0F172A]">待处理预警</h3><p className="mt-0.5 text-[10.5px] text-[#64748B]">额度低于 15% / 30 天内到期</p></div>
+              <div><h3 className="text-[14px] font-bold text-[#0F172A]">{hasBusinessNotification && hasWarningNotification ? '通知与预警' : hasBusinessNotification ? '业务通知' : '待处理预警'}</h3><p className="mt-0.5 text-[10.5px] text-[#64748B]">{hasBusinessNotification ? '学生归属变更会同步通知相关教师' : '额度低于 15% / 30 天内到期'}</p></div>
               <span className="rounded-full bg-[#FFF4D6] px-2 py-1 text-[10px] font-bold text-[#B86608]">{notificationAlerts.length} 条</span>
             </header>
             <div className="max-h-[420px] overflow-y-auto p-2 custom-scrollbar">
-              {notificationAlerts.length ? notificationAlerts.map((alert) => <button key={alert.id} type="button" onClick={() => { setIsNotificationOpen(false); onSelectNotification?.(alert.targetTab); }} className="flex w-full gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#F8FAFC]">
-                <span className={`material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[18px] ${alert.type === 'low_quota' ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#FFF7E6] text-[#C46A05]'}`}>{alert.type === 'low_quota' ? 'warning' : 'event_upcoming'}</span>
+              {notificationAlerts.length ? notificationAlerts.map((alert) => <button key={alert.id} type="button" onClick={() => { setIsNotificationOpen(false); onSelectNotification?.(alert.targetTab, alert.id); }} className="flex w-full gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-[#F8FAFC]">
+                <span className={`material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[18px] ${alert.type === 'low_quota' ? 'bg-[#FEF2F2] text-[#DC2626]' : alert.type === 'expiring' ? 'bg-[#FFF7E6] text-[#C46A05]' : 'bg-[#E8F7EE] text-[#0E7D3E]'}`}>{alert.type === 'low_quota' ? 'warning' : alert.type === 'expiring' ? 'event_upcoming' : alert.type === 'student_transfer' ? 'person_add' : 'person_remove'}</span>
                 <span className="min-w-0"><strong className="block truncate text-[12.5px] text-[#0F172A]">{alert.title}</strong><span className="mt-1 block text-[11px] leading-4 text-[#64748B]">{alert.detail}</span></span>
               </button>) : <div className="px-4 py-8 text-center"><span className="material-symbols-outlined text-[28px] text-[#16B45B]">task_alt</span><p className="mt-2 text-[12px] font-bold text-[#334155]">当前没有待处理预警</p></div>}
             </div>

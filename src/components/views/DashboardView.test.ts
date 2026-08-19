@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { deriveInstitutionDashboardSnapshot, derivePlatformDashboardSnapshot, deriveTeacherDashboardSnapshot } from '../../dashboardSnapshot';
 import { initialAuditLogs, initialAuthCodes, initialContentPackages, initialInstitutions, initialKnowledgePoints, initialOrderLedger, initialQuestions, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
-import { DashboardView } from './DashboardView';
+import { DashboardView, StudentLearningView } from './DashboardView';
 
 test('平台运营首页将用户服务与学生学习合并为用户与使用', () => {
   const snapshot = derivePlatformDashboardSnapshot({ institutions: initialInstitutions, authCodes: initialAuthCodes, students: initialStudents, orders: initialOrderLedger, auditLogs: initialAuditLogs, servicePackages: initialServicePackages, contentPackages: initialContentPackages, knowledgePoints: initialKnowledgePoints, questions: initialQuestions });
@@ -42,6 +42,23 @@ test('机构与教师工作台先展示待办和真实范围学习摘要', () =>
   const teacherStudents = initialStudents.filter((student) => student.teacherId === teacher.id);
   const teacherSnapshot = deriveTeacherDashboardSnapshot({ teacherId: teacher.id, teachers: initialTeachers, students: initialStudents, auditLogs: initialAuditLogs });
   const teacherMarkup = renderToStaticMarkup(createElement(MemoryRouter, {}, createElement(DashboardView, { snapshot: teacherSnapshot, students: teacherStudents })));
-  assert.match(teacherMarkup, /我的教学工作台/);
-  assert.match(teacherMarkup, new RegExp(`${teacher.name}负责范围`));
+  assert.match(teacherMarkup, /学生学情/);
+  assert.match(teacherMarkup, /查看我负责学生的小程序学习表现、薄弱知识点和待复习问题/);
+  assert.match(teacherMarkup, /数据口径：小程序智能诊断/);
+  assert.match(teacherMarkup, /示例数据/);
+  assert.match(teacherMarkup, /薄弱知识点/);
+  assert.match(teacherMarkup, /学生诊断列表/);
+});
+
+test('机构和教师共用学生学情，机构额外提供教师筛选', () => {
+  const institutionId = initialInstitutions[0].id;
+  const students = initialStudents.filter((student) => student.institutionId === institutionId);
+  const teachers = initialTeachers.filter((teacher) => teacher.institutionId === institutionId);
+  const institutionMarkup = renderToStaticMarkup(createElement(StudentLearningView, { students, teachers, viewerRole: 'institution_admin' }));
+  ['学生学情', '负责教师', '全部教师', '学生诊断列表', '查看学情', '共性薄弱知识点'].forEach((text) => assert.match(institutionMarkup, new RegExp(text)));
+
+  const teacherMarkup = renderToStaticMarkup(createElement(StudentLearningView, { students: students.filter((student) => student.teacherId === teachers[0]?.id), teachers, viewerRole: 'teacher' }));
+  assert.match(teacherMarkup, /学生学情/);
+  assert.doesNotMatch(teacherMarkup, /按负责教师筛选|全部教师/);
+  assert.match(teacherMarkup, /数据口径：小程序智能诊断/);
 });

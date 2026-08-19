@@ -3,7 +3,7 @@ import test from 'node:test';
 import { initialInstitutions, initialStudents, initialTeachers } from '../mockData';
 import { buildImportedStudents } from './studentImport';
 
-test('导入学生时直接归属所选教师，班级保持选填', () => {
+test('导入学生时按 Excel 教师姓名直接归属，班级保持选填', () => {
   const result = buildImportedStudents([{
     学生姓名: '赵同学', 登录账号: 'zhao2026', 登录密码: 'Student@2026!', 手机号: '13800000002', 负责教师姓名: initialTeachers[0].name, 年级: '初二', '班级（选填）': '初二（3）班',
   }], initialInstitutions[0], initialTeachers, initialStudents, new Date('2026-08-18T00:00:00Z'));
@@ -39,4 +39,14 @@ test('学生导入不包含学科字段', () => {
     学生姓名: '无学科学生', 登录账号: 'no-subject-2026', 登录密码: 'Student@2026!', 手机号: '13800000005', 负责教师姓名: initialTeachers[0].name, 年级: '初一',
   }], initialInstitutions[0], initialTeachers, initialStudents);
   assert.deepEqual(result.students[0].subjects, []);
+});
+
+test('未选择教师时由机构管理员暂管，后续可再分配', () => {
+  const result = buildImportedStudents([{
+    学生姓名: '待分配学生', 登录账号: 'unassigned-2026', 登录密码: 'Student@2026!', 手机号: '13800000006', 年级: '初一',
+  }], initialInstitutions[0], initialTeachers, initialStudents, new Date('2026-08-18T00:00:00Z'));
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.students[0].teacherId, '');
+  assert.equal(result.students[0].teacherName, '机构管理员待分配');
 });

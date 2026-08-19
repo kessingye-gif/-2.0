@@ -100,17 +100,15 @@ test('开通结果保存真实内容包权益', () => {
   assert.deepEqual(result.right.contentPackageNames, ['初中数学内容包']);
 });
 
-test('同一服务可选择多个内容包且只生成一笔服务权益', () => {
+test('服务包选择内容包数量不能超过配置上限', () => {
   const secondContentPackage = { ...contentPackage, id: 'CP-02', code: 'CP-PHYS', name: '初中物理内容包', subjectId: 'SUB-02', subject: '初中物理' };
-  const result = createServiceFulfillment({
+  assert.throws(() => createServiceFulfillment({
     student,
     servicePackage: { ...servicePackage, selectableContentPackageIds: ['CP-01', 'CP-02'], selectableContentPackageCount: 1 },
     contentPackages: [contentPackage, secondContentPackage],
     now: new Date(),
     nonce: 'MULTI',
-  });
-  assert.deepEqual(result.right.contentPackageIds, ['CP-01', 'CP-02']);
-  assert.equal(result.right.quotaConsumed, servicePackage.quotaCost);
+  }), /最多选择 1 个内容包/);
 });
 
 test('已有待激活同款服务时拒绝重复办理', () => {
