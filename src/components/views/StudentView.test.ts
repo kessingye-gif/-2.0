@@ -34,7 +34,7 @@ test('总部用户页面以服务和使用为主，教师与机构只作为归�
   ));
 
   assert.match(markup, /学生管理/);
-  assert.match(markup, /查看学生、导入名单并办理服务/);
+  assert.match(markup, /勾选多名学生后批量办理服务/);
   assert.match(markup, /导入学生/);
   assert.match(markup, /全部/);
   assert.match(markup, /服务中/);
@@ -57,10 +57,10 @@ test('批量开通已合并为用户服务列表操作，不再作为独立页�
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /setActiveTab\('bulk'\)/);
   assert.match(source, /selectedBulkStudentIds\.size > 0/);
-  assert.match(source, /需要给多名学生办理服务/);
+  assert.doesNotMatch(source, /需要给多名学生办理服务/);
   assert.match(source, /勾选学生/);
   assert.match(source, />办理服务<\/button>/);
-  assert.match(source, /title=\{`批量办理服务 · 已选/);
+  assert.match(source, /title=\{selectedBulkStudentIds\.size === 0 \? '请先在下方勾选学生'/);
   assert.match(source, /maxWidthClass="max-w-5xl"/);
   assert.match(source, /关闭弹窗不会取消已勾选的学生/);
   assert.match(source, /本次办理学生/);
@@ -69,6 +69,7 @@ test('批量开通已合并为用户服务列表操作，不再作为独立页�
   assert.match(source, /机构管理员暂管/);
   assert.doesNotMatch(source, /退出批量办理/);
   assert.match(source, /选择内容包/);
+  assert.match(source, /<option value="">请选择服务包<\/option>/);
   assert.match(source, /实际扣除/);
 });
 

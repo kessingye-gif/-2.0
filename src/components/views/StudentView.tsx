@@ -104,7 +104,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [rebindRequests, setRebindRequests] = useState<WeChatRebindRequest[]>(hiddenRebindRequests);
   const [selectedBulkStudentIds, setSelectedBulkStudentIds] = useState<Set<string>>(() => new Set());
   const activePackages = useMemo(() => packages.filter((item) => item.status === 'active'), [packages]);
-  const [bulkPackageId, setBulkPackageId] = useState(() => activePackages[0]?.id ?? '');
+  const [bulkPackageId, setBulkPackageId] = useState('');
   const [bulkContentPackageIds, setBulkContentPackageIds] = useState<string[]>([]);
   const [bulkMessage, setBulkMessage] = useState('');
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -224,8 +224,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
     <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white">{[1, 2, 3, 4].map((item) => <div key={item} className="flex gap-6 border-b border-[#EEF2F6] p-5"><div className="h-4 w-28 animate-pulse rounded bg-slate-200" /><div className="h-4 w-40 animate-pulse rounded bg-slate-100" /><div className="h-4 w-32 animate-pulse rounded bg-slate-100" /></div>)}</div>
   </div>;
   const selectedBulkStudents = students.filter((item) => selectedBulkStudentIds.has(item.id));
-  const selectedBulkPackage = activePackages.find((item) => item.id === bulkPackageId) ?? activePackages[0];
-  const bulkContentOptions = contentPackages.filter((item) => item.status === 'active' && (!selectedBulkPackage?.selectableContentPackageIds?.length || selectedBulkPackage.selectableContentPackageIds.includes(item.id)));
+  const selectedBulkPackage = activePackages.find((item) => item.id === bulkPackageId);
+  const bulkContentOptions = selectedBulkPackage ? contentPackages.filter((item) => item.status === 'active' && (!selectedBulkPackage.selectableContentPackageIds?.length || selectedBulkPackage.selectableContentPackageIds.includes(item.id))) : [];
   const selectedBulkContentPackages = bulkContentOptions.filter((item) => bulkContentPackageIds.includes(item.id));
   const bulkContentSelectionLimit = Math.max(1, selectedBulkPackage?.selectableContentPackageCount ?? 1);
   const bulkInstitutionGroups = [...new Set(selectedBulkStudents.map((item) => item.institutionId))].map((institutionId) => {
@@ -270,8 +270,11 @@ export const StudentView: React.FC<StudentViewProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E2E8F0] pb-4">
-        <div><h1 className="text-[20px] font-extrabold text-[#0F172A]">学生管理</h1><p className="mt-1 text-[12px] text-[#64748B]">{viewerRole === 'teacher' ? '查看你负责学生的服务状态和学习情况。' : '查看学生、导入名单并办理服务。'}</p></div>
-        {canManageServices && onAddStudents && <button type="button" onClick={() => openImportDialog()} className="rounded-xl bg-[#16B45B] px-4 py-2.5 text-[13px] font-bold text-white shadow-xs hover:bg-[#139B4E]">导入学生</button>}
+        <div><h1 className="text-[20px] font-extrabold text-[#0F172A]">学生管理</h1><p className="mt-1 text-[12px] text-[#64748B]">{viewerRole === 'teacher' ? '查看你负责学生的服务状态和学习情况。' : '导入学生，或勾选多名学生后批量办理服务。'}</p></div>
+        {canManageServices && <div className="flex items-center gap-2">
+          {onAddStudents && <button type="button" onClick={() => openImportDialog()} className="rounded-xl border border-[#86D6A5] bg-white px-4 py-2.5 text-[13px] font-bold text-[#0E7D3E] hover:bg-[#F0FBF4]">导入学生</button>}
+          <button type="button" disabled={selectedBulkStudentIds.size === 0} onClick={() => setBulkMode(true)} title={selectedBulkStudentIds.size === 0 ? '请先在下方勾选学生' : `为已选 ${selectedBulkStudentIds.size} 名学生办理服务`} className="rounded-xl bg-[#16B45B] px-4 py-2.5 text-[13px] font-bold text-white shadow-sm hover:bg-[#109E4E] disabled:cursor-not-allowed disabled:bg-[#CBD5E1] disabled:shadow-none">办理服务{selectedBulkStudentIds.size > 0 ? `（${selectedBulkStudentIds.size}）` : ''}</button>
+        </div>}
       </div>
 
       {/* Tab 1: Student Roster */}
@@ -304,26 +307,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
             </div>
           </div>
 
-          {canManageServices && selectedBulkStudentIds.size === 0 && (
-            <div role="note" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE5F5] bg-[#F6F9FF] px-4 py-3">
-              <div className="flex items-start gap-3">
-                <span aria-hidden="true" className="material-symbols-outlined mt-0.5 text-[20px] text-[#2563EB]">info</span>
-                <div>
-                  <p className="text-[12px] font-bold text-[#1E3A5F]">需要给多名学生办理服务？</p>
-                  <p className="mt-0.5 text-[11px] leading-5 text-[#64748B]">先勾选学生（可使用表头全选），再选择服务包和内容包，最后确认扣点。</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#475569]">
-                <span className="rounded-full bg-white px-3 py-1.5">1. 勾选学生</span>
-                <span aria-hidden="true" className="text-[#94A3B8]">→</span>
-                <span className="rounded-full bg-white px-3 py-1.5">2. 选择服务</span>
-                <span aria-hidden="true" className="text-[#94A3B8]">→</span>
-                <span className="rounded-full bg-white px-3 py-1.5">3. 确认扣点</span>
-              </div>
-            </div>
-          )}
-
-          {canManageServices && selectedBulkStudentIds.size > 0 && <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#A7E4BE] bg-[#F0FBF4] px-4 py-3 shadow-sm"><div><p className="text-[12px] font-bold text-[#0E7D3E]">第 1 步已完成 · 已选择 {selectedBulkStudentIds.size} 名学生</p><p className="mt-0.5 text-[11px] text-[#64748B]">下一步选择服务包和内容包，确认后按机构账户统一扣点。</p></div><div className="flex items-center gap-2"><button type="button" onClick={() => { setSelectedBulkStudentIds(new Set()); setBulkMode(false); }} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-[#64748B]">取消选择</button><button type="button" onClick={() => setBulkMode(true)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-[#109E4E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">办理服务</button></div></div>}
+          {canManageServices && selectedBulkStudentIds.size > 0 && <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#A7E4BE] bg-[#F0FBF4] px-4 py-3 shadow-sm"><p className="text-[12px] font-bold text-[#0E7D3E]">已选择 {selectedBulkStudentIds.size} 名学生</p><div className="flex items-center gap-2"><button type="button" onClick={() => { setSelectedBulkStudentIds(new Set()); setBulkMode(false); }} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-[#64748B] hover:bg-white/70">取消选择</button><button type="button" onClick={() => setBulkMode(true)} className="rounded-lg bg-[#16B45B] px-3 py-1.5 text-[12px] font-bold text-white shadow-sm hover:bg-[#109E4E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">办理服务</button></div></div>}
 
           <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden shadow-2xs">
             <table className="w-full text-left text-[13px]">
@@ -394,9 +378,10 @@ export const StudentView: React.FC<StudentViewProps> = ({
           </details>
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div><div className="mb-2 inline-flex rounded-full bg-[#E3F7EA] px-2.5 py-1 text-[11px] font-bold text-[#0E7D3E]">第 2 步</div><h3 className="text-[16px] font-bold text-[#0F172A]">请选择服务包</h3><p className="mt-1 text-[12px] text-[#64748B]">为当前勾选的 {selectedBulkStudentIds.size} 名学生统一配置。</p></div>
+              <div><h3 className="text-[16px] font-bold text-[#0F172A]">请选择服务包</h3><p className="mt-1 text-[12px] text-[#64748B]">为当前勾选的 {selectedBulkStudentIds.size} 名学生统一配置。</p></div>
               <label className="text-[12px] font-bold text-[#475569]">服务包
-                <select value={selectedBulkPackage?.id ?? ''} onChange={(event) => { setBulkPackageId(event.target.value); setBulkContentPackageIds([]); }} className="ml-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none">
+                <select value={selectedBulkPackage?.id ?? ''} onChange={(event) => { setBulkPackageId(event.target.value); setBulkContentPackageIds([]); }} className="ml-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] outline-none focus:border-[#16B45B]">
+                  <option value="">请选择服务包</option>
                   {activePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人</option>)}
                 </select>
               </label>
