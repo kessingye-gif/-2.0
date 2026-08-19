@@ -1143,7 +1143,7 @@ export const TeacherClassView: React.FC<TeacherClassViewProps> = ({ institutions
             <label className="mt-4 block text-[12px] font-bold text-[#475569]">选择服务包</label>
             {availablePackages.length > 0 ? (
               <select value={selectedPackage?.id ?? ''} onChange={(event) => setBulkPackageId(event.target.value)} className="mt-1 w-full rounded-xl border border-[#E2E8F0] px-3 py-2 text-[13px] font-bold outline-none">
-                {availablePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人 · {item.includedAiUsage.toLocaleString()} AI 用量</option>)}
+                {availablePackages.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.quotaCost} 点/人 · 每日 {item.includedAiUsage.toLocaleString()} AI 用量</option>)}
               </select>
             ) : (
               <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-700">当前机构暂无已授权且启用的服务包，请先在机构详情完成服务包配置。</div>

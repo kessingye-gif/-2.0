@@ -5,7 +5,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { initialAuthCodes, initialContentPackages, initialInstitutions, initialParentGuardianships, initialServicePackages, initialStudents, initialTeachers } from '../../mockData';
 import { MasterDataProvider } from '../../masterData/MasterDataContext';
-import { StudentServiceReminderCards, StudentView } from './StudentView';
+import { formatRecentMiniProgramUse, getDailyAiUsage, StudentServiceReminderCards, StudentView } from './StudentView';
 
 test('总部用户页面以服务和使用为主，教师与机构只作为归属条件', () => {
   const markup = renderToStaticMarkup(createElement(MasterDataProvider, null,
@@ -20,7 +20,7 @@ test('总部用户页面以服务和使用为主，教师与机构只作为归�
       serviceRights: [{
         id: 'RIGHT-1', studentId: 'STU-001', studentName: '王小明', institutionId: 'INS-2023001', institutionName: '浙江大学附属中学',
         teacherId: 'TCH-001', teacherName: '张敏老师', packageId: 'PKG-004', packageName: '全科高量包', authCodeId: 'AC-001',
-        includedAiUsage: 5000000, quotaConsumed: 350, createdAt: '2026-08-12', serviceExpireAt: '2027-08-12', status: 'pending',
+        includedAiUsage: 5000000, todayAiUsage: 600000, quotaConsumed: 350, createdAt: '2026-08-12', serviceExpireAt: '2027-08-12', status: 'pending',
       }],
       packages: initialServicePackages,
       contentPackages: initialContentPackages,
@@ -42,15 +42,36 @@ test('总部用户页面以服务和使用为主，教师与机构只作为归�
   assert.match(markup, /即将到期/);
   assert.doesNotMatch(markup, /先创建教师并导入学生，再为学生办理服务/);
   assert.doesNotMatch(markup, /学生配置/);
-  assert.match(markup, /更多筛选/);
-  assert.doesNotMatch(markup, /全部班级/);
+  assert.doesNotMatch(markup, /更多筛选|收起筛选/);
+  assert.match(markup, /按班级筛选/);
+  assert.match(markup, /按年级筛选/);
+  assert.match(markup, /全部班级/);
   assert.doesNotMatch(markup, /使用情况/);
   assert.match(markup, /服务包 \/ 内容包/);
-  assert.match(markup, /AI 用量/);
+  assert.match(markup, /最近使用/);
+  assert.match(markup, /今日使用|天前|7 天以上未使用|从未使用/);
   assert.match(markup, />归属</);
   assert.doesNotMatch(markup, /微信重新绑定审核/);
   assert.doesNotMatch(markup, />服务权益 \(/);
   assert.doesNotMatch(markup, />家长监护关系 \(/);
+});
+
+test('AI 用量按每日上限展示，不形成累计余额', () => {
+  assert.deepEqual(getDailyAiUsage({ includedAiUsage: 1_000_000, todayAiUsage: 880_000 }), {
+    limit: 1_000_000,
+    used: 880_000,
+    usedPercentage: 88,
+    isWarning: true,
+  });
+  assert.equal(getDailyAiUsage(undefined), null);
+});
+
+test('学生列表以最近小程序使用情况代替 AI 余额', () => {
+  const now = new Date('2026-08-19T12:00:00');
+  assert.equal(formatRecentMiniProgramUse('2026-08-19 09:00', now).label, '今日使用');
+  assert.equal(formatRecentMiniProgramUse('2026-08-16 09:00', now).label, '3 天前');
+  assert.equal(formatRecentMiniProgramUse('2026-08-01 09:00', now).label, '7 天以上未使用');
+  assert.equal(formatRecentMiniProgramUse(undefined, now).label, '从未使用');
 });
 
 test('批量开通已合并为用户服务列表操作，不再作为独立页签', () => {
@@ -76,9 +97,9 @@ test('批量开通已合并为用户服务列表操作，不再作为独立页�
 test('学生导入直接打开上传弹窗，教师为可选归属', () => {
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
   assert.match(source, /onClick=\{\(\) => openImportDialog\(\)\}/);
-  assert.match(source, /负责教师（选填）/);
-  assert.match(source, /暂不分配，由机构管理员管理/);
-  assert.match(source, /allowUnassigned: true/);
+  assert.match(source, /负责教师姓名（选填）/);
+  assert.match(source, /留空则由机构管理员暂管/);
+  assert.match(source, /由机构管理员暂管/);
   assert.doesNotMatch(source, /teacher-picker-title/);
   assert.doesNotMatch(source, /新增教师/);
 });
@@ -104,7 +125,7 @@ test('办理服务属于学生页弹窗，不跳转到商品页', () => {
 test('学生详情集中承载服务权益、双码和家长关系', () => {
   const source = readFileSync(new URL('./StudentView.tsx', import.meta.url), 'utf8');
   assert.match(source, /基本资料/);
-  assert.match(source, /每笔服务包、AI 用量、双码和有效期分别保留/);
+  assert.match(source, /每笔服务包、每日 AI 用量上限、双码和有效期分别保留/);
   assert.match(source, /家长关系/);
   assert.doesNotMatch(source, /flex justify-end bg-black\/30/);
   assert.doesNotMatch(source, /<aside className="h-full/);

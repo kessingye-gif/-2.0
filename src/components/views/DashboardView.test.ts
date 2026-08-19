@@ -30,12 +30,13 @@ test('平台运营首页将用户服务与学生学习合并为用户与使用',
   assert.match(markup, /href="\/platform\/institutions"/);
 });
 
-test('机构与教师工作台先展示待办和真实范围学习摘要', () => {
+test('机构工作台聚焦服务与人员配置，学习分析进入独立学生学情页', () => {
   const institutionId = initialInstitutions[0].id;
   const institutionStudents = initialStudents.filter((student) => student.institutionId === institutionId);
   const institutionSnapshot = deriveInstitutionDashboardSnapshot({ institutionId, institutions: initialInstitutions, teachers: initialTeachers, students: initialStudents, auditLogs: initialAuditLogs });
   const institutionMarkup = renderToStaticMarkup(createElement(MemoryRouter, {}, createElement(DashboardView, { snapshot: institutionSnapshot, students: institutionStudents })));
-  ['本机构运营工作台', '现在需要处理', '核心情况', '小程序学习摘要', '学科与知识点情况'].forEach((text) => assert.match(institutionMarkup, new RegExp(text)));
+  ['机构运营首页', '现在需要处理', '小程序学习闭环', '已导入学生', '已开通服务', '已开始学习', '待教师跟进', '小程序使用摘要', '待教师跟进学生', '查看学生学情'].forEach((text) => assert.match(institutionMarkup, new RegExp(text)));
+  ['学科与知识点情况', '薄弱知识点'].forEach((text) => assert.doesNotMatch(institutionMarkup, new RegExp(text)));
   assert.doesNotMatch(institutionMarkup, /520,100|89,450|高频易错考点 Top 5/);
 
   const teacher = initialTeachers[0];
@@ -60,5 +61,7 @@ test('机构和教师共用学生学情，机构额外提供教师筛选', () =>
   const teacherMarkup = renderToStaticMarkup(createElement(StudentLearningView, { students: students.filter((student) => student.teacherId === teachers[0]?.id), teachers, viewerRole: 'teacher' }));
   assert.match(teacherMarkup, /学生学情/);
   assert.doesNotMatch(teacherMarkup, /按负责教师筛选|全部教师/);
+  assert.match(teacherMarkup, /按负责班级筛选/);
+  assert.match(teacherMarkup, /全部班级/);
   assert.match(teacherMarkup, /数据口径：小程序智能诊断/);
 });

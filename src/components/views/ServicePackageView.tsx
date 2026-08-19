@@ -177,7 +177,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <span className="text-[#64748B]">包含 AI 用量:</span>
+                    <span className="text-[#64748B]">每日 AI 用量上限:</span>
                     <span className="font-bold text-[#16B45B] font-mono text-[14px]">
                       {(pkg.includedAiUsage / 10000).toLocaleString()}万
                     </span>
@@ -298,7 +298,7 @@ export const ServicePackageView: React.FC<ServicePackageViewProps> = ({
 
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">
-                    包含 AI 用量
+                    每日 AI 用量上限
                   </label>
                   <input
                     type="number"

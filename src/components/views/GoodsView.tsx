@@ -5,11 +5,13 @@ import {
   OrderLedgerRecord,
   Institution,
   PackageType,
+  ContentPackageItem,
 } from '../../types';
 
 interface GoodsViewProps {
   mode: 'catalog' | 'fulfillment' | 'finance';
   packages: ServicePackage[];
+  contentPackages: ContentPackageItem[];
   authCodes: AuthCode[];
   institutions: Institution[];
   onAddPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
@@ -33,6 +35,7 @@ const formatUsage = (value: number) => value.toLocaleString('zh-CN');
 export const GoodsView: React.FC<GoodsViewProps> = ({
   mode,
   packages,
+  contentPackages,
   authCodes,
   institutions,
   onAddPackage,
@@ -43,6 +46,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   creditInstitutionId,
   initialCatalogTab,
 }) => {
+  const activeContentPackages = contentPackages.filter((item) => item.status === 'active');
   const [activeTab, setActiveTab] = useState<'packages' | 'authCodes' | 'ledger'>(
     creditInstitutionId ? 'ledger' : mode === 'catalog' ? (initialCatalogTab ?? 'packages') : mode === 'fulfillment' ? 'authCodes' : 'ledger',
   );
@@ -69,7 +73,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
     includedAiUsage: 200000,
     durationDays: 365,
     description: '',
-    selectableContentPackageIds: '',
     selectableContentPackageCount: 1,
     status: 'active' as 'active' | 'inactive',
   });
@@ -94,7 +97,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       includedAiUsage: 200000,
       durationDays: 365,
       description: '',
-      selectableContentPackageIds: '',
       selectableContentPackageCount: 1,
       status: 'active',
     });
@@ -102,6 +104,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
   };
 
   const handleOpenEditPkg = (pkg: ServicePackage) => {
+    const isAllPackage = pkg.type.startsWith('all');
     setEditingPkg(pkg);
     setPkgForm({
       name: pkg.name,
@@ -111,8 +114,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       includedAiUsage: pkg.includedAiUsage,
       durationDays: pkg.durationDays || 365,
       description: pkg.description,
-      selectableContentPackageIds: (pkg.selectableContentPackageIds || []).join('、'),
-      selectableContentPackageCount: pkg.selectableContentPackageCount || 1,
+      selectableContentPackageCount: isAllPackage ? activeContentPackages.length : (pkg.selectableContentPackageCount || 1),
       status: pkg.status,
     });
     setIsPkgModalOpen(true);
@@ -126,6 +128,10 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
       all_low: '全科低量包',
       all_high: '全科高量包',
     };
+    const isAllPackage = pkgForm.type.startsWith('all');
+    const selectableContentPackageCount = isAllPackage
+      ? activeContentPackages.length
+      : Math.min(activeContentPackages.length, Number(pkgForm.selectableContentPackageCount));
 
     if (editingPkg) {
       onUpdatePackage(editingPkg.id, {
@@ -136,8 +142,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
-        selectableContentPackageIds: pkgForm.selectableContentPackageIds.split(/[、,，]/).map((item) => item.trim()).filter(Boolean),
-        selectableContentPackageCount: Number(pkgForm.selectableContentPackageCount),
+        selectableContentPackageIds: [],
+        selectableContentPackageCount,
         status: pkgForm.status,
       });
     } else {
@@ -150,8 +156,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
         includedAiUsage: Number(pkgForm.includedAiUsage),
         durationDays: Number(pkgForm.durationDays),
         description: pkgForm.description,
-        selectableContentPackageIds: pkgForm.selectableContentPackageIds.split(/[、,，]/).map((item) => item.trim()).filter(Boolean),
-        selectableContentPackageCount: Number(pkgForm.selectableContentPackageCount),
+        selectableContentPackageIds: [],
+        selectableContentPackageCount,
         status: pkgForm.status,
         subjectRequirement: pkgForm.type.startsWith('single') ? 'single' : 'all',
       });
@@ -262,8 +268,8 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <strong className="text-[#0F172A] text-[14px] font-mono">{pkg.quotaCost} 点</strong>
                   </div>
                   <div>
-                    <span className="text-[#64748B] block">包含 AI 用量</span>
-                    <strong className="text-[#16B45B] text-[14px] font-mono">{(pkg.includedAiUsage / 10000).toLocaleString()}万 AI 用量</strong>
+                    <span className="text-[#64748B] block">每日 AI 用量上限</span>
+                    <strong className="text-[#16B45B] text-[14px] font-mono">{(pkg.includedAiUsage / 10000).toLocaleString()}万 / 日</strong>
                   </div>
                   <div>
                     <span className="text-[#64748B] block">服务有效期</span>
@@ -273,10 +279,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     <span className="text-[#64748B] block">可选内容包数量</span>
                     <strong className="text-[#0F172A] text-[14px] font-mono">{pkg.selectableContentPackageCount || 1} 个</strong>
                   </div>
-                </div>
-                <div className="text-[12px] text-[#64748B] leading-5">
-                  <span className="font-bold text-[#475569]">可选内容包范围：</span>
-                  {(pkg.selectableContentPackageIds || []).length ? pkg.selectableContentPackageIds!.join('、') : '暂未配置'}
                 </div>
               </div>
             ))}
@@ -546,7 +548,9 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">可选内容包数量</label>
-                  <input type="number" min="1" required value={pkgForm.selectableContentPackageCount} onChange={(e) => setPkgForm({ ...pkgForm, selectableContentPackageCount: Number(e.target.value) })} className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono" />
+                  <input type="number" min="1" max={activeContentPackages.length} required disabled={pkgForm.type.startsWith('all')} value={pkgForm.type.startsWith('all') ? activeContentPackages.length : pkgForm.selectableContentPackageCount} onChange={(e) => setPkgForm({ ...pkgForm, selectableContentPackageCount: Math.min(activeContentPackages.length, Number(e.target.value)) })} className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono disabled:bg-[#F8FAFC] disabled:text-[#0E7D3E]" />
+                  {pkgForm.type.startsWith('all') && <p className="mt-1 text-[10px] text-[#64748B]">自动等于当前 {activeContentPackages.length} 个启用内容包</p>}
+                  {!pkgForm.type.startsWith('all') && <p className="mt-1 text-[10px] text-[#64748B]">最多可选 {activeContentPackages.length} 个内容包</p>}
                 </div>
                 <div>
                   <label className="block text-[12px] font-bold text-[#475569] mb-1">消耗点数</label>
@@ -562,7 +566,7 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-bold text-[#475569] mb-1">包含 AI 用量</label>
+                  <label className="block text-[12px] font-bold text-[#475569] mb-1">每日 AI 用量上限</label>
                   <input
                     type="number"
                     required
@@ -580,18 +584,6 @@ export const GoodsView: React.FC<GoodsViewProps> = ({
                     className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none font-mono"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-bold text-[#475569] mb-1">可选内容包范围</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={pkgForm.selectableContentPackageIds}
-                  onChange={(e) => setPkgForm({ ...pkgForm, selectableContentPackageIds: e.target.value })}
-                  placeholder="填写可选内容包名称，多个用、分隔"
-                  className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-[13px] outline-none"
-                />
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-[#E2E8F0]">

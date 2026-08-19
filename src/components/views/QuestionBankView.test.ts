@@ -10,6 +10,13 @@ test('只有超级管理员能看到新增内容包按钮，精选题库保留�
   assert.match(source, /<span>录入试题<\/span>/);
 });
 
+test('内容包顶部数量只统计正常可使用的内容包', () => {
+  const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
+  assert.match(source, /initialContentPackages\.filter\(\(pkg\) => pkg\.status === 'active'\)\.length/);
+  assert.match(source, /内容包 \(\{activeContentPackageCount\}\)/);
+  assert.match(source, /onActivePackageCountChange=\{setActiveContentPackageCount\}/);
+});
+
 test('题库导入弹窗不向正式后台展示内部拆分原理', () => {
   const source = readFileSync(new URL('./QuestionBankView.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /1行数据拆分为双表原理展示/);

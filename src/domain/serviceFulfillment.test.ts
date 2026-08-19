@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ContentPackageItem, Institution, ServicePackage, StudentItem } from '../types';
+import { initialContentPackages, initialServicePackages } from '../mockData';
 import { activateStudentService, createBulkServiceFulfillments, createServiceFulfillment, settleInstitutionServiceFulfillments } from './serviceFulfillment';
+
+test('全科服务包默认覆盖全部启用内容包', () => {
+  const activeContentPackageIds = initialContentPackages.filter((item) => item.status === 'active').map((item) => item.id);
+  const allSubjectPackages = initialServicePackages.filter((item) => item.subjectRequirement === 'all');
+  assert.ok(allSubjectPackages.length > 0);
+  allSubjectPackages.forEach((item) => {
+    assert.equal(item.selectableContentPackageCount, activeContentPackageIds.length);
+    assert.equal(item.selectableContentPackageIds, undefined);
+  });
+});
 
 const student: StudentItem = {
   id: 'STU-001', name: '王小明', nickname: '小明', account: 'wangxm', grade: '初一', school: '浙大附中', textbook: '人教版',
@@ -116,13 +127,15 @@ test('已有待激活同款服务时拒绝重复办理', () => {
   assert.throws(() => createServiceFulfillment({ student, servicePackage, existingRights: [pending], now: new Date(), nonce: 'SECOND' }), /已有待激活/);
 });
 
-test('续费从当前有效期顺延', () => {
-  const activeRight = { ...createServiceFulfillment({ student, servicePackage, now: new Date('2026-01-01'), nonce: 'ACTIVE' }).right, status: 'active' as const, serviceExpireAt: '2027-01-01' };
+test('续费从当前有效期顺延，但每日 AI 上限不累计', () => {
+  const activeRight = { ...createServiceFulfillment({ student, servicePackage, now: new Date('2026-01-01'), nonce: 'ACTIVE' }).right, status: 'active' as const, serviceExpireAt: '2027-01-01', todayAiUsage: 120_000 };
   const renewal = createServiceFulfillment({ student, servicePackage, existingRights: [activeRight], now: new Date('2026-08-17'), nonce: 'RENEW' });
   assert.equal(renewal.right.fulfillmentKind, 'renewal');
   assert.equal(renewal.right.serviceExpireAt, '2028-01-01');
   assert.equal(renewal.right.id, activeRight.id);
   assert.equal(renewal.right.status, 'active');
+  assert.equal(renewal.right.includedAiUsage, 1_000_000);
+  assert.equal(renewal.right.todayAiUsage, 120_000);
   assert.equal(renewal.authCode, undefined);
   assert.equal(renewal.guardianBindingCode, undefined);
 });

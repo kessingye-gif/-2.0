@@ -58,6 +58,50 @@ const ScopedDashboard: React.FC<{ snapshot: PlatformDashboardSnapshot; students:
     ? ['students', 'learningStudents', 'accuracy', 'attentionStudents']
     : ['teachers', 'students', 'activeStudents', 'pendingStudents'];
   const coreMetrics = coreMetricIds.map((id) => allMetrics.find((metric) => metric.id === id)).filter((metric): metric is NonNullable<typeof metric> => Boolean(metric));
+  if (!isTeacher) {
+    const activeStudents = students.filter((student) => student.serviceStatus === 'active').length;
+    const pendingStudents = students.filter((student) => student.serviceStatus === 'none').length;
+    const unassignedStudents = students.filter((student) => !student.teacherId && !student.teacherAssignments?.length).length;
+    const learningStudents = students.filter((student) => student.totalQuestions > 0 || student.totalStudyHours > 0);
+    const activeWithoutLearning = students.filter((student) => student.serviceStatus === 'active' && student.totalQuestions === 0 && student.totalStudyHours === 0).length;
+    const attentionStudents = students.filter((student) => student.totalQuestions > 0 && (student.accuracyRate < 75 || student.unreviewedErrorCount >= 10)).sort((a, b) => b.unreviewedErrorCount - a.unreviewedErrorCount);
+    const totalQuestions = students.reduce((sum, student) => sum + student.totalQuestions, 0);
+    const totalErrors = students.reduce((sum, student) => sum + student.errorCount, 0);
+    const unreviewedErrors = students.reduce((sum, student) => sum + student.unreviewedErrorCount, 0);
+    const averageAccuracy = learningStudents.length ? Math.round(learningStudents.reduce((sum, student) => sum + student.accuracyRate, 0) / learningStudents.length * 10) / 10 : 0;
+    const reviewRate = totalErrors ? Math.round((totalErrors - unreviewedErrors) / totalErrors * 100) : 0;
+    const teacherMetric = allMetrics.find((metric) => metric.id === 'teachers');
+    const operationalItems = [
+      ...snapshot.workItems,
+      ...(unassignedStudents ? [{ id: 'unassigned-students', title: '学生尚未分配教师', description: '分配主负责教师后，教师才能看到对应学生', count: unassignedStudents, targetPath: '/platform/students', tone: 'warning' as const }] : []),
+      ...(activeWithoutLearning ? [{ id: 'not-started-learning', title: '服务已开通但尚未开始学习', description: '提醒学生进入小程序完成首次练习', count: activeWithoutLearning, targetPath: '/platform/students', tone: 'warning' as const }] : []),
+    ];
+    const journeyMetrics = [
+      { label: '已导入学生', value: students.length, suffix: '人', description: '已进入机构学生名单', targetPath: '/platform/students', tone: 'default' },
+      { label: '已开通服务', value: activeStudents, suffix: '人', description: pendingStudents ? `${pendingStudents} 人仍待办理` : '全部学生已完成办理', targetPath: '/platform/students?service=active', tone: 'positive' },
+      { label: '已开始学习', value: learningStudents.length, suffix: '人', description: activeWithoutLearning ? `${activeWithoutLearning} 人开通后未学习` : '服务中学生均已产生记录', targetPath: '/platform/learning', tone: 'positive' },
+      { label: '待教师跟进', value: attentionStudents.length, suffix: '人', description: '正确率偏低或待复习较多', targetPath: '/platform/learning', tone: attentionStudents.length ? 'warning' : 'positive' },
+    ];
+
+    return <div className="mx-auto max-w-[1480px] space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><h2 className="text-[20px] font-extrabold text-[#0F172A]">机构运营首页</h2><p className="mt-1 text-[12px] text-[#64748B]">确认学生是否顺利使用小程序，并推动教师及时跟进学习问题。</p></div>
+        <div className="flex items-center gap-4"><span className="text-[11px] text-[#94A3B8]">数据更新：{snapshot.updatedAt}</span><Link to="/platform/learning" className="rounded-xl border border-[#B8DEC7] bg-white px-4 py-2 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#F0FBF4]">查看学生学情</Link></div>
+      </div>
+
+      <section className={`overflow-hidden rounded-2xl border bg-white ${operationalItems.length ? 'border-amber-200' : 'border-[#CDE8D8]'}`}>
+        <div className="flex items-center justify-between border-b border-[#EEF2F0] px-5 py-4"><div><h3 className="text-[15px] font-bold text-[#0F172A]">现在需要处理</h3><p className="mt-1 text-[12px] text-[#64748B]">优先处理会影响学生使用或教师查看权限的事项。</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${operationalItems.length ? 'bg-amber-50 text-amber-700' : 'bg-[#E8F7EE] text-[#0E7D3E]'}`}>{operationalItems.length ? `${operationalItems.length} 类待办` : '暂无待办'}</span></div>
+        <div className="divide-y divide-[#EEF2F0]">{operationalItems.length ? operationalItems.map((item) => <Link key={item.id} to={item.targetPath} className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFDFB]"><span className={`h-2.5 w-2.5 rounded-full ${item.tone === 'danger' ? 'bg-red-600' : 'bg-amber-500'}`} /><span className="min-w-0 flex-1"><strong className="block text-[13px]">{item.title}</strong><span className="mt-1 block text-[12px] text-[#64748B]">{item.description}</span></span><strong className="tabular-nums">{item.count} 项</strong><span aria-hidden="true" className="text-[#0E7D3E]">→</span></Link>) : <p className="px-5 py-6 text-[13px] text-[#0E7D3E]">当前服务与人员配置正常，无需立即处理。</p>}</div>
+      </section>
+
+      <section><div className="mb-3"><h3 className="text-[15px] font-bold text-[#0F172A]">小程序学习闭环</h3><p className="mt-1 text-[12px] text-[#64748B]">从学生进入机构，到真正开始学习并获得教师跟进。</p></div><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{journeyMetrics.map((metric, index) => <Link key={metric.label} to={metric.targetPath} className={`relative rounded-2xl border bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#B8DEC7] ${metric.tone === 'warning' ? 'border-amber-200' : 'border-[#E2E8F0]'}`}><span className="text-[11px] font-semibold text-[#64748B]">{index + 1}. {metric.label}</span><strong className={`mt-2 block text-[25px] tabular-nums ${metric.tone === 'warning' ? 'text-amber-600' : metric.tone === 'positive' ? 'text-[#0E7D3E]' : 'text-[#0F172A]'}`}>{metric.value} <small className="text-[12px]">{metric.suffix}</small></strong><p className="mt-2 text-[10px] text-[#94A3B8]">{metric.description}</p>{index < journeyMetrics.length - 1 && <span aria-hidden="true" className="absolute -right-2.5 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-[#E2E8F0] bg-white text-[10px] text-[#94A3B8] xl:flex">›</span>}</Link>)}</div></section>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="text-[15px] font-bold text-[#0F172A]">小程序使用摘要</h3><p className="mt-1 text-[12px] text-[#64748B]">只看是否用起来和整体学习结果。</p></div><span className="text-[10px] text-[#94A3B8]">累计数据</span></div>{learningStudents.length ? <div className="mt-5 grid grid-cols-2 gap-3">{[['累计练习', `${number(totalQuestions)} 题`], ['平均正确率', `${averageAccuracy}%`], ['待复习错题', `${number(unreviewedErrors)} 题`], ['复习完成率', `${reviewRate}%`]].map(([label, value], index) => <div key={label} className={`rounded-xl p-4 ${index === 1 ? 'bg-[#F0FBF4]' : index === 2 ? 'bg-[#FFF8E8]' : 'bg-[#F8FAFC]'}`}><span className="text-[11px] text-[#64748B]">{label}</span><strong className={`mt-1 block text-[21px] tabular-nums ${index === 1 ? 'text-[#0E7D3E]' : index === 2 ? 'text-amber-600' : ''}`}>{value}</strong></div>)}</div> : <div className="mt-5 rounded-xl bg-[#F8FAFC] px-5 py-10 text-center"><strong className="text-[13px] text-[#334155]">尚未产生小程序学习数据</strong><p className="mt-2 text-[11px] text-[#64748B]">学生完成首次练习后，这里会自动更新。</p></div>}<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#EEF2F0] pt-4"><p className="text-[11px] text-[#64748B]">{teacherMetric?.value ?? 0} 名教师可在学生学情中查看负责学生</p><Link to="/platform/students" className="text-[11px] font-bold text-[#0E7D3E]">管理学生与服务 →</Link></div></section>
+        <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white"><div className="flex items-start justify-between gap-4 border-b border-[#EEF2F0] px-5 py-4"><div><h3 className="text-[15px] font-bold text-[#0F172A]">待教师跟进学生</h3><p className="mt-1 text-[12px] text-[#64748B]">优先显示正确率偏低或待复习错题较多的学生。</p></div><Link to="/platform/learning" className="text-[11px] font-bold text-[#0E7D3E]">查看全部学情 →</Link></div>{attentionStudents.length ? <div className="divide-y divide-[#EEF2F0]">{attentionStudents.slice(0, 5).map((student) => <Link key={student.id} to="/platform/learning" className="grid grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-4 hover:bg-[#FAFDFB]"><div className="min-w-0"><strong className="block truncate text-[13px]">{student.name}</strong><p className="mt-1 truncate text-[11px] text-[#64748B]">{student.teacherName || '机构管理员暂管'} · {student.className || '未设置班级'}</p></div><span className={`text-[12px] font-bold ${student.accuracyRate < 75 ? 'text-amber-600' : 'text-[#0E7D3E]'}`}>正确率 {student.accuracyRate}%</span><span className="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700">待复习 {student.unreviewedErrorCount} 题</span></Link>)}</div> : <div className="px-5 py-12 text-center"><strong className="text-[13px] text-[#0E7D3E]">当前没有需要优先跟进的学生</strong><p className="mt-2 text-[11px] text-[#64748B]">学生产生新的诊断数据后会自动更新。</p></div>}</section>
+      </div>
+    </div>;
+  }
   const learningStudents = students.filter((student) => student.totalQuestions > 0 || student.totalStudyHours > 0);
   const totalQuestions = students.reduce((sum, student) => sum + student.totalQuestions, 0);
   const totalErrors = students.reduce((sum, student) => sum + student.errorCount, 0);
@@ -111,9 +155,10 @@ export const StudentLearningView: React.FC<{
   const isInstitution = viewerRole === 'institution_admin';
   const isTeacher = viewerRole === 'teacher';
   const [teacherId, setTeacherId] = useState('all');
+  const [className, setClassName] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const teacherFilteredStudents = teacherId === 'all' ? students : students.filter((student) => student.teacherId === teacherId || student.teacherAssignments?.some((assignment) => assignment.teacherId === teacherId));
-  const visibleStudents = teacherFilteredStudents.flatMap((student) => {
+  const scopedStudents = teacherFilteredStudents.flatMap((student) => {
     if (!isTeacher) return [student];
     const scope = getTeacherStudentSubjectScope(student, viewerTeacherId);
     if (!scope) return [];
@@ -132,6 +177,11 @@ export const StudentLearningView: React.FC<{
       unreviewedErrorCount: scopedLearning.reduce((sum, item) => sum + item.unreviewedErrorCount, 0),
     }];
   });
+  const classOptions = Array.from(new Set<string>(teacherFilteredStudents
+    .filter((student) => !isTeacher || Boolean(getTeacherStudentSubjectScope(student, viewerTeacherId)))
+    .map((student) => student.className)
+    .filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  const visibleStudents = className === 'all' ? scopedStudents : scopedStudents.filter((student) => student.className === className);
   const currentTeacher = teachers.find((teacher) => teacher.id === viewerTeacherId);
   const learningStudents = visibleStudents.filter((student) => student.totalQuestions > 0 || student.totalStudyHours > 0);
   const totalQuestions = visibleStudents.reduce((sum, student) => sum + student.totalQuestions, 0);
@@ -147,7 +197,7 @@ export const StudentLearningView: React.FC<{
   return <div className="mx-auto max-w-[1480px] space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div><div className="flex items-center gap-2"><h2 className="text-[20px] font-extrabold text-[#0F172A]">学生学情</h2><span className="rounded-full bg-[#FFF7E0] px-2.5 py-1 text-[10px] font-bold text-[#B45309]">示例数据</span>{isTeacher && <span className="rounded-full bg-[#E8F7EE] px-2.5 py-1 text-[10px] font-bold text-[#0E7D3E]">{currentTeacher?.subject ? `${currentTeacher.subject}教师` : '教师视角'}</span>}</div><p className="mt-1 text-[12px] text-[#64748B]">{isInstitution ? '查看本机构全部学生的学习表现，并按负责教师快速筛选。' : '主负责学生展示全部已开通学科；任课学生只展示分配给我的学科。'}</p></div>
-      <div className="flex items-end gap-3">{isInstitution && <label className="block"><span className="mb-1.5 block text-[11px] font-bold text-[#64748B]">负责教师</span><select aria-label="按负责教师筛选" value={teacherId} onChange={(event) => setTeacherId(event.target.value)} className={`${controlClassName} min-w-[180px]`}><option value="all">全部教师</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}<div className="pb-2 text-right"><p className="text-[10px] font-medium text-[#0E7D3E]">数据口径：小程序智能诊断</p><p className="mt-1 text-[10px] text-[#94A3B8]">学生完成练习后自动更新</p></div></div>
+      <div className="flex flex-wrap items-end justify-end gap-3">{isInstitution && <label className="block"><span className="mb-1.5 block text-[11px] font-bold text-[#64748B]">负责教师</span><select aria-label="按负责教师筛选" value={teacherId} onChange={(event) => { setTeacherId(event.target.value); setClassName('all'); }} className={`${controlClassName} min-w-[180px]`}><option value="all">全部教师</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.name}</option>)}</select></label>}{isTeacher && <label className="block"><span className="mb-1.5 block text-[11px] font-bold text-[#64748B]">负责班级</span><select aria-label="按负责班级筛选" value={className} onChange={(event) => setClassName(event.target.value)} className={`${controlClassName} min-w-[180px]`}><option value="all">全部班级</option>{classOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}<div className="pb-2 text-right"><p className="text-[10px] font-medium text-[#0E7D3E]">数据口径：小程序智能诊断</p><p className="mt-1 text-[10px] text-[#94A3B8]">学生完成练习后自动更新</p></div></div>
     </div>
 
     <section><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[

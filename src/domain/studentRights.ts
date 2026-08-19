@@ -33,6 +33,7 @@ export function deriveLegacyServiceRights(authCodes: AuthCode[], packages: Servi
       packageName: authCode.packageName,
       authCodeId: authCode.id,
       includedAiUsage: servicePackage?.includedAiUsage ?? 0,
+      todayAiUsage: 0,
       quotaConsumed: authCode.quotaConsumed,
       createdAt: authCode.createdAt,
       serviceExpireAt,

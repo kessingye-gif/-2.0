@@ -54,6 +54,26 @@ interface StudentViewProps {
 
 const hiddenRebindRequests: WeChatRebindRequest[] = [];
 
+export const getDailyAiUsage = (right?: Pick<StudentServiceRight, 'includedAiUsage' | 'todayAiUsage'>) => {
+  if (!right || right.includedAiUsage <= 0) return null;
+  const limit = right.includedAiUsage;
+  const used = Math.max(0, Math.min(limit, right.todayAiUsage ?? 0));
+  const usedPercentage = Math.round((used / limit) * 100);
+  return { limit, used, usedPercentage, isWarning: usedPercentage >= 85 };
+};
+
+export const formatRecentMiniProgramUse = (value?: string, now = new Date()) => {
+  if (!value) return { label: '从未使用', className: 'text-[#94A3B8]' };
+  const usedAt = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(usedAt.getTime())) return { label: '从未使用', className: 'text-[#94A3B8]' };
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const usedDay = new Date(usedAt.getFullYear(), usedAt.getMonth(), usedAt.getDate()).getTime();
+  const days = Math.max(0, Math.floor((today - usedDay) / 86_400_000));
+  if (days === 0) return { label: '今日使用', className: 'text-[#0E7D3E]' };
+  if (days < 7) return { label: `${days} 天前`, className: days >= 3 ? 'text-[#B45309]' : 'text-[#475569]' };
+  return { label: '7 天以上未使用', className: 'text-[#DC2626]' };
+};
+
 export const StudentServiceReminderCards: React.FC<{ reminders: StudentServiceReminder[]; onDismiss: (id: string) => void }> = ({ reminders, onDismiss }) => {
   if (reminders.length === 0) return null;
   return <section className="rounded-2xl border border-amber-200 bg-white p-4">
@@ -97,7 +117,6 @@ export const StudentView: React.FC<StudentViewProps> = ({
   const [teacherFilter, setTeacherFilter] = useState(initialTeacherFilter);
   const [gradeFilter, setGradeFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [serviceStudent, setServiceStudent] = useState<StudentItem | null>(null);
   const [detailStudent, setDetailStudent] = useState<StudentItem | null>(null);
   const [dismissedReminderIds, setDismissedReminderIds] = useState<Set<string>>(() => new Set());
@@ -300,8 +319,8 @@ export const StudentView: React.FC<StudentViewProps> = ({
               {viewerRole === 'super_admin' && <select aria-label="按机构筛选" value={institutionFilter} onChange={(e) => { setInstitutionFilter(e.target.value); setTeacherFilter(''); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部机构</option>{filterOptions.institutions.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
               {viewerRole !== 'teacher' && <select aria-label="按教师筛选" value={teacherFilter} onChange={(e) => { setTeacherFilter(e.target.value); setClassFilter(''); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部老师</option>{filterOptions.teachers.map((value) => <option key={value} value={value}>{value}</option>)}</select>}
               <select aria-label="按服务状态筛选" value={serviceStatusFilter} onChange={(e) => setServiceStatusFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部状态 · {studentStats.total}</option><option value="active">服务中 · {studentStats.serviceActive}</option><option value="none">待办理 · {studentStats.needsService}</option><option value="expiring">即将到期 · {studentStats.expiringSoon}</option></select>
-              <button type="button" onClick={() => setShowAdvancedFilters((value) => !value)} className="rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]">{showAdvancedFilters ? '收起筛选' : '更多筛选'}</button>
-              {showAdvancedFilters && <><select aria-label="按班级筛选" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部班级</option>{filterOptions.classes.map((value) => <option key={value} value={value}>{value}</option>)}</select><select aria-label="按年级筛选" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select></>}
+              <select aria-label="按班级筛选" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setGradeFilter(''); }} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部班级</option>{filterOptions.classes.map((value) => <option key={value} value={value}>{value}</option>)}</select>
+              <select aria-label="按年级筛选" value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)} className="rounded-xl border border-[#E2E8F0] px-3 py-1.5 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16B45B]"><option value="">全部年级</option>{gradeOptions.map((value) => <option key={value} value={value}>{value}</option>)}</select>
               {hasRosterFilters && <button onClick={() => { setSearchTerm(''); setServiceStatusFilter(''); setInstitutionFilter(''); setTeacherFilter(''); setClassFilter(''); setGradeFilter(''); }} className="text-[12px] font-bold text-[#16B45B]">清除</button>}
               </div>
             </div>
@@ -319,7 +338,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   <th className="py-3 px-4 text-center">服务状态</th>
                   <th className="py-3 px-4 text-center">有效期至</th>
                   <th className="py-3 px-4">服务包 / 内容包</th>
-                  <th className="py-3 px-4">AI 用量</th>
+                  <th className="py-3 px-4 text-center">最近使用</th>
                   <th className="py-3 px-4 text-right">操作</th>
                 </tr>
               </thead>
@@ -328,6 +347,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   const latestRight = mergedServiceRights.find((item) => item.studentId === stu.id);
                   const serviceStatus = latestRight?.status ?? (stu.serviceStatus === 'none' ? 'pending' : stu.serviceStatus);
                   const serviceStatusLabel = { pending: latestRight ? '待激活' : '待办理', active: '服务中', expired: '已到期', revoked: '已撤销' }[serviceStatus];
+                  const recentUse = formatRecentMiniProgramUse(stu.lastMiniProgramActiveAt);
                   return (
                   <tr key={stu.id} className="hover:bg-[#F8FAFC]">
                     {canManageServices && <td className="py-3 px-4"><input type="checkbox" aria-label={`选择${stu.name}用于批量办理`} checked={selectedBulkStudentIds.has(stu.id)} onChange={(event) => setSelectedBulkStudentIds((current) => { const next = new Set(current); event.target.checked ? next.add(stu.id) : next.delete(stu.id); return next; })} /></td>}
@@ -346,7 +366,9 @@ export const StudentView: React.FC<StudentViewProps> = ({
                       {latestRight?.serviceExpireAt || stu.serviceExpireAt || (serviceStatus === 'pending' ? '激活后计算' : '待定')}
                     </td>
                     <td className="py-3 px-4"><div className="font-bold text-[#0E7D3E]">{latestRight?.packageName || '未开通'}</div><div className="mt-1 text-[11px] text-[#64748B]">{latestRight?.contentPackageNames?.length ? latestRight.contentPackageNames.join(' / ') : '未选择内容包'}</div></td>
-                    <td className="py-3 px-4 font-mono text-[12px]">{latestRight ? latestRight.includedAiUsage.toLocaleString() : '-'}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span title={stu.lastMiniProgramActiveAt || '尚未进入小程序'} className={`text-[12px] font-bold ${recentUse.className}`}>{recentUse.label}</span>
+                    </td>
                     <td className="py-3 px-4 text-right"><div className="flex justify-end gap-3"><button onClick={() => setDetailStudent(stu)} className="text-[12px] font-bold text-[#64748B] hover:text-[#0F172A]">详情</button>{canManageServices && onAssignTeacher && <button onClick={() => { setAssignTeacherStudent(stu); setAssignmentTeacherId(stu.teacherId || ''); setTeachingAssignmentsDraft(stu.teacherAssignments ?? []); }} className="text-[12px] font-bold text-[#0E7D3E] hover:underline">管理教师</button>}{canManageServices && <button onClick={() => setServiceStudent(stu)} className="rounded-lg border border-[#86D6A5] bg-[#F0FBF4] px-3 py-1.5 text-[12px] font-bold text-[#0E7D3E] hover:bg-[#E3F7EA]">{serviceStatus === 'active' ? '续费' : '办理服务'}</button>}</div></td>
                   </tr>
                 );})}
@@ -405,7 +427,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
             return <div key={right.id} className="rounded-2xl border border-[#A7E4BE] bg-white p-5 shadow-2xs">
               <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-[16px] font-bold text-[#0F172A]">{right.studentName} · {right.packageName}</h3><p className="mt-1 text-[12px] text-[#64748B]">{right.institutionName} · {right.teacherName}</p></div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">待激活</span></div>
               <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">AI 用量</div><div className="mt-1 font-bold">{right.includedAiUsage.toLocaleString()}</div></div>
+                <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">今日 AI 用量</div><div className="mt-1 font-bold">{(right.todayAiUsage ?? 0).toLocaleString()} / {right.includedAiUsage.toLocaleString()}</div></div>
                 <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">学生授权码</div><div className="mt-1 font-mono font-bold text-[#16B45B]">{authCode?.code || '待生成'}</div></div>
                 <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">家长绑定码</div><div className="mt-1 font-mono font-bold text-[#16B45B]">{guardianCode?.code || '待生成'}</div></div>
                 <div className="rounded-xl bg-[#F8FAFC] p-3"><div className="text-[11px] text-[#64748B]">服务到期时间</div><div className="mt-1 font-bold">{right.serviceExpireAt || '长期有效'}</div></div>
@@ -606,7 +628,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
               </section>
               <StudentServiceReminderCards reminders={reminders} onDismiss={(id) => setDismissedReminderIds((current) => new Set([...current, id]))} />
               <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
-                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、AI 用量、双码和有效期分别保留；开通服务直接从所属机构统一账户扣点。</p></div>
+                <div><h4 className="text-[14px] font-bold text-[#0F172A]">服务权益</h4><p className="mt-1 text-[11px] text-[#64748B]">每笔服务包、每日 AI 用量上限、双码和有效期分别保留；开通服务直接从所属机构统一账户扣点。</p></div>
                 <div className="mt-3 space-y-2">{rights.length === 0 ? <div className="rounded-xl bg-[#F8FAFC] p-4 text-[12px] text-[#94A3B8]">暂无服务权益</div> : rights.map((right) => {
                   const authCode = authCodes.find((item) => item.id === right.authCodeId);
                   const rightStatus = { pending: '待激活', active: '服务中', expired: '已到期', revoked: '已撤销' }[right.status];
@@ -614,7 +636,7 @@ export const StudentView: React.FC<StudentViewProps> = ({
                   const guardianStatus = bindingCode ? { pending: '待绑定', bound: '已绑定', expired: '已失效' }[bindingCode.status] : '待生成';
                   return <div key={right.id} className="rounded-xl border border-[#E2E8F0] p-3">
                     <div className="flex justify-between gap-3"><strong className="text-[13px]">{right.packageName}</strong><span className={`text-[11px] font-bold ${right.status === 'active' ? 'text-[#0E7D3E]' : right.status === 'pending' ? 'text-amber-700' : 'text-[#64748B]'}`}>{rightStatus}</span></div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#64748B]"><span>AI 用量 {right.includedAiUsage.toLocaleString()}</span><span>到期 {right.serviceExpireAt || '长期有效'}</span><span>内容包 {(right.contentPackageNames ?? []).join(' / ') || '历史权益未记录'}</span><span>{right.fulfillmentKind === 'renewal' ? '续费' : '开通'}</span><span className="font-mono text-[#0E7D3E]">学生授权码 {authCode?.code || '待生成'} · {authStatus}</span><span className="font-mono text-[#0E7D3E]">家长绑定码 {bindingCode?.code || '待生成'} · {guardianStatus}</span></div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-[#64748B]"><span>今日 AI 用量 {(right.todayAiUsage ?? 0).toLocaleString()} / 每日上限 {right.includedAiUsage.toLocaleString()}</span><span>到期 {right.serviceExpireAt || '长期有效'}</span><span>内容包 {(right.contentPackageNames ?? []).join(' / ') || '历史权益未记录'}</span><span>{right.fulfillmentKind === 'renewal' ? '续费' : '开通'}</span><span className="font-mono text-[#0E7D3E]">学生授权码 {authCode?.code || '待生成'} · {authStatus}</span><span className="font-mono text-[#0E7D3E]">家长绑定码 {bindingCode?.code || '待生成'} · {guardianStatus}</span></div>
                   </div>;
                 })}</div>
               </section>

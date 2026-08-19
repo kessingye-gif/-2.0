@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -32,6 +33,15 @@ test('内容包列表提供可追溯详情和明确新增流程', () => {
   assert.doesNotMatch(markup, /重新启用/);
   assert.doesNotMatch(markup, /<table/);
   assert.doesNotMatch(markup, />删除</);
+});
+
+test('启停确认永远根据内容包当前状态计算', () => {
+  const source = readFileSync(new URL('./ContentPackageManager.tsx', import.meta.url), 'utf8');
+  assert.match(source, /statusChangeTargetId/);
+  assert.match(source, /statusChangeTarget\?\.status === 'inactive' \? 'active' : 'inactive'/);
+  assert.match(source, /确认启用内容包？/);
+  assert.match(source, /onActivePackageCountChange\(activeAuthorizedPackageCount\)/);
+  assert.doesNotMatch(source, /setStatusChangeTarget\(\{ pkg, nextStatus/);
 });
 
 test('选择来源学科后自动引用内容，不再要求手动选择知识点范围', () => {

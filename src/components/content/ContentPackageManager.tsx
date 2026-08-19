@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMasterData } from '../../masterData/MasterDataContext';
 import type { KnowledgeTypeMaster } from '../../masterData/types';
 import type { KnowledgePointNode } from '../../types';
@@ -61,6 +61,7 @@ interface ContentPackageManagerProps {
   authorizedPackageNames?: string[];
   canCreatePackage?: boolean;
   showNewPackageAction?: boolean;
+  onActivePackageCountChange?: (count: number) => void;
 }
 
 type PackageWizardStep = 'basics' | 'review';
@@ -180,11 +181,12 @@ export const ContentPackageWorkspace: React.FC<ContentPackageWorkspaceProps> = (
   </div>;
 };
 
-export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, selectedPackageId = null, onSelectedPackageChange = (_packageId: string | null) => undefined, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true }) => {
+export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ subjects, selectedPackageId = null, onSelectedPackageChange = (_packageId: string | null) => undefined, knowledgePoints = [], onViewQuestions = () => undefined, onBatchImportKnowledgePoints = () => undefined, onAddKnowledgePoint = () => undefined, authorizedPackageNames, canCreatePackage = true, showNewPackageAction = true, onActivePackageCountChange = (_count: number) => undefined }) => {
   const [packages, setPackages] = useState(seedPackages);
   const [packageSearch, setPackageSearch] = useState('');
   const [packageStatus, setPackageStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const authorizedPackages = filterAuthorizedContentPackages<ContentPackageRecord>(packages, authorizedPackageNames);
+  const activeAuthorizedPackageCount = authorizedPackages.filter((pkg) => pkg.status === 'active').length;
   const visiblePackages = authorizedPackages.filter((pkg) => {
     const matchesSearch = !packageSearch || pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) || pkg.code.toLowerCase().includes(packageSearch.toLowerCase());
     const matchesStatus = packageStatus === 'all' || pkg.status === packageStatus;
@@ -193,11 +195,17 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
   const selected = packages.find((pkg) => pkg.id === selectedPackageId) ?? null;
   const [wizardOpen, setWizardOpen] = useState(false);
   const [notice, setNotice] = useState('');
-  const [statusChangeTarget, setStatusChangeTarget] = useState<{ pkg: ContentPackageRecord; nextStatus: 'active' | 'inactive' } | null>(null);
+  const [statusChangeTargetId, setStatusChangeTargetId] = useState<string | null>(null);
   const [step, setStep] = useState<PackageWizardStep>('basics');
   const [draft, setDraft] = useState<ContentPackageDraft>({ name: '', subjectId: subjects[0]?.id ?? '', kpCount: 0, questionCount: 0 });
 
   const subjectById = (id: string) => subjects.find((item) => item.id === id);
+  const statusChangeTarget = packages.find((pkg) => pkg.id === statusChangeTargetId) ?? null;
+  const nextStatus = statusChangeTarget?.status === 'inactive' ? 'active' : 'inactive';
+
+  useEffect(() => {
+    onActivePackageCountChange(activeAuthorizedPackageCount);
+  }, [activeAuthorizedPackageCount, onActivePackageCountChange]);
 
   const openWizard = () => {
     setDraft({ name: '', subjectId: subjects[0]?.id ?? '', kpCount: 0, questionCount: 0 });
@@ -230,10 +238,9 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
 
   const confirmStatusChange = () => {
     if (!statusChangeTarget) return;
-    const { pkg, nextStatus } = statusChangeTarget;
-    setPackages((current) => current.map((item) => item.id === pkg.id ? { ...item, status: nextStatus, updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 16) } : item));
-    setNotice(nextStatus === 'inactive' ? `“${pkg.name}”已停用，新的机构授权将不再使用该内容包。` : `“${pkg.name}”已重新启用，可以继续授权给机构。`);
-    setStatusChangeTarget(null);
+    setPackages((current) => current.map((item) => item.id === statusChangeTarget.id ? { ...item, status: nextStatus, updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 16) } : item));
+    setNotice(nextStatus === 'inactive' ? `“${statusChangeTarget.name}”已停用，新的机构授权将不再使用该内容包。` : `“${statusChangeTarget.name}”已启用，可以继续授权给机构。`);
+    setStatusChangeTargetId(null);
   };
 
   if (selected) {
@@ -264,7 +271,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
                 <div className="flex items-start justify-between gap-3">
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${statusTone}`}>{completenessLabel}</span>
                   {canCreatePackage && <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setStatusChangeTarget({ pkg, nextStatus: pkg.status === 'inactive' ? 'active' : 'inactive' })} className={`cursor-pointer text-[12px] font-bold hover:underline ${pkg.status === 'inactive' ? 'text-[#16B45B]' : 'text-[#DC2626]'}`}>{pkg.status === 'inactive' ? '启用' : '停用'}</button>
+                    <button type="button" onClick={() => setStatusChangeTargetId(pkg.id)} className={`cursor-pointer text-[12px] font-bold hover:underline ${pkg.status === 'inactive' ? 'text-[#16B45B]' : 'text-[#DC2626]'}`}>{pkg.status === 'inactive' ? '启用' : '停用'}</button>
                   </div>}
                 </div>
 
@@ -314,7 +321,7 @@ export const ContentPackageManager: React.FC<ContentPackageManagerProps> = ({ su
         机构只能使用平台已授权的内容包；机构内部维护的知识点和题目仅在自身范围内生效。
       </div>
 
-      {statusChangeTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="dialog" aria-modal="true" aria-labelledby="content-status-dialog-title" className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl"><h3 id="content-status-dialog-title" className="text-[17px] font-bold text-[#0F172A]">{statusChangeTarget.nextStatus === 'inactive' ? '确认停用内容包？' : '确认重新启用？'}</h3><p className="mt-2 text-[12px] leading-5 text-[#64748B]">{statusChangeTarget.nextStatus === 'inactive' ? `停用“${statusChangeTarget.pkg.name}”后，将不能继续授权给新机构；已有数据不会删除，可以随时重新启用。` : `重新启用“${statusChangeTarget.pkg.name}”后，可以继续授权给机构。`}</p><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setStatusChangeTarget(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC]">取消</button><button type="button" onClick={confirmStatusChange} className={`rounded-xl px-4 py-2 text-[13px] font-bold text-white ${statusChangeTarget.nextStatus === 'inactive' ? 'bg-[#DC2626] hover:bg-[#B91C1C]' : 'bg-[#16B45B] hover:bg-[#139B4E]'}`}>{statusChangeTarget.nextStatus === 'inactive' ? '确认停用' : '确认启用'}</button></div></div></div>}
+      {statusChangeTarget && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div role="dialog" aria-modal="true" aria-labelledby="content-status-dialog-title" className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-6 shadow-xl"><h3 id="content-status-dialog-title" className="text-[17px] font-bold text-[#0F172A]">{nextStatus === 'inactive' ? '确认停用内容包？' : '确认启用内容包？'}</h3><p className="mt-2 text-[12px] leading-5 text-[#64748B]">{nextStatus === 'inactive' ? `停用“${statusChangeTarget.name}”后，将不能继续授权给新机构；已有数据不会删除，可以随时重新启用。` : `启用“${statusChangeTarget.name}”后，将恢复为正常可使用状态，并可继续授权给机构。`}</p><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setStatusChangeTargetId(null)} className="rounded-xl border border-[#E2E8F0] px-4 py-2 text-[13px] font-bold text-[#64748B] hover:bg-[#F8FAFC]">取消</button><button type="button" onClick={confirmStatusChange} className={`rounded-xl px-4 py-2 text-[13px] font-bold text-white ${nextStatus === 'inactive' ? 'bg-[#DC2626] hover:bg-[#B91C1C]' : 'bg-[#16B45B] hover:bg-[#139B4E]'}`}>{nextStatus === 'inactive' ? '确认停用' : '确认启用'}</button></div></div></div>}
 
       {wizardOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-[640px] rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between"><div><p className="text-[11px] font-bold text-[#0E7D3E]">{step === 'basics' ? '第 1 步，共 2 步' : '第 2 步，共 2 步'}</p><h3 className="mt-1 text-[18px] font-bold">{step === 'basics' ? '填写基本信息' : '确认创建'}</h3></div><button type="button" onClick={() => setWizardOpen(false)} className="cursor-pointer text-[#64748B]"><span className="material-symbols-outlined">close</span></button></div>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { initialAuthCodes, initialInstitutions, initialServicePackages } from '../../mockData';
+import { initialAuthCodes, initialContentPackages, initialInstitutions, initialServicePackages } from '../../mockData';
 import { GoodsView } from './GoodsView';
 
 const handlers = {
@@ -18,6 +18,7 @@ const renderMode = (mode: 'catalog' | 'fulfillment' | 'finance', initialCatalogT
   mode,
   initialCatalogTab,
   packages: initialServicePackages,
+  contentPackages: initialContentPackages,
   authCodes: initialAuthCodes,
   institutions: initialInstitutions,
   ...handlers,
@@ -36,9 +37,8 @@ test('服务包只表达点数和 AI 权益，不绑定内容包', () => {
   const markup = renderMode('catalog');
   assert.doesNotMatch(markup, /激活时任选|激活后包含|覆盖 \d+ 个内容包|内容包包含模式/);
   assert.match(markup, /消耗采购点数/);
-  assert.match(markup, /包含 AI 用量/);
-  assert.match(markup, /20万 AI 用量/);
-  assert.doesNotMatch(markup, /每日 AI 上限|次\/天/);
+  assert.match(markup, /每日 AI 用量上限/);
+  assert.match(markup, /20万 \/ 日/);
 });
 
 test('服务包有明确的启停操作和历史保留说明', () => {
@@ -68,6 +68,7 @@ test('机构额度入账意图自动打开入账页并选中目标机构', () =>
   const markup = renderToStaticMarkup(createElement(GoodsView, {
     mode: 'catalog',
     packages: initialServicePackages,
+    contentPackages: initialContentPackages,
     authCodes: initialAuthCodes,
     institutions: initialInstitutions,
     creditInstitutionId: institution.id,
@@ -89,14 +90,14 @@ test('finance mode opens on the unified order ledger', () => {
 
 test('机构入账统一到一个交易流水入口', () => {
   const markup = renderToStaticMarkup(createElement(GoodsView, {
-    mode: 'catalog', packages: initialServicePackages, authCodes: initialAuthCodes, institutions: initialInstitutions,
+    mode: 'catalog', packages: initialServicePackages, contentPackages: initialContentPackages, authCodes: initialAuthCodes, institutions: initialInstitutions,
     creditInstitutionId: initialInstitutions[0].id, ...handlers,
   }));
   assert.match(markup, />交易流水</);
   assert.doesNotMatch(markup, />机构额度入账</);
   assert.doesNotMatch(markup, />权益流水</);
   assert.match(markup, /全部流水类型/);
-  assert.match(markup, />录入线下入账</);
+  assert.match(markup, /录入机构线下点数入账/);
   assert.doesNotMatch(markup, /PAY-20260808-0192/);
   assert.doesNotMatch(markup, /张伟强/);
   assert.doesNotMatch(markup, /申请退款/);

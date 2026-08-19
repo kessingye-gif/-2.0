@@ -19,7 +19,7 @@ export const initialContentPackages: ContentPackageItem[] = [
   { id: 'CP-02', code: 'CP-PHYS-CZ', name: '人教版初中物理精选内容包', subjectId: 'SUB-02', subject: '初中物理', stage: '初中', kpCount: 98, questionCount: 840, status: 'active', description: '引用初中物理下已发布的知识点与题目' },
   { id: 'CP-03', code: 'CP-CHEM-CZ', name: '人教版初中化学核心内容包', subjectId: 'SUB-03', subject: '初中化学', stage: '初中', kpCount: 75, questionCount: 620, status: 'active', description: '引用初中化学下已发布的知识点与题目' },
   { id: 'CP-04', code: 'CP-MATH-GZ', name: '人教版高中数学必修与选择性必修包', subjectId: 'SUB-06', subject: '高中数学', stage: '高中', kpCount: 210, questionCount: 1850, status: 'active', description: '引用高中数学下已发布的知识点与题目' },
-  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'active', description: '引用初中英语下已发布的知识点与题目' },
+  { id: 'CP-05', code: 'CP-ENG-CZ', name: '初中英语词汇与阅读专项包', subjectId: 'SUB-04', subject: '初中英语', stage: '初中', kpCount: 110, questionCount: 950, status: 'inactive', description: '引用初中英语下已发布的知识点与题目' },
 ];
 
 export const initialCooperationPlans: CooperationPlan[] = [
@@ -198,6 +198,7 @@ export const initialServicePackages: ServicePackage[] = [
     description: '适合单科学生的低频日常答题与基础 AI 概念辅导。',
     status: 'active',
     subjectRequirement: 'single',
+    selectableContentPackageCount: 1,
   },
   {
     id: 'PKG-002',
@@ -211,6 +212,7 @@ export const initialServicePackages: ServicePackage[] = [
     description: '适合单科高频使用，支持 AI 导师对话与深度错题剖析。',
     status: 'active',
     subjectRequirement: 'single',
+    selectableContentPackageCount: 1,
   },
   {
     id: 'PKG-003',
@@ -224,6 +226,7 @@ export const initialServicePackages: ServicePackage[] = [
     description: '适合多学科日常低频使用，提供基础 AI 学习陪伴。',
     status: 'active',
     subjectRequirement: 'all',
+    selectableContentPackageCount: 4,
   },
   {
     id: 'PKG-004',
@@ -237,6 +240,7 @@ export const initialServicePackages: ServicePackage[] = [
     description: '适合多学科高频使用，支持 AI 解答与智能诊断。',
     status: 'active',
     subjectRequirement: 'all',
+    selectableContentPackageCount: 4,
   },
 ];
 
@@ -606,6 +610,7 @@ export const initialStudents: StudentItem[] = [
     accuracyRate: 85,
     errorCount: 57,
     unreviewedErrorCount: 8,
+    lastMiniProgramActiveAt: '2026-08-19 09:42',
   },
   {
     id: 'STU-002',
@@ -639,6 +644,7 @@ export const initialStudents: StudentItem[] = [
     accuracyRate: 72,
     errorCount: 26,
     unreviewedErrorCount: 12,
+    lastMiniProgramActiveAt: '2026-08-16 18:10',
   },
   {
     id: 'STU-003', name: '赵子涵', nickname: '子涵', account: 'zhaozh2026', phone: '13710001003', loginPassword: 'Student@2026!',
@@ -646,6 +652,7 @@ export const initialStudents: StudentItem[] = [
     institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-004', teacherName: '陈雨老师',
     subjects: ['数学', '物理'], serviceStatus: 'active', serviceExpireAt: '2027-06-30',
     totalStudyHours: 28.5, totalQuestions: 246, accuracyRate: 81, errorCount: 47, unreviewedErrorCount: 9,
+    lastMiniProgramActiveAt: '2026-08-10 20:26',
   },
   {
     id: 'STU-004', name: '孙浩然', nickname: '浩然', account: 'sunhr2026', phone: '13710001004', loginPassword: 'Student@2026!',
@@ -653,6 +660,7 @@ export const initialStudents: StudentItem[] = [
     institutionId: 'INS-2023001', institutionName: '浙江大学附属中学', teacherId: 'TCH-004', teacherName: '陈雨老师',
     subjects: ['数学', '物理'], serviceStatus: 'none',
     totalStudyHours: 6.5, totalQuestions: 58, accuracyRate: 69, errorCount: 18, unreviewedErrorCount: 11,
+    lastMiniProgramActiveAt: '2026-08-18 16:30',
   },
   {
     id: 'STU-005', name: '周可欣', nickname: '可欣', account: 'zhouke2026', phone: '13710001005', loginPassword: 'Student@2026!',
@@ -714,7 +722,7 @@ export const initialAuditLogs: AuditLogItem[] = [
     module: '服务包管理',
     action: '修改服务包配置',
     target: '全科高量包 (PKG-004)',
-    details: '修改服务包包含 AI 用量为 500 万，消耗额度为 350 点。已激活存量不追溯受影响。',
+    details: '修改服务包每日 AI 用量上限为 500 万，消耗额度为 350 点。已激活存量不追溯受影响。',
     ipAddress: '10.240.0.12',
     timestamp: '2026-07-27 11:05:44',
   },

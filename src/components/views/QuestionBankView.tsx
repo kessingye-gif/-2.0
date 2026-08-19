@@ -186,6 +186,9 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
   // Content Packages Management State
   const [contentPackages, setContentPackages] = useState<ContentPackageItem[]>(initialContentPackages);
+  const [activeContentPackageCount, setActiveContentPackageCount] = useState(
+    () => initialContentPackages.filter((pkg) => pkg.status === 'active').length,
+  );
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<ContentPackageItem | null>(null);
   const [packageSearchTerm, setPackageSearchTerm] = useState('');
@@ -929,7 +932,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                 : 'text-[#64748B] hover:text-[#0F172A]'
             }`}
           >
-            内容包 ({scopedContentPackages.length})
+            内容包 ({activeContentPackageCount})
           </button>
 
           <button
@@ -1043,6 +1046,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             authorizedPackageNames={authorizedContentPackageNames}
             canCreatePackage={canCreateContentPackage}
             showNewPackageAction={false}
+            onActivePackageCountChange={setActiveContentPackageCount}
           />
           {false && <div className="space-y-4">
           {/* Package Filters Bar */}

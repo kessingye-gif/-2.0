@@ -68,7 +68,7 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
   const activeContentPackages = contentPackages.filter((item) => item.status === 'active');
   const activeKnowledgePoints = knowledgePoints.filter((item) => item.status === 'active');
   const activeQuestions = questions.filter((item) => item.status === 'active');
-  const incompleteServices = activeServicePackages.filter((item) => !(item.selectableContentPackageIds?.length) || !item.selectableContentPackageCount);
+  const incompleteServices = activeServicePackages.filter((item) => !item.selectableContentPackageCount);
   const incompleteContent = activeContentPackages.filter((item) => !(item.knowledgePointIds?.length));
   const activated = authCodes.filter((item) => item.status === 'used').length;
   const pending = authCodes.filter((item) => item.status === 'pending').length;
@@ -177,7 +177,7 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
           metric(activeServicePackages.length, { id: 'activeServicePackages', label: '启用服务包', sourceLabel: '服务包', definition: '当前可用于新开通的服务包', targetPath: '/platform/goods?tab=packages', tone: 'positive', icon: 'layers' }),
           metric(servicePackages.length, { id: 'servicePackages', label: '服务包总数', sourceLabel: '服务包', definition: '平台全部服务包数量', targetPath: '/platform/goods?tab=packages' }),
           metric(activated, { id: 'activatedRights', label: '已生效用户权益', suffix: ' 项', sourceLabel: '用户权益', definition: '已经激活并可使用的用户权益', targetPath: '/platform/students?service=active', tone: 'positive', icon: 'group' }),
-          metric(incompleteServices.length, { id: 'incompleteServices', label: '待补充服务配置', sourceLabel: '服务包', definition: '未配置内容包范围或可选数量的启用服务包', targetPath: '/platform/goods?tab=packages', tone: 'warning', icon: 'warning' }),
+          metric(incompleteServices.length, { id: 'incompleteServices', label: '待补充服务配置', sourceLabel: '服务包', definition: '未配置可选内容包数量的启用服务包', targetPath: '/platform/goods?tab=packages', tone: 'warning', icon: 'warning' }),
         ],
       },
       {
@@ -198,7 +198,7 @@ export const derivePlatformDashboardSnapshot = ({ institutions, authCodes, stude
       },
     ],
     workItems: [
-      ...(incompleteServices.length ? [{ id: 'incomplete-services', title: '服务包配置待补充', description: '补充内容包范围与可选数量后再启用', count: incompleteServices.length, targetPath: '/platform/goods?tab=packages', tone: 'danger' as const }] : []),
+      ...(incompleteServices.length ? [{ id: 'incomplete-services', title: '服务包配置待补充', description: '补充可选内容包数量后再启用', count: incompleteServices.length, targetPath: '/platform/goods?tab=packages', tone: 'danger' as const }] : []),
       ...(incompleteContent.length ? [{ id: 'incomplete-content', title: '内容包待补充', description: '为内容包选择知识点与精选题库', count: incompleteContent.length, targetPath: '/platform/content/packages', tone: 'danger' as const }] : []),
       ...(pending ? [{ id: 'pending-activation', title: '用户待激活', description: '查看用户服务与权益记录', count: pending, targetPath: '/platform/students?service=pending', tone: 'warning' as const }] : []),
       ...(expiringRights.length ? [{ id: 'expiring-rights', title: '用户服务即将到期', description: '7天内到期，请及时跟进续费', count: expiringRights.length, targetPath: '/platform/students?service=expiring', tone: 'warning' as const }] : []),

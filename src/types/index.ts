@@ -120,7 +120,7 @@ export interface ServicePackage {
   type: PackageType;
   typeName: string; // 单科低量
   quotaCost: number; // 扣减教师采购额度 e.g. 50
-  includedAiUsage: number; // 服务包包含的基础 AI 用量
+  includedAiUsage: number; // 每名学生每日 AI 用量上限（每日重置，不累计）
   durationDays: number | null; // 365 或 null(长期)
   description: string;
   status: 'active' | 'inactive'; // 可购买 / 已下架
@@ -405,6 +405,7 @@ export interface StudentItem {
   accuracyRate: number;
   errorCount: number;
   unreviewedErrorCount: number;
+  lastMiniProgramActiveAt?: string;
 }
 
 export interface StudentSubjectLearning {
@@ -463,7 +464,8 @@ export interface StudentServiceRight {
   fulfillmentKind?: 'activation' | 'renewal';
   idempotencyKey?: string;
   authCodeId: string;
-  includedAiUsage: number;
+  includedAiUsage: number; // 每日 AI 用量上限
+  todayAiUsage?: number;
   quotaConsumed: number;
   createdAt: string;
   serviceExpireAt: string | null;

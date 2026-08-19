@@ -25,7 +25,7 @@ test('总部教师维护只管理归属，不再展示教师点数账户', () =>
     }))
   ));
 
-  assert.match(markup, /教师仅用于用户归属、筛选和分组/);
+  assert.match(markup, /任教学科决定教师默认关联的学科学生与学情/);
   assert.doesNotMatch(markup, /点数账户|划拨点数|新增老师后，额度/);
 });
 

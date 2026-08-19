@@ -90,7 +90,7 @@ export const ServiceFulfillmentPanel: React.FC<ServiceFulfillmentPanelProps> = (
               <div className="font-bold text-[#0F172A]">{item.name}</div>
               <div className="mt-3 space-y-1 text-[12px] text-[#64748B]">
                 <div>消耗采购点数：<strong className="text-[#0F172A]">{item.quotaCost.toLocaleString()}</strong></div>
-                <div>包含 AI 用量：<strong className="text-[#0F172A]">{item.includedAiUsage.toLocaleString()}</strong></div>
+                <div>每日 AI 用量上限：<strong className="text-[#0F172A]">{item.includedAiUsage.toLocaleString()}</strong></div>
                 <div>服务有效期：<strong className="text-[#0F172A]">{item.durationDays === null ? '长期有效' : `${item.durationDays} 天`}</strong></div>
               </div>
             </button>
